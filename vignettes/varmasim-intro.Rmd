@@ -1,0 +1,110 @@
+%\VignetteIndexEntry{Introduction to varmasim}
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteEncoding{UTF-8}
+---
+title: "Introduction to varmasim"
+author: "Kristján Jónasson"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  rmarkdown::html_vignette:
+    keep_md: false
+    code_folding: hide
+---
+
+# Introduction
+
+The **varmasim** package provides fast simulation of VARMA(p, q)
+multivariate time series models via a C backend. This vignette
+illustrates a basic workflow for simulating and visualizing a
+VARMA(1,0) process.
+
+# Installation
+
+Install the released version from CRAN:
+
+```r
+install.packages("varmasim")
+```
+
+Or install the development version from GitHub:
+
+```r
+remotes::install_github("jonasson/varmasim")
+```
+
+# Quick Start
+
+Load the package and set reproducible options:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse   = TRUE,
+  comment    = "#>",
+  fig.width  = 7,
+  fig.height = 5
+)
+
+library(varmasim)
+set.seed(123)
+```
+
+# Simulate a VARMA(1,0) Model
+
+Define a 2×2 autoregressive coefficient matrix and identity
+covariance:
+
+```{r simulate, echo=TRUE}
+A   <- array(c(0.5, -0.2,
+               0.1,  0.3), dim = c(2, 2))
+B   <- array(0, dim = c(2, 2))
+Sig <- diag(2)
+out <- varma_sim(A, B, Sig, n = 30)
+```
+
+Inspect the returned list:
+
+```{r inspect, echo=TRUE}
+str(out)
+```
+
+# Visualization
+
+Plot the first replicate of the simulated series:
+
+```{r plot, fig.cap="Simulated VARMA(1,0) Series"}
+# Extract matrix for first replicate
+Xmat <- if (length(dim(out$X)) == 3)
+  out$X[,,1] else out$X
+
+time <- seq_len(ncol(Xmat))
+matplot(
+  time,
+  t(Xmat),
+  type = "l",
+  lty  = 1,
+  xaxt = "n",
+  yaxt = "n",
+  main = "Simulated VARMA Series",
+  xlab = "Time",
+  ylab = "Value"
+)
+axis(1, at = seq(1, 30, length.out = 7), labels = seq(0, 30, by = 5))
+axis(2, at = seq(-3, 4, by = 1))
+legend(
+  "topright",
+  paste("Series", seq_len(nrow(Xmat))),
+  lty = 1,
+  cex = 0.8
+)
+```
+
+# See Also
+
+- [`varma_sim()`]
+- [R Package Vignette Guide](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Vignettes)
+
+# Session Info
+
+```{r session, include=FALSE}
+sessionInfo()
+```

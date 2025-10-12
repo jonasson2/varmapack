@@ -1,0 +1,11 @@
+Package: varmasim
+Title: Generate VARMA time series without spin-up
+Version: 1.0
+Authors@R: 
+    person("Kristján", "Jónasson", , "jonasson@hi.is", role = c("aut", "cre"))
+Description: Generates simulated VARMA time series avoiding
+    burn-in/spin-up/startup bias using C code
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

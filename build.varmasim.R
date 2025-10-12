@@ -1,0 +1,6 @@
+#if (exists("varma_sim", envir = .GlobalEnv)) rm(varma_sim)
+library(devtools)
+devtools::build()
+devtools::document()
+install.packages("../varmasim_1.0.tar.gz", repos = NULL, type = "source")
+library(varmasim)

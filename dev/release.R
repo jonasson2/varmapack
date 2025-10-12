@@ -1,0 +1,5 @@
+devtools::check(args = c("--as-cran"), vignettes = TRUE)
+try(devtools::build_manual(path = "dev"))
+built = devtools::build(path = "dev", vignettes = TRUE)
+devtools::install(built, upgrade = "never")
+library(varmasim)

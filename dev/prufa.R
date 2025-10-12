@@ -1,0 +1,7 @@
+library(varmasim)
+A = matrix(0.5, 2, 2)
+B = matrix(0, 2, 2)
+mu = c(2,3)
+Sig = diag(2)
+print(A)
+result = varma_sim(A, B, Sig, mu, n=100, M=1)
