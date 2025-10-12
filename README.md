@@ -27,9 +27,9 @@ $$
 
 - \(x_t\) is an \(r\)-dimensional time series.  
 - The innovations \(\varepsilon_t\) are uncorrelated in time and have covariance \(\Sigma\).  
-- When \(r=1\) the model reduces to an **ARMA(p, q)** series.  
-- When \(q=0\) and \(r>1\) it becomes a **VAR(p)** model.  
-- When \(q=0\) and \(r=1\) it is a simple **AR(p)** model.
+- When \(r = 1\) the model reduces to an **ARMA(p, q)** series.  
+- When \(q = 0\) and \(r > 1\) it becomes a **VAR(p)** model.  
+- When \(q = 0\) and \(r = 1\) it is a simple **AR(p)** model.
 
 The simulation avoids any “burn-in” period: the generated series has the correct covariance structure from the first observation.
 
@@ -39,7 +39,8 @@ The simulation avoids any “burn-in” period: the generated series has the cor
 
 ```bash
 meson setup build
-meson compile -C build
-./build/RunVarmaSim smallMA      # named testcase
-./build/RunVarmaSim 5            # numbered testcase
-./build/RunVarmaSim 3,2,2        # dimensions p,q,r
+cd build
+meson compile
+./RunVarmaSim smallMA     # named testcase
+./RunVarmaSim 5           # numbered testcase
+./RunVarmaSim 3,2,2       # dimensions p,q,r
