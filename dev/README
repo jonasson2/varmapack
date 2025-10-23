@@ -1,0 +1,17 @@
+To check that the C functions VarmaSim.c and Testcase.c give the same results as
+the Matlab functions varma_sim.m and testcase.m proceed as follows:
+
+From the command prompt, download and unzip the vauto package from github into a
+suitable folder, add it to the Matlab path, cd to the varmasim dev folder, and
+run matlabcompare:
+
+  $ cd <folder>
+  $ curl -L -O https://github.com/jonasson2/vauto-matlab/releases/latest/download/vauto.zip
+  [in Matlab:]
+  >> addpath <folder>/vauto
+  >> cd <varmasim-root>/dev
+  >> matlabcompare
+
+This creates the file matlabcompare.txt with details of testcases and results of
+simulation with the repeatable Park-Miller RNG, seeded with 42 at the beginning
+of each testcase.

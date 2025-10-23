@@ -1,3 +1,4 @@
+// Utilities for example functions
 #ifndef EXAMPLEUTIL_H
 #define EXAMPLEUTIL_H
 
@@ -26,7 +27,7 @@ int MakeMissing ( // Make some observations missing, return missing value count
   int n,         // in   Number of observation times
   int r,         // in   Dimension of vector observed at each time
   int mpatt,     // in   Code (pattern) controlling which values to drop
-  rand_rng *rng, // in   Random number generator
+  RandRng *rng, // in   Random number generator
   int miss[]);    // out  r by n array; 1 where value is dropped and 0 elsewhere
 
 double loglik ( // Evaluate minus log-likelihood and gradient for VARMA model

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "VarmaSim.h"
 #include "VarmaMisc.h"
-#include "RandomNumbers.h" // rand_rng, rand_create, rand_settype, rand_setPMseed, rand_free
+#include "RandomNumbers.h" // RandRng, rand_create, rand_settype, rand_setPMseed, rand_free
 
 // Name table for named cases (order must match your C Testcase’s enumeration)
 static const char *CASE_NAMES[] = {
@@ -34,7 +34,7 @@ static SEXP make_array3(int r, int k) {
 SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
                       SEXP park_miller_, SEXP seed_) {
   // RNG setup (no checks)
-  rand_rng *rng = rand_create();
+  RandRng *rng = rand_create();
   if (LOGICAL(park_miller_)[0]) {
     rand_settype(PARKMILLER, rng);
     rand_setPMseed((uint32_t)INTEGER(seed_)[0], rng);

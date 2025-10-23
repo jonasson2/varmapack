@@ -29,26 +29,30 @@
 //     175-181.
 
 #ifndef RANDOM_H
-#define RANDOM_H t
+#define RANDOM_H
 
 #include <inttypes.h>
 #include <stdbool.h>
 
-// TYPEDEFS
-typedef enum {
-  PARKMILLER,
-  DEFAULT_RNG
+typedef enum { // Random number genator type
+  PARKMILLER,    // Park-Miller, good for comparison across platforms
+  DEFAULT_RNG    // Fast Xorshift128+ in standalone builds, or R's builtin
 } rng_type;
 
-typedef struct {
-    rng_type type;
-    uint64_t state[2]; // State for the default Xorshift128+
-    uint32_t PMseed;   // Seed for Park-Miller
+typedef struct rand_rng{ // Opaque-ish state holder for the active RNG
+  rng_type type;     // RNG type
+  uint64_t state[2]; // State for Xorshift128+
+  uint32_t PMseed;   // Seed for Park-Miller
 } rand_rng;
 
-// CREATE AND FREE AN RNG
-rand_rng* rand_create(void);
-void rand_free(rand_rng *rng);
+
+rand_rng* rand_create( // Create an RNG
+  void
+  );
+
+void rand_free( // Free an RNG when no longer needed
+  rand_rng *rng   // in   A random number generator from rand_create
+  );
 
 // INLINE FUNCTIONS (FOR SPEED)
 // _int gives integers in {0,...,bound}; _i gives one integer
@@ -70,7 +74,7 @@ void rand_uint64(uint64_t bnd, uint64_t x[], int n, rand_rng *rng);
 void rand_uint32(uint32_t bnd, uint32_t x[], int n, rand_rng *rng);
 
 // RANDOMIZE FUNCTIONS (BOTH STATE AND SEED)
-void rand_randomize(rand_rng* rng);
+void rand_randomize(uint64_t thread_id, rand_rng* rng);
 void rand_thread_randomize(uint64_t thread_id, rand_rng*rng);
 
 // SET AND GET STATE AND TYPE

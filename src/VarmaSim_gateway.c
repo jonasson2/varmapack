@@ -28,7 +28,7 @@ SEXP VarmaSim_gateway(SEXP A, SEXP B, SEXP Sig, SEXP mu, SEXP p, SEXP q, SEXP r,
     *okp = INTEGER(ok);
 
   bool PM = LOGICAL(park_miller)[0];
-  rand_rng *rng = rand_create();
+  RandRng *rng = rand_create();
   if (PM) {
     rand_settype(PARKMILLER, rng);
     rand_setPMseed(s, rng);

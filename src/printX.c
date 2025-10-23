@@ -47,6 +47,7 @@ void printMsgUnderl(char *s) { // print underlined message
   printMsg(s);
   for (i=0; i<nm; i++) printf("%c", '-');
   printMsg("");
+  fflush(0);
 }
 
 void printI(char *name, int i) { // print named int

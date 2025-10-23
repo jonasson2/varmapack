@@ -1,12 +1,17 @@
+// RandomNumbers — random number generation utilities for VARMASIM
+//
+// See RandomNumbers.h for further information, including parameter descriptions
+
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 #include <stdbool.h>
 #include "allocate.h"
 #include "RandomNumbers.h"
 #include "BlasGateway.h"
 #include "xAssert.h"
-//#include "allocate.h"
 #include "random.h"
+
 #ifdef USING_R
 #include <R.h>
 #include <Rmath.h>
@@ -14,18 +19,54 @@
 
 // TODO  Matlab mex
 
-void Rand ( // Generate uniform random numbers.
-  double x[],    // out  n-vector, returns n uniform [0,1) random numbers
-  int n,         // in   dimension of x
-  rand_rng *rng) // in   random number generator
-{
+static uint64_t splitmix64(uint64_t *x) {
+    uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+RandRng *RandCreate(void) {
+    return rand_create();
+}
+
+void RandFree(RandRng *rng) {
+    rand_free(rng);
+}
+
+void RandSetPM(RandRng *rng) {
+    rand_settype(PARKMILLER, rng);
+}
+
+void RandSetDefault(RandRng *rng) {
+    rand_settype(DEFAULT_RNG, rng);
+}
+
+void RandSeed(int seed, RandRng *rng) {
+    uint32_t pm = (uint32_t)seed;
+    uint64_t x = (uint64_t)(uint32_t)seed;
+    uint64_t s0 = splitmix64(&x);
+    uint64_t s1 = splitmix64(&x);
+    if (s0 == 0 && s1 == 0) s1 = 1;
+    rand_setPMseed(pm, rng);
+    rand_setstate(s0, s1, rng);
+}
+
+void RandRandomize(RandRng *rng) {
+  rand_randomize(0, rng);
+}
+
+void RandomThreadRandomize(uint64_t thread_id, RandRng *rng) {
+  rand_randomize(thread_id, rng);
+}
+
+void Rand (double x[], int n, RandRng *rng) {
 #ifdef USING_R
   if (rng->type == PARKMILLER)
     rand_dble(x, n, rng);
   else {
     GetRNGstate();
     for (int i = 0; i < n; i++) {
-      Rprintf("i=",i);
       x[i] = unif_rand(); // R-s built-in generator
     }
     PutRNGstate();
@@ -35,14 +76,10 @@ void Rand ( // Generate uniform random numbers.
 #endif  
 }
 
-void RandN ( // Generate normal random numbers.
-  double x[],    // out  n-vector, returns n uniform [0,1) random numbers
-  int n,         // in   dimension of x
-  rand_rng *rng) // in   random number generator
-{
+void RandN (double x[], int n, RandRng *rng) {
 #ifdef USING_R
   if (rng->type == PARKMILLER)
-    rand_norm(x, n, rng);
+    rand_normal(x, n, rng);
   else {
     GetRNGstate();
     for (int i = 0; i < n; i++) {
@@ -55,36 +92,8 @@ void RandN ( // Generate normal random numbers.
 #endif  
 }
 
-void RandNM ( // Generate multivariate normal random vectors
-  double mu[],   // in     d-vec., mean of generated vectors, null for zero-mean
-  double Sig[],  // in     d × d, covariance of generated vectors, null to use L
-  int n,         // in     Number of replicates
-  int d,         // in     dimension of generated vectors
-  double X[],    // out    n × d, generated vectors
-  double L[],    // in/out d × d, lower Cholesky factor of Sig (or null to omit)
-  double *del,   // out    multiple of I added to Sig to make it pos.def
-  rand_rng *rng, // in     random number generator
-  int *ok)       // out    0 if Sig could not be made postive definite, else 1
-  
-// NOTE 1: Sig and X are stored columnwise in Fortran fashion.
-// NOTE 2: There are situations when Sig is indefinite but close to being
-//         positive definite, for example due to rounding errors. An attempt
-//         is made to remedy this by adding a small multiple, del, of the
-//         identity matrix, I, to Sig. It was found empirically that the
-//         distribution of X does not depend critically on del, and the
-//         formula for del0 below was determined to be approximately the
-//         minimum needed. The while loop further esures that.
-// NOTE 3: In case the calling program needs the Cholesky factor of the
-//         (possibly modified) Sig, this may be returned in L by letting it be
-//         an d × d array instead of 0 in the call.
-// NOTE 4: When RandNM is to be called multiple times for the same covariance
-//         it is possible to save execution time by reusing the Cholesky
-//         factorization of Sig on all calls but the first. Specify Sig and
-//         return L on the first call, and let Sig be null and specify L on
-//         subsequent calls. If both Sig and L are null, the function exits
-//         with ok = 0.
-  
-{
+void RandNM (double mu[], double Sig[], int n, int d, double X[], double L[],
+	     double *del, RandRng *rng, int *ok) {
   int imx, info, i;
   double *LSig, del0, macheps, fourthirds, onethird;
   double maxeps[] = {1.e-5, 2.e-14, 2.e-16, 1.e-17, 2.e-32};

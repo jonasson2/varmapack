@@ -1,3 +1,4 @@
+// Assert that works from within Matlab and (maybe) R. 
 #ifndef XASSERT_H
 #define XASSERT_H
 

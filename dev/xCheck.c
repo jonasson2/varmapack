@@ -1,35 +1,45 @@
 #ifndef XCHECK_H
-#define XCHNECK_H
+#define XCHECK_H
 
 #include <stdio.h>
 #include <string.h>
 #include "xCheck.h"
 
-static int FAIL = 0;
+static int NTOTAL = 0;
+static int NFAIL = 0;
 static char commonmsg[60] = "";
 static char addmsg[60] = "";
 
-void xCheckFunc(char *message, char* file, int line) {
+void xCheckFunc(const char *message, char* file, int line) {
   // Print filename, line number, and upto three messages.
-  fprintf(stderr, "Test failed on line %d in file %s\n", line, file);
-  if (commonmsg[0] != 0) fprintf(stderr, "%s\n", commonmsg);
-  if (addmsg[0] != 0) fprintf(stderr, "%s\n", addmsg);
-  fprintf(stderr, "%s\n", message);
-  FAIL = 1;
+  char fmt[] = "%s:%d: %s test failed: %s is false\n";
+  fprintf(stderr, fmt, file, line, commonmsg, message);
+  fflush(stderr);
+  NTOTAL += 1;
+  NFAIL += 1;
 }
 
-void xCheckInit(char *msg) { // set common message to msg and FAIL to false
+void xCheckOK(void) {
+  NTOTAL += 1;
+}
+
+void xCheckInit(const char *msg) { // set common message to msg and NFAIL to 0
   strcpy(commonmsg, msg);
   addmsg[0] = 0;
-  FAIL = 0;
+  NTOTAL = 0;
+  NFAIL = 0;
 }
 
-void xCheckAddMsg(char *amsg) { // set additional message to amsg
+void xCheckAddMsg(const char *amsg) { // set additional message to amsg
   strcpy(addmsg, amsg);
 }
 
-int xCheckFailed(void) {
-  return FAIL;
+int xCheckNFailures(void) {
+  return NFAIL;
+}
+
+int xCheckNTotal(void) {
+  return NTOTAL;
 }
 
 #endif

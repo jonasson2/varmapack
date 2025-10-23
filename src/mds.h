@@ -1,5 +1,4 @@
-// mds.h:  Declaration related to mds (matrix-derivative-sparsity) structure
-
+// mds.h: Declarations related to mds (matrix-derivative-sparsity) structure
 #ifndef MDS_H
 #define MDS_H
 #include "VarmaUtilities.h"

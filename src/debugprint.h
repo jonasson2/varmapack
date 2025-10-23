@@ -1,5 +1,4 @@
 // Define macros for convenient debug printing (see also debugprint-demo.c).
-
 #ifndef DEBUGPRINT_H
 #define DEBUGPRINT_H
 

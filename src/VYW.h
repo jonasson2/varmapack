@@ -1,6 +1,6 @@
+// VYW.h:  Declaration of Vector-Yule-Walker functions
 #ifndef VYW_H
 #define VYW_H
-// VYW.h:  Declaration of Vector-Yule-Walker functions
 
 #include "mds.h"
 void VYWFactorize ( // Set up and factorize matrix of Yule-Walker equations

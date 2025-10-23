@@ -7,6 +7,7 @@ int main() {
   size_t s = 12345678901234567890LLU;
   double x[] = {1,1.333, 3.14,2.45, 1.22,3.41, 8.22};
   double y[] = {100,11.333,-33.14,2.45,1.22,3.41,18.22};
+  print0();
   printh("This is a string");
   print(d,a);
   print2(d,a,b);

@@ -60,7 +60,7 @@ int TestVarmaSim(char *code) { // code for example = "PF" for print, full,
   double *eps, *Ex1, *Ex2, *Vx1;
   PRINT = strchr(code, 'P') != 0;
   FULL  = strchr(code, 'F') != 0;
-  rand_rng *rng = rand_create();
+  RandRng *rng = rand_create();
   rand_settype(PARKMILLER, rng);
   rand_setPMseed(123456, rng);
   icase = 1;

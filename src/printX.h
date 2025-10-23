@@ -1,8 +1,12 @@
-#ifndef PRINTX_H
-#define PRINTX_H
-// PRINTX.H SIMPLE PRINTING PACKAGE FOR C-FROM-MATLAB
+// PRINTX.H SIMPLE PRINTING PACKAGE FOR C AND C-FROM-MATLAB
 // (primarily intended for debugging numerical methods)
 
+#ifndef PRINTX_H
+#define PRINTX_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+  
 void printOff(void);                     // turn off printing
 void printOn(void);                      // turn on printing
 int printIsOff(void);                    // return 1 (true) if printing is off
@@ -36,4 +40,7 @@ void print6I(char *s, int i1, int i2, int i3, int i4, int i5, int i6); // 6 ints
 // nr & nc = number of rows & columns
 // ap is a pointer to upper left corner of nr×nc partition (i.e. submatrix) in A
 
+#ifdef __cplusplus
+}
+#endif
 #endif

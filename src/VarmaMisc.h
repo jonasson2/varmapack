@@ -1,6 +1,6 @@
+// Declaration of miscellaneous functions called by VarmaLoglik & VarLoglik
 #ifndef VARMAMISC_H
 #define VARMAMISC_H
-// Declaration of miscellaneous functions called by VarmaLoglik & VarLoglik
 
 #include "mds.h"
 void atbac( // Set C := A'·B·A + C and update derivative for symmetric B and C

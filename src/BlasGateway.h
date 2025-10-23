@@ -1,3 +1,4 @@
+// C-to-Fortran BLAS gateway functions
 #ifndef BLASGATEWAY_H
 #define BLASGATEWAY_H
 #include "BlasUpper.h"

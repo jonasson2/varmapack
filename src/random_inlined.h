@@ -1,7 +1,6 @@
+// DEFINITIONS OF STATIC INLINE FUNCTION DECLARED IN RANDOM.H
 #ifndef RANDOM_INLINED_H
 #define RANDOM_INLINED_H
-
-// DEFINITIONS OF STATIC INLINE FUNCTION DECLARED IN RANDOM.H
 
 #include <stddef.h>
 #include <inttypes.h>
@@ -21,11 +20,16 @@ static inline uint32_t PM_rand_bits(rand_rng *rng) {
   return rng->PMseed;
 }
 
+#include <stdint.h>
+#include <assert.h>
+
 static inline void PM_rand_int(int bound, int x[], int n, rand_rng *rng) {
-  assert(bound >=0);  
+  assert(bound > 0);
 //#if UINT_MAX == UINT32_MAX // int is 32 bits
-  for (int i=0; i<n; i++) {
-    x[i] = PM_rand_bits(rng) % bound;
+  uint32_t ubound = (uint32_t)bound;
+  for (int i = 0; i < n; i++) {
+    uint32_t r = PM_rand_bits(rng);      // returns uint32_t
+    x[i] = (int)(r % ubound);            // result is in [0, bound-1]
   }
 //#else
 //#error "Unsupported int size with Park-Miller"
@@ -95,17 +99,17 @@ static inline void rand_dble(double x[], int n, rand_rng *rng) {
   int i;
   // Random uniform double
   if (rng->type == PARKMILLER) {
-    const double maxrand = 1.0 + (double) mersenne8;
+    const double maxrand = 1.0 + (double)mersenne8;
     for (i = 0; i < n; i++) {
-      double r = (double)PM_rand_bits(rng);
-      x[i] = r/maxrand;
+      uint32_t u = PM_rand_bits(rng);
+      double r = (double)u;
+      x[i] = r / maxrand;
     }
   }
   else { // Xorshift128+
-    const double maxrand = 1.0 + (double) UINT64_MAX;
     for (i = 0; i < n; i++) {
-      double r = (double)rand_64bits(rng);
-      x[i] = r/maxrand;
+      uint64_t v = rand_64bits(rng);
+      x[i] = (double)(v >> 11) * 0x1.0p-53;
     }
   }
 }

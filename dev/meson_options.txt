@@ -1,5 +1,6 @@
 option('blas',
-       type: 'string',
-       value: 'accelerate',
-       description: 'BLAS/LAPACK to use (accelerate, openblas, mkl, clapack)'
-      )
+  type : 'combo',
+  choices : ['accelerate', 'openblas', 'mkl', 'clapack'],
+  value : 'accelerate',
+  description : 'BLAS/LAPACK to use'
+)

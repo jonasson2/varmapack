@@ -1,6 +1,6 @@
+// Omega.h:  Declaration of functions associated with the matrix Omega
 #ifndef OMEGA_H
 #define OMEGA_H
-// Omega.h:  Declaration of functions associated with the matrix Omega
 
 #include "BlasGateway.h"
 void OmegaBuild ( // Build Omega = cov(w) with w' = (w1'...wn')

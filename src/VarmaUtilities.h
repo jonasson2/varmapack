@@ -1,11 +1,11 @@
+// Utilities for VarmaLoglik
+
 #ifndef VARMAUTILITIES_H
 #define VARMAUTILITIES_H
 
 // Following will on some platforms define min and max, so including it here
 // prevents macro redefinition warning message
 #include <stdlib.h>
-
-// Utilities for VarmaLoglik
 
 void copytranspose(int m, int n, double A[], int ldA, double B[], int ldB);
   // Set B to the transpose of the m×n matrix A. Leading dimensions are in ldA

@@ -1,51 +1,110 @@
+// RandomNumbers — random number generation utilities for VARMASIM
+//
+// This header provides user-facing functions for generating random values
+// drawn from uniform, normal, and multivariate normal distributions, along
+// with convenience wrappers for creating, seeding, and randomizing RNGs.
+//
+// DEPENDENCIES:
+//   It builds on the low-level RNG framework defined in random.h, which is
+//   included below so that users need not include it themselves (but can
+//   for extra features, e.g. complete control over rng state).
+//
+// INTEGRATION WITH R:
+//   When compiled with -DUSING_R, the default RNG redirects calls to R’s
+//   built-in random number generator for reproducibility inside R packages.
+//   Otherwise, the standalone implementation uses Xorshift128+ as the
+//   DEFAULT_RNG and Park–Miller for cross-platform comparison.
+//
+// NOTES:
+//   Implementation details and additional references are in RandomNumbers.c.
+
+#ifndef RANDOMNUMBERS_H
+#define RANDOMNUMBERS_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #include <stdbool.h>
-#include "random.h"
-#ifndef RANDOMNUMBERS
-#define RANDOMNUMBERS
+#include <stdint.h>
+#include "random.h"  // provides rng_type, rand_rng, and backend RNG functions
 
-// Before using the routines Rand, RandN, and RandNM, declared below, a random
-// number generator should be declared and created, and afterwards it should be
-// freed. Also it is possible to select a random number generator, set its state
-// and possibly randomize the generator with entropy from the system.
-//
-// When used from R, the default rng is the R built-in, but elsewhere it is
-// xorshift128+. Both from R and elsewhere one can also select Park-Miller,
-// to allow direct comparison with results obtained from Matlab. The state of
-// either default generator is independent of the Park-Miller seed; they carry
-// on from where they left off when Park-Miller was selected. The R generator
-// should be randomized/seeded from R.
-//
-// Typedefs and functions for these operations, declared in random.h, are:
-//
-//   PARKMILLER                  enum constant for rng type Park-Miller
-//   DEFAULT_RNG                 enum constant for the default rng
-//   rand_rng                    typedef for a random number generator
-//   rand_create()               returns an initialized default rng
-//   rand_free(rng)              stop using rng and free its memory
-//   rand_randomize(rng)         use system entropy to set the rng state
-//   rand_settype(type, rng)     set type (PARKMILLER or DEFAULT_RNG)
-//   rand_seedPM(s, rng)         seed the Park-Miller generator
-//   rand_setstate(s0, s1, rng)  seed the xorshift128+ generator
+typedef struct rand_rng RandRng;
 
-void Rand( // Generate uniform random numbers.
-  double x[],     // out  n-vector, returns n uniform random numbers in [0,1)
-  int n,          // in   dimension of x
-  rand_rng *rng); // in  random number generator
+// ---- RNG control wrappers --------------------------------------------------
+RandRng *RandCreate( // Create a new default randomized RNG
+  void
+);
 
-void RandN( // Generate standard normal random numbers
-  double x[],     // out  n-vector, returns n normal random numbers from N(0,1)
-  int n,          // in   dimension of x
-  rand_rng *rng); // in   random number generator
+void RandFree( // Free an RNG created with RandCreate
+  RandRng *rng        // in      Random number generator
+);
 
-void RandNM ( // Generate multivariate normal random vectors
-  double mu[],  // in     d-vec., mean of generated vectors, null for zero-mean
-  double Sig[], // in     d×d, covariance of generated vectors, null to use L
-  int n,        // in     Number of replicates
-  int d,        // in     dimension of generated vectors
-  double X[],   // out    n×d, generated vectors
-  double L[],   // in/out d×d, lower Cholesky factor of Sig (or null to omit)
-  double *del,  // out    multiple of I that was added to Sig to make it pos.def
-  rand_rng *rng,// in     random number generator
-  int *ok);     // out    0 if Sig could not be made postive definite, else 1
-                // NOTE: Sig and X are stored columnwise in Fortran fashion.
-#endif
+void RandSetPM( // Select Park–Miller as the active RNG type
+  RandRng *rng        // in/out  RNG to modify
+);
+
+void RandSetDefault( // Select the default RNG type (Xorshift128+ or R's RNG)
+  RandRng *rng        // in/out  RNG to modify
+);
+
+void RandSeed( // Seed both the Park–Miller and Xorshift128+ generators
+  int seed,      // in      Park–Miller seed and first part of Xorshift128+ state
+  RandRng *rng  // in/out  RNG whose state will be updated
+);
+
+void RandRandomize( // Randomize RNG state/seed using system entropy
+  RandRng *rng        // in/out  RNG to randomize
+);
+
+void RandThreadRandomize( // Randomize RNG state/seed in threaded use
+  uint64_t thread_id,  // in      Thread ID
+  RandRng *rng         // in/out  RNG to randomize
+);
+
+// ---- Random number generators ----------------------------------------------
+void Rand( // Generate uniform random numbers in [0,1)
+  double x[],          // out  n-vector: uniform random numbers in [0,1)
+  int n,               // in   Number of variates
+  RandRng *rng         // in   Random number generator
+);
+
+void RandN( // Generate standard normal random numbers N(0,1)
+  double x[],          // out  n-vector: standard normal random numbers
+  int n,               // in   Number of variates
+  RandRng *rng         // in   Random number generator
+);
+
+void RandNM( // Generate multivariate normal random vectors N(mu, Sig)
+  double mu[],    // in      d-vector: mean (NULL → zero-mean)
+  double Sig[],   // in      d×d covariance matrix (NULL → use L as-is)
+  int n,          // in      Number of replicates
+  int d,          // in      Dimension of each vector
+  double X[],     // out     n×d matrix of generated vectors
+  double L[],     // in/out  d×d lower Cholesky factor of Sig (or NULL)
+  double *del,    // out     Multiple of I added to make Sig positive definite
+  RandRng *rng,   // in      Random number generator
+  int *ok         // out     0 if Sig not positive definite, else 1
+);
+// NOTE 1: Sig, X and L are stored columnwise in Fortran fashion.
+// NOTE 2: There are situations when Sig is indefinite but close to being
+//         positive definite, for example due to rounding errors. An attempt
+//         is made to remedy this by adding a small multiple, del, of the
+//         identity matrix, I, to Sig. It was found empirically that the
+//         distribution of X does not depend critically on del, and the
+//         formula for del0 below was determined to be approximately the
+//         minimum needed. The while loop further esures that.
+// NOTE 3: In case the calling program needs the Cholesky factor of the
+//         (possibly modified) Sig, this may be returned in L by letting it be
+//         an d × d array instead of 0 in the call.
+// NOTE 4: When RandNM is to be called multiple times for the same covariance
+//         it is possible to save execution time by reusing the Cholesky
+//         factorization of Sig on all calls but the first. Specify Sig and
+//         return L on the first call, and let Sig be null and specify L on
+//         subsequent calls. If both Sig and L are null, the function exits
+//         with ok = 0.
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+#endif /* RANDOMNUMBERS_H */

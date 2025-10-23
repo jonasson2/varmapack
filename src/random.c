@@ -4,13 +4,11 @@
 #include "random.h"
 #include "debugprint.h"
 
-static uint64_t generate_seed(uint64_t); // forward
-
 rand_rng *rand_create(void) {
   rand_rng* rng = malloc(sizeof(rand_rng));
   if (!rng) return NULL;
   rng->type = DEFAULT_RNG;
-  rand_randomize(rng);
+  rand_randomize(0, rng);
   return rng;
 }
 
@@ -166,27 +164,9 @@ void rand_uint32(uint32_t bound, uint32_t x[], int n, rand_rng *rng) {
     }
   }
 }
-// RANDOMIZE FUNCTIONS
-//-------------------------------------------------------------------
-void rand_randomize(rand_rng *rng) {
-  if (rng->type == PARKMILLER)
-    rng->PMseed = (uint32_t)generate_seed(0);
-  else {
-    rng->state[0] = generate_seed(0);
-    rng->state[1] = generate_seed(0);
-  }   
-}
 
-void rand_thread_randomize(uint64_t thread_id, rand_rng *rng) {
-  if (rng->type == PARKMILLER)
-    rng->PMseed = (uint32_t)generate_seed(thread_id);
-  else {
-    rng->state[0] = generate_seed(thread_id);
-    rng->state[1] = generate_seed(thread_id);
-  }   
-}
 // SET AND GET STATE AND TYPE FUNCTIONS
-//---------------------------------------------------------------------
+
 void rand_setstate(uint64_t state0, uint64_t state1, rand_rng *rng) {
   if (state0==0 && state1==0)
     state0 = state1 = 0xAAAAAAAA << 16;  // don't seed with 0.
@@ -216,28 +196,82 @@ uint32_t rand_getPMseed(rand_rng *rng) {
 
 void rand_settype(rng_type type, rand_rng *rng) {
   rng->type = type;
-  rand_randomize(rng);
 }
 
-static uint64_t generate_seed(uint64_t thread_id) {
-  // Generate seed from /dev/urandom if available, othewise from
-  // an xor combination of clock, pid, and thread-id
-  uint64_t seed = 0;
+// RANDOMIZE FUNCTIONS
+
+static uint64_t splitmix64(uint64_t *x) {
+    uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+static inline uint64_t os_pid(void) {
 #ifdef __unix__
-  if (int fd = open("/dev/urandom", O_RDONLY) >= 0) {
-    if (read(fd, &seed, sizeof(seed)) == sizeof(seed)) {
-      close(fd);
-      return seed;
-    }
-    close(fd);
-  }
-  seed = (uint64_t)getpid();
+    return (uint64_t)getpid();
 #elif defined(_WIN32)
-  seed = (uint64_t)GetCurrentProcessId();
+    return (uint64_t)GetCurrentProcessId();
+#else
+    return 0;
 #endif
-  struct timespec ts;
-  timespec_get(&ts, TIME_UTC);
-  seed ^= (uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
-  seed ^= thread_id;
-  return seed;
+}
+
+static bool get_system_entropy(uint64_t *s0, uint64_t *s1) {
+// Try to fill *s0, *s1 from OS entropy. Return true on success, false otherwise.
+#ifdef __unix__
+  int fd = open("/dev/urandom", O_RDONLY);
+  if (fd < 0) {
+    return false;
+  }
+  ssize_t r0 = read(fd, s0, sizeof(*s0));
+  ssize_t r1 = read(fd, s1, sizeof(*s1));
+  close(fd);
+  if (r0 == sizeof(*s0) && r1 == sizeof(*s1)) {
+    if (*s0 == 0 && *s1 == 0) {
+      *s1 = 1;
+    }
+    return true;
+  }
+  return false;
+#elif defined(_WIN32)
+  if (BCRYPT_SUCCESS(BCryptGenRandom(NULL, (PUCHAR)s0, sizeof(*s0),
+				     BCRYPT_USE_SYSTEM_PREFERRED_RNG))
+      && BCRYPT_SUCCESS(BCryptGenRandom(NULL, (PUCHAR)s1, sizeof(*s1),
+					BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
+    if (*s0 == 0 && *s1 == 0) *s1 = 1;
+    return true;
+  }
+  else return false;
+#else
+  (void) s0;
+  (void) s1;
+  return false;
+#endif
+}
+
+void rand_randomize(uint64_t thread_id, rand_rng *rng) {
+    uint64_t s0 = 0, s1 = 0;
+
+    if (!get_system_entropy(&s0, &s1)) {
+        // fallback mixing path
+        uint64_t x = os_pid();
+        struct timespec ts;
+        timespec_get(&ts, TIME_UTC);
+        uint64_t t = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+
+        x ^= t;
+        x ^= thread_id * 0x9E3779B97F4A7C15ULL;
+
+        s0 = splitmix64(&x);
+        s1 = splitmix64(&x);
+        if (s0 == 0 && s1 == 0) {
+            s1 = 1;
+        }
+    }
+
+    // Always set both state words and the PM seed
+    rng->state[0] = s0;
+    rng->state[1] = s1;
+    rng->PMseed = (uint32_t)(s0 & 0xFFFFFFFFUL);
 }
