@@ -44,7 +44,7 @@ static void check_failures(void) {
   // but the following should fail:
   // (2) p, q or r null pointers
   // (3) icase null
-  // (4) name null
+  // (4) name and icase null
   // (5) some A, B, Sig null others not
   // (6) A, B, Sig != 0, invalid dimensions
   // (7) name "max": A, B, Sig not all null
@@ -55,7 +55,7 @@ static void check_failures(void) {
   strcpy(name, "");                                                
   ok = Testcase(A, B, 0, name, 0, &q, &r, &icase, 0, err);     xCheck(!ok); // (2)
   ok = Testcase(0, 0, 0, name, &p, &q, &r, 0, 0, err);         xCheck(!ok); // (3)
-  ok = Testcase(0, 0, 0, 0, &p, &q, &r, &icase, 0, err);       xCheck(!ok); // (4)
+  ok = Testcase(0, 0, 0, 0, &p, &q, &r, 0, 0, err);            xCheck(!ok); // (4)
   ok = Testcase(0, B, 0, name, &p, &q, &r, &icase, 0, err);    xCheck(!ok); // (5)
   ok = Testcase(A, B, Sig, "", &p, &q, &zero, &zero, 0, err);  xCheck(!ok); // (6)
   ok = Testcase(A, B, Sig, "", &mone, &q, &r, &zero, 0, err);  xCheck(!ok); // (6)

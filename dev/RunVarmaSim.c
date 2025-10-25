@@ -5,13 +5,13 @@
 #include <ctype.h>
 #include <assert.h>
 
-/* Your project headers / APIs */
-#include "allocate.h"        /* allocate(ptr, count) */
-#include "RandomNumbers.h"   /* RandRng (opaque); we pass NULL for now */
-#include "printX.h"          /* printM() */
+#include "allocate.h"
+#include "RandomNumbers.h"
+#include "printX.h"
 #include "Testcase.h"
 #include "VarmaSim.h"
 #include "getopt.h"
+#include "ExtraUtil.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
 
@@ -176,12 +176,20 @@ int main(int argc, char **argv) {
   if (!Testcase(A, B, Sig, 0, &p, &q, &r, &icase, rng, stderr)) return 1;
 
   VarmaSim(A, B, Sig, 0, p, q, r, n, 1, 0, rng, X, 0, &vsok);
-  
+
+  double *mu;
+  allocate(mu, r);
+  allocate(Gamma, r*r);
+  meanmat("T", r, n, X, r,  mu);
+  printM("Mean", mu, 1, r);
+  ACVF(A, B, Sig, p, q, r, Gamma, 1);
   if (print) {
+    printsMsg("Model definition matrices:");
     printM("A",  A,  r, r * p);
     printM("B",  B,  r, r * q);
     printM("Sig", Sig, r, r);
-    printM("X", X, r, n);
+    printM("
+    // printM("X", X, r, n);
   }
   else
     printf("This will later print a summary\n");
@@ -189,6 +197,7 @@ int main(int argc, char **argv) {
   free(B);
   free(Sig);
   free(X);
+  free(mu);
   RandFree(rng);
   return 0;
 }

@@ -51,9 +51,10 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
   // INQUIRY
   // 1. Dimensions. To inquire about the dimensions of a testcase, A, B and Sig may be
   //    null and either name or icase may be specified. The dimensions of the
-  //    corresponding case are put in p, q and r, and either name or icase are assigned
-  //    to. Testcase(0, 0, 0, "smallAR", &p, &q, &r, &icase, 0) will thus set p, q, r,
-  //    icase to 1, 0, 2, 4.
+  //    corresponding case are put in p, q and r. If name was specified icase is assigned
+  //    to, and if icase was specified and name is not null, it is assigned to.
+  //    Testcase(0, 0, 0, "smallAR", &p, &q, &r, &icase, 0) will thus set p, q, r, icase
+  //    to 1, 0, 2, 4.
   //
   // 2. Count + max dimensions. Testcase(0, 0, 0, "max", &p, &q, &r, &icase, 0) sets p, q,
   //    r to the maximum dimensions over all testcases and icase to the number of named

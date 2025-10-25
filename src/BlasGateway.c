@@ -75,28 +75,48 @@ void getrs(char *transa, int n, int nrhs, double a[], int lda, int ipiv[],
 #endif
 }
 
+void geev(char *jobvl, char *jobvr, int n, double a[], int lda, double wr[], double wi[],
+          double vl[], int ldvl, double vr[], int ldvr, double work[], int lwork, int
+          &info) {
+#ifdef STRPAIR
+  dgeev_(jobvl, 1, jobvr, 1, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info);
+#elif defined(STRLEN)
+  dgeev_(jobvl, jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info, 1, 1);
+#else
+  dgeev_(jobvl, jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info);
+#endif
+}
+
 int iamax(int n, double dx[], int incx) { // NOTE: Returns 0 for 1st elem. etc.
   return idamax_(&n, dx, &incx) - 1;
 }
 
 void lacpy(char *uplo, int m, int n, double a[], int lda, double b[], int ldb) {
+  int i, j;
+#ifdef STRPAIR
+  dlacpy(uplo, 1, &m, &n, a, &lda, b, &ldb);
+#elif defined(STRLEN)
+  dlacpy(uplo, &m, &n, a, &lda, b, &ldb, 1);
+#else
+  dlacpy(uplo, &m, &n, a, &lda, b, &ldb);
+#endif
+  // OLD VERSION, DISCARDED BECAUSE ACML HAS BEEN DISCONTINUED:
   // Ideally this function should call dlacpy from lapack, but because the acml
   // library does not include dlacpy, a function based on the one from clapack is
   // included here instead.
-  int i, j;
-  if (*uplo == 'U' || *uplo == 'u') {
-    for (j = 0; j < n; j++) {
-      for (i = 0; i <= j && i < m; i++) b[i + j * ldb] = a[i + j * lda];
-    }
-  } else if (*uplo == 'L' || *uplo == 'l') {
-    for (j = 0; j < n; j++) {
-      for (i = j; i < m; i++) b[i + j * ldb] = a[i + j * lda];
-    }
-  } else {
-    for (j = 0; j < n; j++) {
-      for (i = 0; i < m; i++) b[i + j * ldb] = a[i + j * lda];
-    }
-  }
+  // if (*uplo == 'U' || *uplo == 'u') {
+  //   for (j = 0; j < n; j++) {
+  //     for (i = 0; i <= j && i < m; i++) b[i + j * ldb] = a[i + j * lda];
+  //   }
+  // } else if (*uplo == 'L' || *uplo == 'l') {
+  //   for (j = 0; j < n; j++) {
+  //     for (i = j; i < m; i++) b[i + j * ldb] = a[i + j * lda];
+  //   }
+  // } else {
+  //   for (j = 0; j < n; j++) {
+  //     for (i = 0; i < m; i++) b[i + j * ldb] = a[i + j * lda];
+  //   }
+  // }
 }
 
 void potrf(char *uplo, int n, double a[], int lda, int *info) {

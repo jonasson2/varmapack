@@ -104,3 +104,43 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   copylowertoupper(n, C, n);
   freem(Xm); freem(mu);
 }
+
+void autocov(char *transp, char *norm, int r, int n, double X[], int maxlag, double C[]) {
+  // Compute Ck = sample lag-k autocovariance matrix of X for k = 0,…,maxlag.
+  //
+  // When transp begins with "N", X is an r×n matrix whose column t contains the t-th
+  // observation of an r-dimensional time series. When transp begins with "T", X is n×r,
+  // with the t-th observation in row t.
+  //
+  // C is an r×r×(maxlag + 1) array returning Ck in its k-th subarray, C(:,:,k).
+  //
+  // When norm begins with "B" the estimation is *biased* (ML), normalizing all Ck by 1/n.
+  // When norm begins with "U" it is *unbiased*, normalizing Ck by 1/(n−k−1).
+  //
+  // Mathematically:
+  //
+  //   Ck(i,j) = Cov(xi_t, xj_{t−k})
+  //   Ck      = Cov(x_t, x_{t−k}) = Z·Y' / N
+  //
+  // where Y has the leading (n−k) columns of X and Z has the trailing (n−k) columns,
+  // and N is the normalization factor: N = n (biased) or N = n−k−1 (unbiased).
+  double fctr, *Y, *Z, *Ck;
+  bool biased = (*norm == 'B');
+  xAssert(*transp == 'N' || *transp == 'T');
+  xAssert(biased || *norm == 'U');
+  if (biased) xAssert(maxlag <= n-1);
+  else        xAssert(maxlag <= n-2);
+  Y = X;
+  for (int k=0; k <= maxlag; k++) {
+    fctr = biased ? 1.0/n : 1.0/(n - k - 1);
+    Ck = C + r*r*k;
+    if (*transp == 'N') {
+      Z = X + r*k;
+      gemm("N", "T", r, r, n-k, fctr, Z, r, Y, r, 0.0, Ck, r);
+    }
+    else {
+      Z = X + k;
+      gemm("T", "N", r, r, n-k, fctr, Z, n, Y, n, 0.0, Ck, r);
+    }
+  }
+}
