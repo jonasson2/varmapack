@@ -8,20 +8,25 @@
 #include "xAssert.h"
 #include "xCheck.h"
 
-static int VERBOSE_MODE = 0, NTOTAL = 0, NFAIL = 0;
+static int VERBOSITY = 0, NTOTAL = 0, NFAIL = 0;
 static const char *headr_fmt = "%-15s %8s %8s\n";
 static const char *table_fmt = "%-15s %8d %8d\n";
 
 static void print_help(void) {
   puts("Usage: RunTests [options]\n"
        "Options:\n"
-       "  -h  Show this help message\n"
-       "  -v  Verbose tests\n"
+       "  -h    Show this help message\n"
+       "  -v    Verbose tests\n"
+       "  -vv   More verbosity\n"
+       "  -vvv  Even moren verbosity\n"
        );
 }
 
+// -v    Summary
+// -vv  Also printX
+
 static void vprint(const char *fmt, ...) {
-  if (!VERBOSE_MODE) return;
+  if (VERBOSITY < 1) return;
   va_list ap;
   va_start(ap, fmt);
   vprintf(fmt, ap);
@@ -45,19 +50,19 @@ int main(int argc, char **argv) {
   while ((c = getopt(argc, argv, optstring)) != -1) {
     switch (c) {
       case 'h': print_help(); return 0;
-      case 'v': VERBOSE_MODE = 1; break;
+      case 'v': VERBOSITY++; break;
       case '?': option_error("Unknown option -%c", optopt);
     }
   }
   if (optind < argc) option_error("Unexpected argument %s", argv[optind]);
+  vprint("This is a non-summary vprint\n");
+  if (VERBOSITY <= 1) printOff();
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
   run_test("ExtraUtil",      TestExtraUtil);
   run_test("RandomNumbers",  TestRandomNumbers);
   run_test("Testcase",       TestTestcase);
+  run_test("VarSpecRad",     TestVarSpecRad);
+  run_test("AgainstMatlab",  TestAgainstMatlab);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
 }
-
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>

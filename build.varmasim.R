@@ -2,5 +2,5 @@
 library(devtools)
 devtools::build()
 devtools::document()
-install.packages("../varmasim_1.0.tar.gz", repos = NULL, type = "source")
-library(varmasim)
+install.packages("../varmapack_1.0.tar.gz", repos = NULL, type = "source")
+library(varmapack)

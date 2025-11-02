@@ -176,7 +176,7 @@ static void test_randnm_mean_cov(void) {
   free(X); free(Sig); free(L); free(mu); free(C);
 }
 
-void TestRandomNumbers() {
+void TestRandomNumbers(void) {
   test_uniform_basic();
   test_normal_basic();
   test_determinism_default_seed();

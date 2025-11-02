@@ -39,7 +39,7 @@ testcase <- function(name = NULL,
             NULL, NULL, NULL,  # p,q,r unused for named
             FALSE,             # park_miller
             seed,
-            PACKAGE = "varmasim")
+            PACKAGE = "varmapack")
     })
     names(out) <- named_cases
     return(out)
@@ -53,7 +53,7 @@ testcase <- function(name = NULL,
                  NULL, NULL, NULL,
                  FALSE,
                  seed,
-                 PACKAGE = "varmasim"))
+                 PACKAGE = "varmapack"))
   }
 
   # Random case: validate p,q,r; delegate to C (which handles stationarity)
@@ -67,7 +67,7 @@ testcase <- function(name = NULL,
               as.integer(p), as.integer(q), as.integer(r),
               FALSE,                         # park_miller
               seed,
-              PACKAGE = "varmasim")
+              PACKAGE = "varmapack")
 
   # Normalize name
   tc$name <- sprintf("random(p=%d,q=%d,r=%d)", tc$p, tc$q, tc$r)

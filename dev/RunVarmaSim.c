@@ -12,6 +12,8 @@
 #include "VarmaSim.h"
 #include "getopt.h"
 #include "ExtraUtil.h"
+#include "VarmaUtilities.h"
+#include "ACVF.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
 
@@ -177,18 +179,18 @@ int main(int argc, char **argv) {
 
   VarmaSim(A, B, Sig, 0, p, q, r, n, 1, 0, rng, X, 0, &vsok);
 
-  double *mu;
+  double *mu, *Gamma;
   allocate(mu, r);
   allocate(Gamma, r*r);
   meanmat("T", r, n, X, r,  mu);
   printM("Mean", mu, 1, r);
   ACVF(A, B, Sig, p, q, r, Gamma, 1);
   if (print) {
-    printsMsg("Model definition matrices:");
+    printMsg("Model definition matrices:");
     printM("A",  A,  r, r * p);
     printM("B",  B,  r, r * q);
     printM("Sig", Sig, r, r);
-    printM("
+    printM("Gamma", Gamma, r, 2*r);
     // printM("X", X, r, n);
   }
   else

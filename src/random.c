@@ -172,7 +172,7 @@ void rand_setstate(uint64_t state0, uint64_t state1, rand_rng *rng) {
     state0 = state1 = 0xAAAAAAAA << 16;  // don't seed with 0.
   rng->state[0] = state0;
   rng->state[1] = state1;
-  rand_d(rng); // spin_up
+  //rand_d(rng); // spin_up
 }
 
 void rand_getstate(uint64_t state[2], rand_rng *rng) {
@@ -188,6 +188,7 @@ void rand_getstate(uint64_t state[2], rand_rng *rng) {
 
 void rand_setPMseed(uint32_t seed, rand_rng *rng) {
   rng->PMseed = seed;
+  PM_rand_bits(rng);
 }
 
 uint32_t rand_getPMseed(rand_rng *rng) {

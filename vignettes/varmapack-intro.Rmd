@@ -1,8 +1,8 @@
-%\VignetteIndexEntry{Introduction to varmasim}
+%\VignetteIndexEntry{Introduction to varmapack}
 %\VignetteEngine{knitr::rmarkdown}
 %\VignetteEncoding{UTF-8}
 ---
-title: "Introduction to varmasim"
+title: "Introduction to varmapack"
 author: "Kristján Jónasson"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
@@ -13,7 +13,7 @@ output:
 
 # Introduction
 
-The **varmasim** package provides fast simulation of VARMA(p, q)
+The **varmapack** package provides fast simulation of VARMA(p, q)
 multivariate time series models via a C backend. This vignette
 illustrates a basic workflow for simulating and visualizing a
 VARMA(1,0) process.
@@ -23,13 +23,13 @@ VARMA(1,0) process.
 Install the released version from CRAN:
 
 ```r
-install.packages("varmasim")
+install.packages("varmapack")
 ```
 
 Or install the development version from GitHub:
 
 ```r
-remotes::install_github("jonasson/varmasim")
+remotes::install_github("jonasson/varmapack")
 ```
 
 # Quick Start
@@ -44,7 +44,7 @@ knitr::opts_chunk$set(
   fig.height = 5
 )
 
-library(varmasim)
+library(varmapack)
 set.seed(123)
 ```
 

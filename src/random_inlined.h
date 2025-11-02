@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include "printX.h"
 
 static const uint32_t mersenne8 = 2147483647;
 

@@ -35,24 +35,12 @@ double nrm2(int n, double x[], int incx) {
 
 void gemm(char *transa, char *transb, int m, int n, int k, double alpha,
           double a[], int lda, double b[], int ldb, double beta, double c[], int ldc) {
-#ifdef STRPAIR
-  dgemm_(transa, 1, transb, 1, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#elif defined(STRLEN)
   dgemm_(transa, transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, 1, 1);
-#else
-  dgemm_(transa, transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#endif
 }
 
 void gemv(char *transa, int m, int n, double alpha, double a[], int lda,
           double x[], int incx, double beta, double y[], int incy) {
-#ifdef STRPAIR
-  dgemv_(transa, 1, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-#elif defined(STRLEN)
   dgemv_(transa, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy, 1);
-#else
-  dgemv_(transa, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-#endif
 }
 
 void ger(int m, int n, double alpha, double x[], int incx, double y[], int incy,
@@ -66,25 +54,13 @@ void getrf(int m, int n, double a[], int lda, int ipiv[], int *info) {
 
 void getrs(char *transa, int n, int nrhs, double a[], int lda, int ipiv[],
            double b[], int ldb, int *info) {
-#ifdef STRPAIR
-  dgetrs_(transa, 1, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
-#elif defined(STRLEN)
   dgetrs_(transa, &n, &nrhs, a, &lda, ipiv, b, &ldb, info, 1);
-#else
-  dgetrs_(transa, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
-#endif
 }
 
 void geev(char *jobvl, char *jobvr, int n, double a[], int lda, double wr[], double wi[],
           double vl[], int ldvl, double vr[], int ldvr, double work[], int lwork, int
-          &info) {
-#ifdef STRPAIR
-  dgeev_(jobvl, 1, jobvr, 1, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info);
-#elif defined(STRLEN)
+          *info) {
   dgeev_(jobvl, jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info, 1, 1);
-#else
-  dgeev_(jobvl, jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, info);
-#endif
 }
 
 int iamax(int n, double dx[], int incx) { // NOTE: Returns 0 for 1st elem. etc.
@@ -92,41 +68,11 @@ int iamax(int n, double dx[], int incx) { // NOTE: Returns 0 for 1st elem. etc.
 }
 
 void lacpy(char *uplo, int m, int n, double a[], int lda, double b[], int ldb) {
-  int i, j;
-#ifdef STRPAIR
-  dlacpy(uplo, 1, &m, &n, a, &lda, b, &ldb);
-#elif defined(STRLEN)
-  dlacpy(uplo, &m, &n, a, &lda, b, &ldb, 1);
-#else
-  dlacpy(uplo, &m, &n, a, &lda, b, &ldb);
-#endif
-  // OLD VERSION, DISCARDED BECAUSE ACML HAS BEEN DISCONTINUED:
-  // Ideally this function should call dlacpy from lapack, but because the acml
-  // library does not include dlacpy, a function based on the one from clapack is
-  // included here instead.
-  // if (*uplo == 'U' || *uplo == 'u') {
-  //   for (j = 0; j < n; j++) {
-  //     for (i = 0; i <= j && i < m; i++) b[i + j * ldb] = a[i + j * lda];
-  //   }
-  // } else if (*uplo == 'L' || *uplo == 'l') {
-  //   for (j = 0; j < n; j++) {
-  //     for (i = j; i < m; i++) b[i + j * ldb] = a[i + j * lda];
-  //   }
-  // } else {
-  //   for (j = 0; j < n; j++) {
-  //     for (i = 0; i < m; i++) b[i + j * ldb] = a[i + j * lda];
-  //   }
-  // }
+  dlacpy_(uplo, &m, &n, a, &lda, b, &ldb, 1);
 }
 
 void potrf(char *uplo, int n, double a[], int lda, int *info) {
-#ifdef STRPAIR
-  dpotrf_(uplo, 1, &n, a, &lda, info);
-#elif defined(STRLEN)
   dpotrf_(uplo, &n, a, &lda, info, 1);
-#else
-  dpotrf_(uplo, &n, a, &lda, info);
-#endif
 }
 
 void scal(int m, double alpha, double *x, int incx) {
@@ -135,98 +81,44 @@ void scal(int m, double alpha, double *x, int incx) {
 
 void symm(char *side, char *uplo, int m, int n, double alpha, double a[], 
           int lda, double b[], int ldb, double beta, double c[], int ldc) {
-#ifdef STRPAIR
-  dsymm_(side, 1, uplo, 1, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#elif defined(STRLEN)
   dsymm_(side, uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, 1, 1);
-#else
-  dsymm_(side, uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#endif
 }
 
 void symv(char *uplo, int n, double alpha, double a[], int lda, double x[],
           int incx, double beta, double y[], int incy) {
-#ifdef STRPAIR
-  dsymv_(uplo, 1, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-#elif defined(STRLEN)
   dsymv_(uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy, 1);
-#else
-  dsymv_(uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-#endif
 }
 
 void syr(char *uplo, int n, double alpha, double x[], int incx, double a[], int lda) {
-#ifdef STRPAIR
-  dsyr_(uplo, 1, &n, &alpha, x, &incx, a, &lda);
-#elif defined(STRLEN)
   dsyr_(uplo, &n, &alpha, x, &incx, a, &lda, 1);
-#else
-  dsyr_(uplo, &n, &alpha, x, &incx, a, &lda);
-#endif
 }
 
 void syr2k(char *uplo, char *trans, int n, int k, double alpha, double a[],
            int lda, double b[], int ldb, double beta, double c[], int ldc) {
-#ifdef STRPAIR
-  dsyr2k_(uplo, 1, trans, 1, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#elif defined(STRLEN)
   dsyr2k_(uplo, trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, 1, 1);
-#else
-  dsyr2k_(uplo, trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-#endif
 }
 
 void syrk(char *uplo, char *trans, int m, int n, double alpha, double a[], 
           int lda, double beta, double c[], int ldc) {
-#ifdef STRPAIR
-  dsyrk_(uplo, 1, trans, 1, &m, &n, &alpha, a, &lda, &beta, c, &ldc);
-#elif defined(STRLEN)
   dsyrk_(uplo, trans, &m, &n, &alpha, a, &lda, &beta, c, &ldc, 1, 1);
-#else
-  dsyrk_(uplo, trans, &m, &n, &alpha, a, &lda, &beta, c, &ldc);
-#endif
 }
 
 void trmm(char *side, char *uplo, char *transa, char *diag, int m, int n,
           double alpha, double a[], int lda, double b[], int ldb) {
-#ifdef STRPAIR
-  dtrmm_(side, 1, uplo, 1, transa, 1, diag, 1, &m, &n, &alpha, a, &lda, b, &ldb);
-#elif defined(STRLEN)
   dtrmm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb, 1, 1, 1, 1);
-#else
-  dtrmm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb);
-#endif
 }    
 
 void trmv(char *uplo, char *transa, char *diag, int n, double a[], int lda, 
           double x[], int incx) {
-#ifdef STRPAIR
-  dtrmv_(uplo, 1, transa, 1, diag, 1, &n, a, &lda, x, &incx);
-#elif defined(STRLEN)
   dtrmv_(uplo, transa, diag, &n, a, &lda, x, &incx, 1, 1, 1);
-#else
-  dtrmv_(uplo, transa, diag, &n, a, &lda, x, &incx);
-#endif
 }
 
 void trsm(char *side, char *uplo, char *transa, char *diag, int m, int n,
           double alpha, double a[], int lda, double b[], int ldb) {
-#ifdef STRPAIR
-  dtrsm_(side, 1, uplo, 1, transa, 1, diag, 1, &m, &n, &alpha, a, &lda, b, &ldb);
-#elif defined(STRLEN)
   dtrsm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb, 1, 1, 1, 1);
-#else
-  dtrsm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb);
-#endif
 }
 
 void trsv(char *uplo, char *transa, char *diag, int n, double a[], int lda, 
           double x[], int incx) {
-#ifdef STRPAIR
-  dtrsv_(uplo, 1, transa, 1, diag, 1, &n, a, &lda, x, &incx);
-#elif defined(STRLEN)
   dtrsv_(uplo, transa, diag, &n, a, &lda, x, &incx, 1, 1, 1);
-#else
-  dtrsv_(uplo, transa, diag, &n, a, &lda, x, &incx);
-#endif
 }

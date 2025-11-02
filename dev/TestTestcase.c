@@ -95,7 +95,7 @@ void check_inquiry(void) {
   check_dims();
 }
 
-void TestTestcase() {
+void TestTestcase(void) {
   //err = stderr;
   err = 0;
   check_inquiry();

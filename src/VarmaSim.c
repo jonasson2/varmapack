@@ -125,6 +125,7 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
   // EE = block diagonal matrix with all blocks = Sig
   for (i=0; i<h; i++) lacpy("All", r, r, Sig, r, EE + i*r*g + i*r, g);
   freem(S); freem(W); freem(G); freem(C);
+  printSetNdec(15);
   
   // GENERATE INITIAL SEGMENT OF X
   allocate(LSS, g*g); // For (lower) Cholesky factor of SS
@@ -141,6 +142,8 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
   }
   else {  // Start series from scratch
     RandNM(0, SS, M, g, XX, LSS, &del, rng, ok); // draw initial part from
+    printM("SS", SS, g, g);
+    printM("LSS", LSS, g, g);
     copytranspose(M, g, XX, M, X, N);            // correct distribution
     if (!*ok) {                                
       freem(XX); freem(LSS); freem(EE); freem(CC); freem(SS);
@@ -160,6 +163,8 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
     syrk("Low", "T", g, g, -1.0, CC, g, 1.0, EE, g); // EE := EE-CC'*inv(SS)*CC
     // mEps := LSS\Xinitial:
     trsm("Left", "Low", "NT", "NotUD", g, M, 1.0, LSS, g, mEps, g);
+    printM("mEps", mEps, g, M);
+    printM("EE", EE, g, g);
   }
   else if (g > 0) {  // Need to use Gaussian elimination
     copy(g*g, SS, 1, LSS, 1); // Use LSS to store factors
@@ -185,6 +190,7 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
   if (!eps) { allocate(Eps, N*M); }
   else Eps = eps;
   RandNM(0, EE, M, g, XX, 0, &del, rng, ok);
+  printM("EE", EE, g, g);
   copytranspose(M, g, XX, M, Eps, N);
   freem(EE);
   if (!*ok) {
@@ -197,6 +203,7 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
   // adds CC'*(SS\Xinitial) to Eps, to give the initial shocks.
   if (g) gemm("T", "NT", g, M, g, 1.0, CC, g, mEps, g, 1.0, Eps, N);
   freem(mEps); freem(CC);
+  printM("Eps", Eps, M, g);
 
   // NOW GENERATE THE REST OF THE SHOCKS
   allocate(L,r*r);
@@ -222,6 +229,7 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
     gemm("N", "N", r, M, r*p, 1.0, Aflp, r, X + Ip, N, 1.0, X + I, N);
     gemm("N", "N", r, M, r*q, 1.0, Bflp, r, Eps + Iq, N, 1.0, X + I, N);
   }
+  printM("X", X, r, n);
   if (mu)
     for (k=0; k<M; k++) // Add mu to each x(t)
       for (t=0; t<n; t++)

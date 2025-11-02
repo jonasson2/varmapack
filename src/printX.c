@@ -22,8 +22,9 @@ static int width = 7;
 static int ndec = 3;
 static char fmtc = 'f';
 
-void printOff(void)                    { noprint = 1; } // useful for debugging
-void printOn(void)                     { noprint = 0; } // useful for debugging
+void printOff(void)                    { noprint = 1; }
+void printOn(void)                     { noprint = 0; }
+void printSetStatus(int status)        { noprint = status; }
 int printIsOff(void)                   { return noprint; }
 void printSetNdec(int n)               { ndec = n; }
 void printSetWidth(int w)              { width = w; }
@@ -36,13 +37,13 @@ void printNewl(void) { // print new line
   fflush(0);
 }
 
-void printMsg(char *s) { // print message (or string without name)
+void printMsg(const char *s) { // print message (or string without name)
   if (noprint) return;
   printf("%s\n", s);
   fflush(0);
 }
 
-void printMsgUnderl(char *s) { // print underlined message
+void printMsgUnderl(const char *s) { // print underlined message
   int i, nm = strlen(s);
   printMsg(s);
   for (i=0; i<nm; i++) printf("%c", '-');
@@ -50,19 +51,19 @@ void printMsgUnderl(char *s) { // print underlined message
   fflush(0);
 }
 
-void printI(char *name, int i) { // print named int
+void printI(const char *name, int i) { // print named int
   if (noprint) return;
   printf("%s = %d\n", name, i);
   fflush(0);
 }
 
-void printP(char *name, void *p) {
+void printP(const char *name, const void *p) {
   if (noprint) return;
   printf("%s = %p\n",name, p);
   fflush(0);
 }
 
-void printD(char *name, double d) { // print named double
+void printD(const char *name, double d) { // print named double
   char fmt[] = "%s = %1.*_\n", *uscore;
   if (noprint) return;
   uscore = strchr(fmt, '_'); *uscore = fmtc;
@@ -70,7 +71,7 @@ void printD(char *name, double d) { // print named double
   fflush(0);
 }
 
-void printV(char *name, double x[], int n) { // print named vector
+void printV(const char *name, const double x[], int n) { // print named vector
   char fmt[] = "%1.*_ ", *uscore;
   int j;
   if (noprint) return;
@@ -84,7 +85,7 @@ void printV(char *name, double x[], int n) { // print named vector
   fflush(0);
 }
 
-void printIV(char *name, int iv[], int n) { // print named integer vector
+void printIV(const char *name, const int iv[], int n) { // print named integer vector
   int j;
   if (noprint) return;
   printf("%s = ",name);
@@ -93,16 +94,16 @@ void printIV(char *name, int iv[], int n) { // print named integer vector
   fflush(0);
 }
 
-void printS(char *name, char *s) { // print named string
+void printS(const char *name, const char *s) { // print named string
   if (noprint) return;
   printf("%s = %s\n",name,s);
   fflush(0);
 }
 
 // Stop cl from griping about size_t to int conversion
-static int len(char *s) { return (int)strlen(s); }
+static int len(const char *s) { return (int)strlen(s); }
 
-static void printMat(char *name, double d[], int ldd, int nr, int nc) {
+static void printMat(const char *name, const double d[], int ldd, int nr, int nc) {
   // local function to print matrix, called by printM and printMP
   char fmt[] = "%*.*_ ", *uscore;
   int i, j, is, ns, idx;
@@ -134,11 +135,12 @@ static void printMat(char *name, double d[], int ldd, int nr, int nc) {
   fflush(0);
 }
 
-void printM(char *name, double A[], int nr, int nc) { // print named matrix
+void printM(const char *name, const double A[], int nr, int nc) { // print named matrix
   printMat(name, A, nr, nr, nc);
 }
 
-void printMP(char *name, double *ap, int nr, int nc, double A[], int ldA) {
+void printMP(const char *name, const double *ap, int nr, int nc,
+             const double A[], int ldA) {
   // print submatrix
   char s[100];
   int r = (int)((ap-A) % ldA);
@@ -148,31 +150,31 @@ void printMP(char *name, double *ap, int nr, int nc, double A[], int ldA) {
 }
 
 // Following functions are useful for debugging:
-void print2I(char *s, int i1, int i2) { // print 2 integers
+void print2I(const char *s, int i1, int i2) { // print 2 integers
   if (noprint) return;
   printf("%s = %d, %d\n", s, i1, i2);
   fflush(0);
 }
 
-void print3I(char *s, int i1, int i2, int i3) { // print 3 integers
+void print3I(const char *s, int i1, int i2, int i3) { // print 3 integers
   if (noprint) return;
   printf("%s = %d, %d, %d\n", s, i1, i2, i3);
   fflush(0);
 }
 
-void print4I(char *s, int i1, int i2, int i3, int i4) { // print 4 integers
+void print4I(const char *s, int i1, int i2, int i3, int i4) { // print 4 integers
   if (noprint) return;
   printf("%s = %d, %d, %d, %d\n", s, i1, i2, i3, i4);
   fflush(0);
 }
 
-void print5I(char *s, int i1, int i2, int i3, int i4, int i5) { // print 5 ints
+void print5I(const char *s, int i1, int i2, int i3, int i4, int i5) { // print 5 ints
   if (noprint) return;
   printf("%s = %d, %d, %d, %d, %d\n", s, i1, i2, i3, i4, i5);
   fflush(0);
 }
 
-void print6I(char *s, int i1, int i2, int i3, int i4, int i5, int i6) { // 6 ints
+void print6I(const char *s, int i1, int i2, int i3, int i4, int i5, int i6) { // 6 ints
   if (noprint) return;
   printf("%s = %d, %d, %d, %d, %d, %d\n", s, i1, i2, i3, i4, i5, i6);
   fflush(0);

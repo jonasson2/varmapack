@@ -2,7 +2,7 @@
 # - Accepts A as r x r, r x (r*p), or r x r x p
 # - Accepts B as r x r, r x (r*q), or r x r x q
 # - Sig must be r x r
-# - Uses varmasim:::find_CGW(), vyw_factorize(), vyw_solve()
+# - Uses varmapack:::find_CGW(), vyw_factorize(), vyw_solve()
 # - Returns S plus residual norms; prints a summary when verbose=TRUE
 
 vyw_prufa <- function(A, B, Sig, verbose = TRUE) {
@@ -31,14 +31,14 @@ vyw_prufa <- function(A, B, Sig, verbose = TRUE) {
   q  <- dim(B3)[3L]
   
   # --- CGW via strict gateway (wrapped by your internal R function) ---
-  # (If you didn't make the wrapper, replace with .Call("FindCGW_gateway", A3, B3, Sig, PACKAGE="varmasim"))
-  CGW <- varmasim:::find_CGW(A3, B3, Sig)   # returns list(C, G, W)
+  # (If you didn't make the wrapper, replace with .Call("FindCGW_gateway", A3, B3, Sig, PACKAGE="varmapack"))
+  CGW <- varmapack:::find_CGW(A3, B3, Sig)   # returns list(C, G, W)
   Y   <- CGW$G                               # r x r x (q+1)
   
   # --- Build [A1 ... Ap] and solve VYW ---
   A_block <- do.call(cbind, lapply(seq_len(p), function(k) A3[,,k, drop = FALSE][,,1]))
-  PLU <- varmasim:::vyw_factorize(A_block, p = p, r = r)
-  S   <- varmasim:::vyw_solve(A_block, PLU$LU, PLU$piv, Y, p = p, r = r)  # r x r x (p+1)
+  PLU <- varmapack:::vyw_factorize(A_block, p = p, r = r)
+  S   <- varmapack:::vyw_solve(A_block, PLU$LU, PLU$piv, Y, p = p, r = r)  # r x r x (p+1)
   
   # --- residuals for i = 0..p ---
   S_i <- function(i) S[,, i + 1L, drop = FALSE][,,1L]

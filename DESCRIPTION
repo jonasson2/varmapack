@@ -1,4 +1,4 @@
-Package: varmasim
+Package: varmapack
 Title: Generate VARMA time series without spin-up
 Version: 1.0
 Authors@R: 

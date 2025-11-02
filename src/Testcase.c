@@ -132,7 +132,7 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
 
   // CONSTRUCT TESTCASE
   double
-    A1[] = {0.4},
+    A1[] = {0.5},
     A3[] = {0.4},
     A4[] = {0.1, 0.1,   0.1, 0.1},
     A6[] = {0.3, 0.1,   0.4, 0.2},

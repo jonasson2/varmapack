@@ -1,6 +1,9 @@
-project('varmasim', 'c',
+project('varmapack', 'c',
   version : '1.0',
-  default_options : ['warning_level=2', 'c_std=c11']
+  default_options : [
+    'c_std=c11',
+    'warning_level=3'
+  ]
 )
 
 blas_option = get_option('blas')
@@ -8,9 +11,10 @@ blas_option = get_option('blas')
 # ---- Core sources from ../src ----
 src_names = [
   'BlasGateway.c', 'RandomNumbers.c', 'VYWFactorize.c', 'VarmaSim.c',
-  'VarmaUtilities.c', 'CCBuild.c', 'SBuild.c', 'VYWSolve.c',
-  'SExtend.c', 'FindCGW.c', 'xAssert.c', 'printX.c', 
-  'random.c', 'IsStationary.c', 'OmegaBuild.c', 'Testcase.c',
+  'VarmaUtilities.c', 'CCBuild.c', 'SBuild.c', 'VYWSolve.c', 'SExtend.c',
+  'FindCGW.c', 'xAssert.c', 'printX.c', 'random.c', 'IsStationary.c',
+  'OmegaBuild.c', 'Testcase.c', 'VarSpecRad.c'
+  
 ]
 
 src_dir = '../src'
@@ -20,8 +24,9 @@ foreach f : src_names
 endforeach
 
 # ---- Test files and utilities ----
-test_files = files('RunTests.c', 'TestRandom.c', 'TestExtraUtil.c', 'TestTestcase.c')
-extra_util = ['ExtraUtil.c', 'xCheck.c', 'getopt.c']
+test_files = files('RunTests.c', 'TestRandom.c', 'TestExtraUtil.c', 'TestTestcase.c',
+                  'TestVarSpecRad.c', 'TestAgainstMatlab.c')
+extra_util = ['ExtraUtil.c', 'xCheck.c', 'getopt.c', 'ACVF.c']
 
 # ---- Include directories ----
 inc = include_directories('.', '../src')
@@ -58,28 +63,19 @@ else
   error('Unknown BLAS option: ' + blas_option + '. Supported: accelerate, openblas, mkl, clapack.')
 endif
 
-# ---- Build flags ----
-buildtype = get_option('buildtype')
-c_args_local = []
-if buildtype == 'release'
-  c_args_local += ['-funroll-loops', '-fstrict-aliasing', '-march=native', '-flto']
-endif
-
 # ---- Test and demo executables ----
 run_tests = executable(
   'RunTests',
   test_files + extra_util + src_files,
   include_directories: inc,
-  dependencies: [blas_lib],
-  c_args: c_args_local
+  dependencies: [blas_lib]
 )
 
 run_varmasim = executable(
   'RunVarmaSim',
   ['RunVarmaSim.c'] + extra_util + src_files,
   include_directories: inc,
-  dependencies: [blas_lib],
-  c_args: c_args_local
+  dependencies: [blas_lib]
 )
 
 # ---- Register tests ----
