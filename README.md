@@ -1,4 +1,4 @@
-# varmasim
+# varmapack
 
 **VARMA time-series simulation library** — intended for CRAN submission but also usable as a standalone C program.
 

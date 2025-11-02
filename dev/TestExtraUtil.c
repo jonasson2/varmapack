@@ -67,7 +67,7 @@ static void checkdiff(void) {
   xCheck(almostAllSame(d, 3));
 }
 
-void TestExtraUtil() {
+void TestExtraUtil(void) {
   double a[] = {1.0, 2.0, 3.0}, b[] = {2.0, 2.0, 2.0 + 1e-15};
   xCheck(almostEqual(a, a, 3));
   xCheck(!almostEqual(a, b, 3));

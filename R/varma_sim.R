@@ -66,7 +66,7 @@
 #' result <- varma_sim(A, B, Sig, mu, n, M)
 #' str(result$X)  # View the generated series
 #'
-#' @useDynLib varmasim
+#' @useDynLib varmapack
 #' @importFrom Rcpp sourceCpp
 #' @export
 

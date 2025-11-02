@@ -14,7 +14,6 @@
 *.Rprofile
 *.Rproj.user
 *.Rproj
-/varmasim/src/
 a.out
 *~
 #*#
@@ -24,4 +23,5 @@ doc/
 build/
 lib/
 bin/
+/nogit/
 .Rproj.user

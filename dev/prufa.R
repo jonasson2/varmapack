@@ -1,4 +1,4 @@
-library(varmasim)
+library(varmapack)
 A = matrix(0.5, 2, 2)
 B = matrix(0, 2, 2)
 mu = c(2,3)

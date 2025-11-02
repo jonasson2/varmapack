@@ -16,6 +16,8 @@
 //
 // Returns true on success, false on failure.
 
+#include <stdbool.h>
+#include "ACVF.h"
 #include "BlasGateway.h"
 #include "allocate.h"
 #include "VYW.h"
@@ -27,7 +29,6 @@ bool ACVF(double A[], double B[], double Sig[], int p, int q, int r, double Gamm
   int *piv, info, nVYW;
   double *vywFactors, *C, *G, *W, *S;
   S = Gamma;
-  *ok = 0;
   xAssert(p >= 0 && q >= 0 && r > 0);
   nVYW = (p == 0) ? 0 : (r*r*p - r*(r-1)/2);
   allocate(vywFactors, nVYW*nVYW);
@@ -65,6 +66,5 @@ bool ACVF(double A[], double B[], double Sig[], int p, int q, int r, double Gamm
   freem(C);
   freem(piv);
   freem(vywFactors);
-  *ok = 1;
   return true;
 }

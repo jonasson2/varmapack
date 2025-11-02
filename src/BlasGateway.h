@@ -11,8 +11,7 @@ double dot(int n, double x[], int incx, double y[], int incy);
 double dnrm2(int n, double x[], int incx);
 
 void geev(char *jobvl, char *jobvr, int n, double a[], int lda, double wr[], double wi[],
-          double vl[], int ldvl, double vr[], int ldvr, double work[], int lwork, int
-          &info);
+          double vl[], int ldvl, double vr[], int ldvr, double work[], int lwork, int *info);
 
 void gemm(char *transa, char *transb, int m, int n, int k, double alpha,
           double a[], int lda, double b[], int ldb, double beta, double c[],

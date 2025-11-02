@@ -2,4 +2,4 @@
 
 export(varma_sim)
 importFrom(Rcpp,sourceCpp)
-useDynLib(varmasim)
+useDynLib(varmapack)

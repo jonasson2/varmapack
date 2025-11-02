@@ -79,7 +79,7 @@ SEXP VYWSolve_gateway(SEXP A_, SEXP LU_, SEXP piv_, SEXP Y_, SEXP p_, SEXP r_) {
     INTEGER(dimS)[2] = p + 1;
     SEXP S_ = PROTECT(allocArray(REALSXP, dimS));
 
-    int nrhs = 1; // single RHS path (fits current varmasim needs)
+    int nrhs = 1; // single RHS path (fits current varmapack needs)
 
     VYWSolve(REAL(A_), REAL(LU_), REAL(S_), REAL(Y_),
              nrhs, nY, INTEGER(piv_), p, r);
