@@ -32,7 +32,15 @@ int iamax(int n, double dx[], int incx); // -->idamax, returns 0 for 1st elem.
 
 void lacpy(char *uplo, int m, int n, double a[], int lda, double b[], int ldb);
 
+void laset(char *uplo, int m, int n, double alpha, double beta, double a[], int lda);
+
 void potrf(char *uplo, int n, double a[], int lda, int *info);
+
+void pstrf(char *uplo, int n, double a[], int lda, int piv[], int *rank, double tol,
+	   double work[], int *info); // returns 0-based piv
+
+void posv(char *uplo, int n, int nrhs, double a[], int lda, double b[], int ldb,
+	  int *info);
 
 void scal(int m, double alpha, double *x, int incx);
 

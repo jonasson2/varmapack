@@ -1,4 +1,4 @@
-// VarmaSim — simulate spin-up free AR, VAR, ARMA or VARMA time series
+// VarmaSim — simulate spin-up freem AR, VAR, ARMA or VARMA time series
 //
 // See VarmaSim.h for parameter descriptions and storage conventions
 //
@@ -40,7 +40,7 @@
 //   When starting values for the simulation are specified in X0, each generated
 //   series will start with X0, and subsequent terms are simulated using X0 as
 //   input. An important feature is that the simulated series have an accurate
-//   distribution from term one (they are spin-up free). Thus there is no need
+//   distribution from term one (they are spin-up freem). Thus there is no need
 //   to throw a way an initial segent of the simulated series. If X0 is not
 //   used, the first h x(t) and eps(t) values (with h = max(p,q)) are drawn from
 //   the correct joint distribution of these variables, and if X0 is used the
@@ -76,31 +76,36 @@
 //       VARMA processes with missing values. Report VHI-01-2006, Engineering
 //       Research Institute, University of Iceland.
 
+#include <stdbool.h>
 #include "allocate.h"
 #include "BlasGateway.h"
 #include "VYW.h"
 #include "VarmaMisc.h"
 #include "VarmaUtilities.h"
+#include "VarmaPackUtil.h"
 #include "RandomNumbers.h"
 #include "VarmaSim.h"
 #include "xAssert.h"
 
 void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
-              int r, int n, int M, double X0[], RandRng *rng, double X[],
-              double eps[], int *ok)
+              int r, int n, int M, double X0[], int nX0, RandRng *rng, double X[],
+              double E[], bool *ok)
 {
-  int *piv, info, i, k, t, CHOLF, I, Ip, Iq;
-  double *vywFactors, *C, *G, *W, *S, *SS, *CC, *EE, *Xk, *mEps, *invSStimesCC;
-  double del, *LSS, *Eps, *Aflp=0, *Bflp=0, *L, *XX;
-  int h = max(p,q);
-  int N = r*n;  // Total number of observations
-  int g = r*h;  // Observation count in starting segment, order of SS, CC and EE
-  int nVYW = r*r*p - r*(r-1)/2;            // order of matrix of VYW-equations
+  int h = max(p,q), k = (X0 == 0 ? h : nX0), rk = r*k;
+  int rn = r*n;  // Total number of observations
+  int rh = r*h;  // Observation count in starting segment, order of SS, CC and EE
+  bool Ealloc = E==0;
   xAssert(p>=0 && q>=0 && r>0 && M>0);
   xAssertMessage(n > h, "Illegal parameter in VarmaSim, n must be > max(p,q)");
-  
+  xAssertMessage(nX0 == 0 || (h <= nX0 && nX0 <= n),
+                 "Illegal parameter in VarmaSim, max(p,q) ≤ nX0 ≤ n");
+  *ok = true;
+  if (Ealloc) allocate(E, rn*M);
+                 
   // SOLVE VECTOR-YULE-WALKER EQUATIONS FOR COVARIANCE OF X
-  if (p == 0) nVYW = 0;
+  double *vywFactors;
+  int *piv, info;
+  int nVYW = (p == 0) ? 0 : r*r*p - r*(r-1)/2; // order of matrix of VYW-equations
   allocate(vywFactors, nVYW * nVYW);
   allocate(piv, nVYW);
   VYWFactorize(A, vywFactors, piv, p, r, &info);
@@ -108,135 +113,75 @@ void VarmaSim(double A[], double B[], double Sig[], double mu[], int p, int q,
     freem(piv); freem(vywFactors);
     xErrorExit("VarmaSim: Singular Yule-Walker equations, unable to continue");
   }
+  double *C, *G, *S;
   allocate(C, r*r*(q+1));
   allocate(G, r*r*(q+1));
-  allocate(W, r*r*(q+1));
   allocate(S, r*r*(p+1));
-  FindCGW(A, B, Sig, p, q, r, C, G, W);
+  FindCG(A, B, Sig, p, q, r, C, G);
   VYWSolve(A, vywFactors, S, G, 1, q+1, piv, p, r);
+  double *SS;
+  allocate(SS, rk*rk);
+  SBuild("Low", S, A, G, p, q, r, k, SS);
+  freem(S); freem(G); freem(C);
   freem(piv); freem(vywFactors);
-  
-  // COVARIANCES OF START SEGMENTS: SS = COV(X), CC = COV(X,Eps), EE = COV(Eps)
-  allocate(SS, g*g);
-  allocate(CC, g*g);
-  allocate(EE, g*g);
-  SBuild("Low", S, A, G, p, q, r, h, SS);
-  CCBuild(A, C, p, q, r, h, CC);
-  // EE = block diagonal matrix with all blocks = Sig
-  for (i=0; i<h; i++) lacpy("All", r, r, Sig, r, EE + i*r*g + i*r, g);
-  freem(S); freem(W); freem(G); freem(C);
-  printSetNdec(15);
-  
+  double *R;
+  allocate(R, rk*rk);
   // GENERATE INITIAL SEGMENT OF X
-  allocate(LSS, g*g); // For (lower) Cholesky factor of SS
-  allocate(XX, N*M);
-  if (X0) { // initialize series with X0
-    for (k=0; k<M; k++) {
-      Xk = X + k*N;
-      lacpy("All", r, h, X0, r, Xk, r);
-      if (mu) for (t=0; t<h; t++) axpy(r, -1.0, mu, 1, Xk + t*r, 1);
+  if (X0 == 0) {  // Start series from scratch
+    double *Wrk, *Psi, *PsiHat;
+    allocate(Wrk, rh*M);
+    allocate(Psi, rh*rh);
+    allocate(PsiHat, rh*rh);
+    FindPsi(A, B, Psi, p, q, r);
+    FindPsiHat(Psi, PsiHat, Sig, r, h);
+    lacpy("Low", rh, rh, SS, rh, R, rh);
+    syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
+    RandNM("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
+    RandNM("T", 0, R, rh, M, Wrk, 0, rng);  // draw Wrk from N(0, R)
+    lacpy("All", rh, M, Wrk, rh, X, rh);    // copy to X1
+    gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, // X1 := Psi*E(1:h) + X1
+         rh, E, rn, 1.0, X, rn);
+    freem(PsiHat); freem(Psi); freem(Wrk);
+  }
+  else { // initialize series with X0
+    double *CC, *Chat, *LS, *x0bar, *e;
+    allocate(CC, rk*rk);
+    allocate(x0bar, rk);
+    allocate(e, rk*M);
+    SBuild("Low", S, A, G, p, q, r, k, SS);
+    LS = SS;
+    potrf("Low", rk, LS, rk, &info); // Cholesky factorize SS
+    xAssert(info == 0);
+    CCBuild(A, C, p, q, r, k, CC);
+    Chat = CC; // Chat = LS\CC
+    trsm("Left", "Low", "NT", "NotUD", rk, rk, 1.0, LS, rk, Chat, rk);
+    copy(rk, X0, 1, x0bar, 1);
+    for (int i=0; i<rk; i+=r) axpy(r, -1.0, mu, 1, x0bar, 1);
+    trsv("Lo", "NT", "NotUD", rk, LS, rk, x0bar, 1);
+    gemv("T", rk, rk, 1.0, Chat, rk, x0bar, 1, 0.0, e, 1);
+    for (int j=0; j<k; j++) { // Put Sig on diagonal blocks of R
+      lacpy("Low", r, r, Sig, r, R + j*r*(rk + 1), rk);
     }
-    copy(g*g, SS, 1, LSS, 1);
-    potrf("Low", g, LSS, g, &info); // Try to Cholesky factorize SS
-    CHOLF = (info == 0);
+    syrk("L", "T", rk, rk, 1.0, Chat, rk, 1.0, R, rk);
+    RandNM("T", e, R, rk, M, E, 0, rng); // first k shocks
+    freem(e); freem(x0bar); freem(CC); 
   }
-  else {  // Start series from scratch
-    RandNM(0, SS, M, g, XX, LSS, &del, rng, ok); // draw initial part from
-    printM("SS", SS, g, g);
-    printM("LSS", LSS, g, g);
-    copytranspose(M, g, XX, M, X, N);            // correct distribution
-    if (!*ok) {                                
-      freem(XX); freem(LSS); freem(EE); freem(CC); freem(SS);
-      return;
-    }
-    CHOLF = 1;
+  freem(R); freem(SS); 
+  RandNM("T", 0, Sig, r, (n-k)*M, E + rk, 0, rng); // remaining shocks
+  copy((n-k)*r*M, E + rk, 1, X + rk, 1);
+  double *Aflp, *Bflp;
+  allocate(Aflp, r*p);
+  allocate(Bflp, r*q);
+  flipmat(A, Aflp, r, p);
+  flipmat(B, Bflp, r, q);
+  for (int t=k; t<n; t++) {    
+    int
+      iX = r*t,
+      iA = r*(t - p),
+      iB = r*(t - q);
+    gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0, X + iX, rn);
+    gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, X + iB, rn, 1.0, X + iX, rn);
   }
-  freem(SS);
-
-  // COPY INITIAL PART OF X TO mEps (LATER TO STORE EXPECTED Eps VALUES GIVEN X)
-  allocate(mEps, g*M);
-  for (k=0; k<M; k++) copy(g, X + k*N, 1, mEps + k*g, 1);
-
-  // DETERMINE COVARIANCE MATRIX OF INITIAL SHOCKS GIVEN Xinitial
-  if (g > 0 && CHOLF) { // we have the Cholesky factor of S in LSS
-    trsm("Left", "Low", "NT", "NotUD", g, g, 1.0, LSS, g, CC, g); // CC:=LSS\CC
-    syrk("Low", "T", g, g, -1.0, CC, g, 1.0, EE, g); // EE := EE-CC'*inv(SS)*CC
-    // mEps := LSS\Xinitial:
-    trsm("Left", "Low", "NT", "NotUD", g, M, 1.0, LSS, g, mEps, g);
-    printM("mEps", mEps, g, M);
-    printM("EE", EE, g, g);
-  }
-  else if (g > 0) {  // Need to use Gaussian elimination
-    copy(g*g, SS, 1, LSS, 1); // Use LSS to store factors
-    allocate(piv, g);
-    getrf(g, g, LSS, g, piv, &info);
-    if (info != 0) {
-      freem(piv); freem(mEps); freem(LSS); freem(EE); freem(CC);
-      xErrorExit("VarmaSim: Error, unable to finish, singular SS matrix");
-    }
-    allocate(invSStimesCC, g*g);
-    copy(g*g, CC, 1, invSStimesCC, 1);
-    getrs("NoT", g, g, LSS, g, piv, invSStimesCC, g, &info);
-    xAssert(info == 0); // only nonzero if an argument is wrong
-    // EE <-- EE-CC'*inv(SS)*CC:
-    gemm("T", "NT", g, g, g, -1.0, CC, g, invSStimesCC, g, 1.0, EE, g);
-    getrs("NoT", g, M, LSS, g, piv, mEps, g, &info);  // mEps:= SS\Xinitial
-    xAssert(info == 0); // only nonzero if an argument is wrong
-    freem(invSStimesCC); freem(piv);
-  }
-  freem(LSS);
-  
-  // GENERATE INITIAL SHOCKS:
-  if (!eps) { allocate(Eps, N*M); }
-  else Eps = eps;
-  RandNM(0, EE, M, g, XX, 0, &del, rng, ok);
-  printM("EE", EE, g, g);
-  copytranspose(M, g, XX, M, Eps, N);
-  freem(EE);
-  if (!*ok) {
-    if (!eps) freem(Eps);
-    freem(mEps); freem(CC);
-    xErrorExit("VarmaSim: Error, singular covariance matrix of initial shocks");
-  }
-  // Either CC contains LSS\CC and mEps has LSS\Xinitial (if CHOLF) or CC is
-  // still CC and mEps has SS\Xinitial. In both cases the following dgemm call
-  // adds CC'*(SS\Xinitial) to Eps, to give the initial shocks.
-  if (g) gemm("T", "NT", g, M, g, 1.0, CC, g, mEps, g, 1.0, Eps, N);
-  freem(mEps); freem(CC);
-  printM("Eps", Eps, M, g);
-
-  // NOW GENERATE THE REST OF THE SHOCKS
-  allocate(L,r*r);
-  RandNM(0, Sig, (n-h)*M, r, XX, 0, &del, rng, ok);
-  for (i=0; i<M; i++)
-    copytranspose(n-h, r, XX + i*(n-h), M*(n-h), Eps + g + i*N, r);
-  freem(XX);
-  freem(L);
-
-  // NOW GENERATE THE REST OF THE SERIES:
-  if (p > 0) {
-    allocate(Aflp, r*r*p);  // [Ap...A2 A1]
-    for (i=0; i<p; i++) lacpy("All", r, r, A + i*r*r, r, Aflp + (p-1-i)*r*r, r);
-  }
-  if (q > 0) {
-    allocate(Bflp, r*r*q);  // [Bq...B2 B1]
-    for (i=0; i<q; i++) lacpy("All", r, r, B + i*r*r, r, Bflp + (q-1-i)*r*r, r);
-  }
-  for (k=0; k<M; k++) copy(N - g, Eps + k*N + g, 1, X + k*N + g, 1);
-  for (I=g; I<N; I+=r) {
-    Ip = I - p*r;
-    Iq = I - q*r;
-    gemm("N", "N", r, M, r*p, 1.0, Aflp, r, X + Ip, N, 1.0, X + I, N);
-    gemm("N", "N", r, M, r*q, 1.0, Bflp, r, Eps + Iq, N, 1.0, X + I, N);
-  }
-  printM("X", X, r, n);
-  if (mu)
-    for (k=0; k<M; k++) // Add mu to each x(t)
-      for (t=0; t<n; t++)
-        axpy(r, 1.0, mu, 1, X + r*(t + k*n), 1);
-  if (p > 0)
-    freem(Aflp);
-  if (q > 0)
-    freem(Bflp);
-  if (!eps) freem(Eps);
+  freem(Bflp); freem(Aflp);
+  if (Ealloc) freem(E);
 }

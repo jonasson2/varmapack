@@ -188,7 +188,7 @@ void rand_getstate(uint64_t state[2], rand_rng *rng) {
 
 void rand_setPMseed(uint32_t seed, rand_rng *rng) {
   rng->PMseed = seed;
-  PM_rand_bits(rng);
+  PM_rand_bits(rng); // spinup one number
 }
 
 uint32_t rand_getPMseed(rand_rng *rng) {
@@ -202,19 +202,19 @@ void rand_settype(rng_type type, rand_rng *rng) {
 // RANDOMIZE FUNCTIONS
 
 static uint64_t splitmix64(uint64_t *x) {
-    uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    return z ^ (z >> 31);
+  uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
 }
 
 static inline uint64_t os_pid(void) {
 #ifdef __unix__
-    return (uint64_t)getpid();
+  return (uint64_t)getpid();
 #elif defined(_WIN32)
-    return (uint64_t)GetCurrentProcessId();
+  return (uint64_t)GetCurrentProcessId();
 #else
-    return 0;
+  return 0;
 #endif
 }
 
@@ -252,27 +252,27 @@ static bool get_system_entropy(uint64_t *s0, uint64_t *s1) {
 }
 
 void rand_randomize(uint64_t thread_id, rand_rng *rng) {
-    uint64_t s0 = 0, s1 = 0;
+  uint64_t s0 = 0, s1 = 0;
 
-    if (!get_system_entropy(&s0, &s1)) {
-        // fallback mixing path
-        uint64_t x = os_pid();
-        struct timespec ts;
-        timespec_get(&ts, TIME_UTC);
-        uint64_t t = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+  if (!get_system_entropy(&s0, &s1)) {
+    // fallback mixing path
+    uint64_t x = os_pid();
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    uint64_t t = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 
-        x ^= t;
-        x ^= thread_id * 0x9E3779B97F4A7C15ULL;
+    x ^= t;
+    x ^= thread_id * 0x9E3779B97F4A7C15ULL;
 
-        s0 = splitmix64(&x);
-        s1 = splitmix64(&x);
-        if (s0 == 0 && s1 == 0) {
-            s1 = 1;
-        }
+    s0 = splitmix64(&x);
+    s1 = splitmix64(&x);
+    if (s0 == 0 && s1 == 0) {
+      s1 = 1;
     }
+  }
 
-    // Always set both state words and the PM seed
-    rng->state[0] = s0;
-    rng->state[1] = s1;
-    rng->PMseed = (uint32_t)(s0 & 0xFFFFFFFFUL);
+  // Always set both state words and the PM seed
+  rng->state[0] = s0;
+  rng->state[1] = s1;
+  rng->PMseed = (uint32_t)(s0 & 0xFFFFFFFFUL);
 }

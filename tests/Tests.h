@@ -8,5 +8,6 @@ void TestRandomNumbers(void);
 void TestTestcase(void);
 void TestVarSpecRad(void);
 void TestAgainstMatlab(void);
-
+void TestFindCG(void);
+void TestPsi(void);
 #endif /* TESTS_H */

@@ -6,6 +6,7 @@
 // Following will on some platforms define min and max, so including it here
 // prevents macro redefinition warning message
 #include <stdlib.h>
+#include <stdbool.h>
 
 void copytranspose(int m, int n, double A[], int ldA, double B[], int ldB);
   // Set B to the transpose of the m×n matrix A. Leading dimensions are in ldA
@@ -35,7 +36,9 @@ void copylowertoupper(int n, double A[], int ldA);
   // Set strictly upper triangle of n×n matrix A to strictly lower triangle of 
   // its transpose.
 
-int anynan(int n, double A[]); // return true if A[i] != A[i] for any i
+bool anynan(int n, double A[]); // return true if A[i] != A[i] for any i
+
+bool islowermat(int n, double A[]); // true iff A is lower triangular
 
 void makeposdef(int n, double A[], double del);
   // make sure A is positive definite

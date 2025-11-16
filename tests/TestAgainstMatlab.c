@@ -57,14 +57,15 @@ void TestAgainstMatlab(void) {
 
     // Simulate with VarmaSim and compare the simulated series with Matlab's
     double *mu = 0, *X0 = 0, *Xsim, *eps;
-    int sim_ok, M = 1;
+    int M = 1;
+    bool sim_ok;
     allocate(Xsim, rk*nk);
     allocate(eps,  rk*nk);
     RandSeed(42, rng);
     printM("Ak", Ak, rk, rk*pk);
     printM("Bk", Bk, rk, rk*qk);
     printM("Sigk", Sigk, rk, rk);
-    VarmaSim(Ak, Bk, Sigk, mu, pk, qk, rk, nk, M, X0, rng, Xsim, eps, &sim_ok);
+    VarmaSim(Ak, Bk, Sigk, mu, pk, qk, rk, nk, M, X0, 0, rng, Xsim, eps, &sim_ok);
     printSetNdec(15);
     printM("Xsim", Xsim, rk, nk);
     printSetNdec(3);
@@ -72,11 +73,11 @@ void TestAgainstMatlab(void) {
     xCheck(almostEqual(Xsim, X[k], rk*nk));
 
     // Free memory
-    free(Ak);
-    free(Bk);
-    free(Sigk);
-    free(Xsim);
-    free(eps);
+    freem(Ak);
+    freem(Bk);
+    freem(Sigk);
+    freem(Xsim);
+    freem(eps);
   }
   xCheckAddMsg("");
 }

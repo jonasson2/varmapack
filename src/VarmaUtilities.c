@@ -19,7 +19,7 @@ void copytranspose(int m, int n, double A[], int ldA, double B[], int ldB){
   }  
 }
 
-void setzero(int n, double *x){   // set x[0]...x[n-1] to 0.0
+void setzero(int n, double *x) {   // set x[0]...x[n-1] to 0.0
   memset(x, 0, n*sizeof(double));
 }
 
@@ -42,17 +42,23 @@ void subtracttranspose(int m, int n, double A[], int ldA, double B[], int ldB) {
   }
 }
 
-void addmat(char *uplo, int m, int n, double A[], int ldA, double B[], int ldB){
+void addmat
+(char *uplo, int m, int n, double A[], int ldA, double B[], int ldB){
   // With uplo beginning with "A", add m×n matrix A to m×n matrix B.
   // If uplo begins with "U" or "L" only the upper or lower triangles are added.
   int i;
   double *Ai, *Bi;
   switch (uplo[0]) {
     case('A'): case('a'):
-      for (i=0; i<n; i++) {
-        Ai = A + ldA*i;
-        Bi = B + ldB*i;
-        axpy(m, 1.0, Ai, 1, Bi, 1);
+      if (ldA == m && ldB == m) {
+        axpy(m*n, 1.0, A, 1, B, 1);
+      }
+      else {
+        for (i=0; i<n; i++) {
+          Ai = A + ldA*i;
+          Bi = B + ldB*i;
+          axpy(m, 1.0, Ai, 1, Bi, 1);
+        }
       }
       break;
     case('L'): case('l'):
@@ -62,7 +68,7 @@ void addmat(char *uplo, int m, int n, double A[], int ldA, double B[], int ldB){
         axpy(m-i, 1.0, Ai, 1, Bi, 1);
       }
       break;
-    case('U'): case('u'):
+    case('U'): case('u'):      
       for (i=0; i<n; i++) {
         Ai = A + ldA*i;
         Bi = B + ldB*i;
@@ -116,10 +122,18 @@ void copylowertoupper(int n, double A[], int ldA) {
   }
 }
 
-int anynan(int n, double A[]) { // return true if A[i] != A[i] for any i
+bool anynan(int n, double A[]) { // return true if A[i] != A[i] for any i
   int i;
-  for (i=0; i<n; i++) if (A[i] != A[i]) return 1;
-  return 0;
+  for (i=0; i<n; i++) if (A[i] != A[i]) return true;
+  return false;
+}
+
+bool islowermat(int n, double A[]) { // true iff A is lower triangular
+  int i, j;
+  for (i=0; i<n; i++)
+    for (j=i+1; j<n; j++)
+      if (A[i + j*n] != 0) return false;
+  return true;
 }
 
 void makeposdef(int n, double A[], double del0) { // make sure A is positive
@@ -136,5 +150,5 @@ void makeposdef(int n, double A[], double del0) { // make sure A is positive
     for (i=0, Aii=A; i<n; i++, Aii += (n+1)) *Aii += del;
     del *= 10.0;
   }
-  free(B);
+  freem(B);
 }

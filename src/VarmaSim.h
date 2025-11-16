@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 #include "RandomNumbers.h"
+#include <stdbool.h>
 
 void VarmaSim(
   double A[],   // in      r×r×p, autoregressive parameter matrices
@@ -36,11 +37,12 @@ void VarmaSim(
   int r,        // in      dimension of each x(t)
   int n,        // in      length of each generated series
   int M,        // in      number of replicates to generate
-  double X0[],  // in      r×h with h = max(p,q); optional starter or NULL
-  RandRng *rng,// in/out  random number generator
+  double X0[],  // in      r×nX0 with nX0 ≥ max(p,q); optional starter or NULL
+  int nX0,      // in      length of x0
+  RandRng *rng, // in/out  random number generator
   double X[],   // out     r×n×M generated series
-  double eps[], // out     r×n×M shock series (or NULL to skip)
-  int *ok       // out     1 if stationary (or X0 non-NULL), else 0
+  double E[],   // out     r×n×M shock series (or NULL to skip)
+  bool *ok      // out     1 if stationary (or X0 non-NULL), else 0
   );
 
 #ifdef __cplusplus

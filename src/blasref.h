@@ -1,4 +1,9 @@
 // Include file declaring the reference blas functions
+//
+// Note that lapack_dpstrf_ is used instead of dpstrf_ because the latter routine is
+// faulty in Accelerate; lapack_dpstrf.f with Netlib's official code must be compiled and
+// linked against.
+
 #ifndef BLASREF_H
 #define BLASREF_H
 #include "BlasUpper.h"
@@ -31,9 +36,18 @@ void dgetrs_(char *transa, int *n, int *nrhs, double a[], int *lda, int ipiv[],
 void dlacpy_(char *uplo, int *m, int *n, double a[], int *lda, double b[], int *ldb,
 	     int lenuplo);
 
+void dlaset_(char *uplo, int *m, int *n, double *alpha, double *beta, double a[], int
+	     *lda, int lenuplo);
+
 double dnrm2_(int *n, double x[], int *incx);
 
 void dpotrf_(char *uplo, int *n, double a[], int *lda, int *info, int lenuplo);
+
+void lapack_dpstrf_(char *uplo, int *n, double a[], int *lda, int piv[], int *rank,
+	     double *tol, double work[], int *info, int lenuplo);
+
+void dposv_(char *uplo, int *n, int *nrhs, double a[], int *lda, double b[], int *ldb,
+            int *info, int lenuplo);
 
 void dscal_(int *m, double *alpha, double *x, int *incx);
 

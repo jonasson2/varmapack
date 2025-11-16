@@ -21,44 +21,18 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
   double A[],    // out     r×r×p, autoregressive parameter matrices (or null)
   double B[],    // out     r×r×q, moving average parameter matrices (or null)
   double Sig[],  // out     r×r, covariance of the shock terms eps(t) (or null)
-  char *name,    // out     string w. length >= 12, name of testcase, or null for unnamed
-  int *p_p,      // in/out  Number of autoregressive terms
-  int *q_p,      // in/out  Number of moving avg. terms
-  int *r_p,      // in/out  dimension of each x(t)
+  char *name,    // out     string w. length >= 12, name of testcase, or "" for unnamed
+  int *pp,       // in/out  Number of autoregressive terms (or null)
+  int *qp,       // in/out  Number of moving avg. terms (or null)
+  int *rp,       // in/out  dimension of each x(t) (or null)
   int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
   RandRng *rng,  // in      random number generator
   FILE *fp)      // in      stream to print errors (or null)
 {
-  // TESTCASE CREATION
-  // The following kinds of testcases, suitable for testing or timing various components
-  // of the Varmasim package (or the parent Varma package) may be constructed. A, B and
-  // Sig return the parameter matrices of the created case and p, q and r its dimensions.
-  //
-  // 1. Named or indexed. When name is specified and icase is null the testcase with the
-  //    specified name is returned. The case index is put in icase. When name is "" and
-  //    icase > 0 the correspending named testcase, including its name, is returned.
-  //
-  // 3. Random unnamed. When icase == 0, p, q and r should be specified on entry, and then
-  //    a random model of the specified dimensions is returned. A and B are set to random
-  //    numbers and Sig is as in case 2. The matrices must be large enough.
-  //
-  // 4. Deterministic unnamed. When icase = -1, p, q, and r should be specified on entry,
-  //    and then A returns a matrix with all elements set to 0.5/r/p, B has all elements
-  //    set to 1/r/q and Sig returns Hilbert(r) * 0.2*I [with all elements of A equal to
-  //    1/r/p the model would be on the stationary / non-stationary boundary]. This model
-  //    is suitable for consistent timing of likelihood calculation.
-  //
-  // INQUIRY
-  // 1. Dimensions. To inquire about the dimensions of a testcase, A, B and Sig may be
-  //    null and either name or icase may be specified. The dimensions of the
-  //    corresponding case are put in p, q and r. If name was specified icase is assigned
-  //    to, and if icase was specified and name is not null, it is assigned to.
-  //    Testcase(0, 0, 0, "smallAR", &p, &q, &r, &icase, 0) will thus set p, q, r, icase
-  //    to 1, 0, 2, 4.
-  //
-  // 2. Count + max dimensions. Testcase(0, 0, 0, "max", &p, &q, &r, &icase, 0) sets p, q,
-  //    r to the maximum dimensions over all testcases and icase to the number of named
-  //    testcases.
+  // Notes: When icase is 0 or -1 a model with dimensions p, q, r is created; when -1
+  // deterministic, and when 0 random. When 1 <= icase <= 12 and A, B and Sig are null, p,
+  // q and r return dimensions of one of 12 predefined testcases, and when they are
+  // non-null they return the data for these cases. See more detailes in Testcase.h.
 
   const char *namev[] = {// nr   p  q  r
     "tinyAR",      // 1    1  0  1
@@ -82,54 +56,66 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
   //double *Av[]   = {A1,  0, A3, A4,  0, A6, A7, A8, A9, A10,   0, A12};
   //double *Bv[]   = { 0, B2, B3,  0, B5, B6, B7,  0, B9, B10, B11,   0};
   //double *Sigv[] = {S1, S1, S1, S2, S3, S3, S3, S4, S4,  S4,  S4,  S6};
-
-  int Ncase = sizeof(namev)/sizeof(char*);  
-  
+  int p, q, r, Ncase = sizeof(namev)/sizeof(char*);
   // SANITY CHECKS:
-  if (!p_p || !q_p || !r_p) return error(fp,"Testcase: p, q and r must not be null ptrs");
   if (icase == 0) return error(fp, "icase must not be a null pointer");
   int nnull = !A + !B + !Sig;
-  if (nnull != 0 && nnull != 3)
+  if (nnull != 0 && nnull !=3)
     return error(fp, "If any of A, B, Sig is null, they must all be");
-  int p = *p_p, q = *q_p, r = *r_p;
-  if (nnull == 0 && (p < 0 || q < 0 || r <= 0)) {
-    char msg[40];
-    snprintf(msg, sizeof(msg), "invalid dimensions p=%d q=%d r=%d", *p_p, *q_p, *r_p);
-    return error(fp, msg);
+  bool MAX = !strcmp(name, "max");
+  bool INQUIRY = nnull == 3;
+  bool NAMED = name && strlen(name) > 0;
+  if (!INQUIRY) {
+    if (NAMED) {
+      *icase = find_named_case(namev, name, Ncase);
+      if (*icase == 0) return error(fp, "Unknown testcase name");
+    }
+    if (*icase <= 0) {
+      if (!pp || !qp || !rp) return error(fp,"p, q and r must not be null ptrs");
+      if (*pp < 0 || *qp < 0 || *rp <= 0) {
+	char msg[40];
+	snprintf(msg, sizeof(msg), "invalid dimensions p=%d q=%d r=%d", *pp, *qp, *rp);
+	return error(fp, msg);
+      }
+      if (*icase == 0 && rng == 0) return error(fp,"When icase = 0, rng must not be null");
+    }
+    if (*icase < -1 || *icase > Ncase) return error(fp, "icase out of range");
+    if (*icase <= 0 && !INQUIRY && !MAX)
+      return error(fp, "A, B, Sig must not be null if icase <= 0");
   }
-  if (name && !strcmp(name, "max")) {
-    if (nnull != 3) return error(fp, "When name is max A, B, Sig must all be null");
-  }
-  else if (name && strlen(name) > 0) {
+  else if (!MAX && NAMED) {
     *icase = find_named_case(namev, name, Ncase);
     if (*icase == 0) return error(fp, "Unknown testcase name");
   }
-  else {
-    if (*icase < -1 || *icase > Ncase) return error(fp, "icase out of range");
-    if (*icase <= 0 && nnull == 3)
-      return error(fp, "A, B, Sig must not be null if icase <= 0");
-  }
-
-  // MAX INQUIRY
-  if (name && !strcmp(name, "max")) {
-    *icase = Ncase;
-    p = q = r = 0;
-    for (int k=0; k<Ncase; k++) {
-      p = max(p, pv[k]);
-      q = max(q, qv[k]);
-      r = max(r, rv[k]);
+  else if (INQUIRY && !NAMED) {
+    if (*icase < -1 || *icase > Ncase) {
+      return error(fp, "icase out of range");
     }
-    *p_p = p;
-    *q_p = q;
-    *r_p = r;
+  }
+  // MAX INQUIRY
+  if (MAX) {
+    *icase = Ncase;
+    for (int k=0; k<Ncase; k++) {
+      if (pp) *pp = max(*pp, pv[k]);
+      if (qp) *qp = max(*qp, qv[k]);
+      if (rp) *rp = max(*rp, rv[k]);
+    }
     return true;
-  }      
-  // FILL CASE NAME OR NUMBER
-  if (name && strlen(name) == 0)
-    snprintf(name, 12, "%s", namev[*icase - 1]);
-  else if (name)
-    *icase = find_named_case(namev, name, Ncase);
-
+  }
+  // CASE INQUIRY
+  else if (INQUIRY) {
+    if (NAMED) {
+      *icase = find_named_case(namev, name, Ncase);
+    }
+    else if (name) {
+      snprintf(name, 12, "%s", namev[*icase - 1]);
+    }
+    int k = *icase - 1;
+    if (pp) *pp = pv[k];
+    if (qp) *qp = qv[k];
+    if (rp) *rp = rv[k];
+    return true;
+  }
   // CONSTRUCT TESTCASE
   double
     A1[] = {0.5},
@@ -184,6 +170,16 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
   simplerand(A12, 7*7*5, 366); // 366 is seed
   scal(7*7*5, 1.8/5/7, A12, 1);
   hilb(S6, 7);
+  if (*icase <= 0) {
+    p = *pp;
+    q = *qp;
+    r = *rp;
+  }
+  else {
+    p = pv[*icase-1];
+    q = qv[*icase-1];
+    r = rv[*icase-1];
+  }
   if (*icase == -1 || *icase == 0) {
     if (Sig) {
       hilb(Sig, r);
@@ -218,14 +214,11 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
     }
   }
   else if (1 <= *icase && *icase <= Ncase) {
-    p = pv[*icase-1];
-    q = qv[*icase-1];
-    r = rv[*icase-1];
     for (i=0; i<7; i++) S6[i + i*r] += 0.2; // add 0.2 to diagonal
     if (A && Av[*icase-1]) copytranspose(p*r, r, Av[*icase-1], p*r, A, r);
     if (B && Bv[*icase-1]) copytranspose(q*r, r, Bv[*icase-1], q*r, B, r);
     if (Sig && Sigv[*icase-1]) copy(r*r, Sigv[*icase-1], 1, Sig, 1);
-    if (name) strcpy(name, namev[*icase-1]); // name <---namev
+    if (name && !NAMED) strcpy(name, namev[*icase-1]); // name <---namev
   }
   else return error(fp, "Unexpected error");
     //     case {"pivotfailure"} % create almost singular vyw equations
@@ -236,9 +229,9 @@ bool Testcase (  // Create a testcase for VARMA likelihood calculation
     //       A(1,1) = -0.62999813363195223; %% as singular as can be made
     //       B={};
     //       Sig = eye(3);
-  *p_p = p;
-  *q_p = q;
-  *r_p = r;
+  if (pp) *pp = p;
+  if (qp) *qp = q;
+  if (rp) *rp = r;
   return true;
 }
 

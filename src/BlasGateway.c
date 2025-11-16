@@ -1,21 +1,11 @@
 // Gateway to Fortran Blas functions used by the VarmaLoglik / VarLoglik package
 #include "BlasGateway.h"
 #include "blasref.h"
+#include "printX.h"
 
-// If STRPAIR is defined, character string length arguments come immediately
-// after the string (instead of all together at the end of the argument list).
-// This is the default with the ifort compiler with the /iface:cvf flag and the
-// Nag f95 compiler with the -f77 flag. These flags are used (and needed) when
-// linking against the NAG library on Microsoft Windows, to obtain the stdcall
-// calling convention (the -mrtd flag of g95, that also effects stdcall calling,
-// does not change the placement of the length arguments).
-//
-// If STRLEN is defined the Blas are assumed to require character string length
-// arguments. Normally they are absent, and that applies to how the CLapack
-// reference Blas are implemented (the ones made with f2c, with names such as
-// daxpy_, not the ones having names such as cblas_daxpy, as implemented in the
-// gsl), and also to OpenBLAS, Accelerate, and MKL.
-
+// Note that lapack_dpstrf_ is used instead of dpstrf_ because the latter routine is
+// faulty in Accelerate; lapack_dpstrf.f with Netlib's official code must be compiled and
+// linked against.
 
 void axpy(int n, double alpha, double x[], int incx, double y[], int incy) {
   daxpy_(&n, &alpha, x, &incx, y, &incy);
@@ -71,8 +61,24 @@ void lacpy(char *uplo, int m, int n, double a[], int lda, double b[], int ldb) {
   dlacpy_(uplo, &m, &n, a, &lda, b, &ldb, 1);
 }
 
+void laset(char *uplo, int m, int n, double alpha, double beta, double a[], int lda) {
+  dlaset_(uplo, &m, &n, &alpha, &beta, a, &lda, 1);
+}
+
 void potrf(char *uplo, int n, double a[], int lda, int *info) {
   dpotrf_(uplo, &n, a, &lda, info, 1);
+}
+
+void posv(char *uplo, int n, int nrhs, double a[], int lda, double b[], int ldb,
+	  int *info) {
+  dposv_(uplo, &n, &nrhs, a, &lda, b, &ldb, info, 1);
+}
+
+void pstrf(char *uplo, int n, double a[], int lda, int piv[], int *rank, double tol,
+	   double work[], int *info) {
+  printMsg("calling lapack_dpstrf");
+  lapack_dpstrf_(uplo, &n, a, &lda, piv, rank, &tol, work, info, 1);
+  for (int i=0; i<n; i++) piv[i]--;
 }
 
 void scal(int m, double alpha, double *x, int incx) {

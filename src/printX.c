@@ -1,6 +1,7 @@
 #include "printX.h"
 #include <math.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef MEX
 #include "mex.h"
@@ -30,6 +31,7 @@ void printSetNdec(int n)               { ndec = n; }
 void printSetWidth(int w)              { width = w; }
 void printSetFmtChar(char f)           { fmtc = f; }
 void printSetFmt(int w, int n, char f) { width = w; ndec = n; fmtc = f; }
+int printGetNdec(void)                 { return ndec; }
 
 void printNewl(void) { // print new line
   if (noprint) return;
@@ -43,11 +45,18 @@ void printMsg(const char *s) { // print message (or string without name)
   fflush(0);
 }
 
+void printMsgUpper(const char *s) {
+  while (*s) putchar(toupper((unsigned char)*s++));
+  putchar('\n');
+  fflush(0);
+}
+
 void printMsgUnderl(const char *s) { // print underlined message
   int i, nm = strlen(s);
+  putchar('\n');
   printMsg(s);
   for (i=0; i<nm; i++) printf("%c", '-');
-  printMsg("");
+  putchar('\n');
   fflush(0);
 }
 
@@ -103,8 +112,10 @@ void printS(const char *name, const char *s) { // print named string
 // Stop cl from griping about size_t to int conversion
 static int len(const char *s) { return (int)strlen(s); }
 
-static void printMat(const char *name, const double d[], int ldd, int nr, int nc) {
+static void printMat(char *transp, const char *name, const double d[], int ldd,
+		     int nr, int nc) {
   // local function to print matrix, called by printM and printMP
+  //printf("In printMat, d[1]=%.3f\n", d[1]);
   char fmt[] = "%*.*_ ", *uscore;
   int i, j, is, ns, idx;
   if (noprint) return;
@@ -117,7 +128,8 @@ static void printMat(const char *name, const double d[], int ldd, int nr, int nc
     for (i=0; i<nr; i++) {
       if (i>0) for (is=0; is<ns+3; is++) printf(" ");
       for (j=0; j<nc; j++) {
-        idx = j*ldd + i;
+        idx = *transp == 'N' ? j*ldd + i : i*ldd + j;
+        //printf("In printMat, idx=%d\n", idx);
         if (fmtc == 'f') { // when fmt is f print < 1e-14 as 0
           if (fabs(d[idx]) >= 1e-14 && fmtc == 'f')
             printf("%*.*f ", width, ndec, d[idx]);
@@ -136,7 +148,13 @@ static void printMat(const char *name, const double d[], int ldd, int nr, int nc
 }
 
 void printM(const char *name, const double A[], int nr, int nc) { // print named matrix
-  printMat(name, A, nr, nr, nc);
+  //printf("In printM, A[1]=%.3f\n", A[1]);
+  printMat("N", name, A, nr, nr, nc);
+}
+
+void printMT(const char *name, const double A[], int nr, int nc) { // print transpose
+  //printf("In printMT, A[1]=%.3f\n", A[1]);
+  printMat("T", name, A, nr, nc, nr);
 }
 
 void printMP(const char *name, const double *ap, int nr, int nc,
@@ -146,7 +164,7 @@ void printMP(const char *name, const double *ap, int nr, int nc,
   int r = (int)((ap-A) % ldA);
   int c = (int)((ap-A) / ldA);
   sprintf(s, "%s[%d:%d,%d:%d]", name, r, r+nr-1, c, c+nc-1);
-  printMat(s, ap, ldA, nr, nc);
+  printMat("N", s, ap, ldA, nr, nc);
 }
 
 // Following functions are useful for debugging:

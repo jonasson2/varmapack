@@ -25,9 +25,9 @@ double VarSpecRad(double *A, int r, int p) {
     hyp = hypot(wr[k], wi[k]);
     rho = max(rho, hyp);
   }
-  free(work);
-  free(wi);
-  free(wr);
-  free(Ac);
+  freem(work);
+  freem(wi);
+  freem(wr);
+  freem(Ac);
   return rho;
 }

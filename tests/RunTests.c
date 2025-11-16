@@ -8,9 +8,10 @@
 #include "xAssert.h"
 #include "xCheck.h"
 
-static int VERBOSITY = 0, NTOTAL = 0, NFAIL = 0;
+static int NTOTAL = 0, NFAIL = 0;
 static const char *headr_fmt = "%-15s %8s %8s\n";
 static const char *table_fmt = "%-15s %8d %8d\n";
+int TESTVERBOSITY = 0; // External
 
 static void print_help(void) {
   puts("Usage: RunTests [options]\n"
@@ -26,7 +27,7 @@ static void print_help(void) {
 // -vv  Also printX
 
 static void vprint(const char *fmt, ...) {
-  if (VERBOSITY < 1) return;
+  if (TESTVERBOSITY < 1) return;
   va_list ap;
   va_start(ap, fmt);
   vprintf(fmt, ap);
@@ -50,19 +51,21 @@ int main(int argc, char **argv) {
   while ((c = getopt(argc, argv, optstring)) != -1) {
     switch (c) {
       case 'h': print_help(); return 0;
-      case 'v': VERBOSITY++; break;
+      case 'v': TESTVERBOSITY++; break;
       case '?': option_error("Unknown option -%c", optopt);
     }
   }
   if (optind < argc) option_error("Unexpected argument %s", argv[optind]);
-  vprint("This is a non-summary vprint\n");
-  if (VERBOSITY <= 1) printOff();
+  if (TESTVERBOSITY <= 1) printOff();
+  vprint("\n");
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
+  run_test("TestFindCG",     TestFindCG);
   run_test("ExtraUtil",      TestExtraUtil);
   run_test("RandomNumbers",  TestRandomNumbers);
   run_test("Testcase",       TestTestcase);
   run_test("VarSpecRad",     TestVarSpecRad);
-  run_test("AgainstMatlab",  TestAgainstMatlab);
+  run_test("Psi functions",  TestPsi);
+  //run_test("AgainstMatlab",  TestAgainstMatlab);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
 }

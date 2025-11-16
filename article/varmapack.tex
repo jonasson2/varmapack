@@ -3,13 +3,12 @@
 % End:
 \documentclass[a4paper,12pt]{extarticle} % Hægt að nota 10 pt, 11 pt, report
 \usepackage{snidmat}
-
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-
+\usepackage{enumitem}
 \renewcommand{\alglinenumber}[1]{\small\rmfamily #1}
-
-% \usepackage[ruled,vlined]{algorithm2e}
+\usepackage{float}
+\raggedbottom
 
 \author{Kristján Jónasson}
 \date{Nov. 2025}
@@ -55,7 +54,7 @@ only the first $h = \max(p,q)$ states from their joint distribution, the
 remaining states can be obtained deterministically with \eqref{eq:varma}.
 
 To fill in some details, denote the stacked vector of $x_1,\ldots,x_h$ with
-$x_{1:h}$ and similarly for $\eps$. Let $S$, $C$, and $\Theta$ denote,
+$x_{1:h}$ and similarly for $\eps$. Let $S$, $C$, and $\overline{\Sigma}$ denote,
 respectively, $\Var x_{1:h}$, $\Cov(x_{1:h}, \eps_{1:h})$, and $\Var
 \eps_{1:h}$. Then $S$ is a block Toeplitz matrix with
 $(i,j)$-block
@@ -79,18 +78,18 @@ block
   \end{cases}
 \end{equation}
 %
-and $\Theta$ is block diagonal with all $h$ blocks equal to $\Sigma$. All three
+and $\overline{\Sigma}$ is block diagonal with all $h$ blocks equal to $\Sigma$. All three
 matrices are $rh \times rh$. Since $x_{1:h}$ and $\eps_{1:h}$ are jointly
 Gaussian, the conditional distribution of $x_{1:h}$ given $\eps_{1:h}$ is normal
 with mean and variance
 %
 \begin{equation}
   \label{eq:eR1}
-e = C\Theta^{-1}\eps_{1:h}\quad\text{and}\quad
-R = S - C\Theta^{-1}C^\top.  
+e = C\overline{\Sigma}^{-1}\eps_{1:h}\quad\text{and}\quad
+R = S - C\overline{\Sigma}^{-1}C^\top.  
 \end{equation}
 %
-Simpler formulae for $e$ and $R$ are obtained by setting $\Psi = C\Theta^{-1}$,
+Simpler formulae for $e$ and $R$ are obtained by setting $\Psi = C\overline{\Sigma}^{-1}$,
 which like $C$ is a lower triangular block matrix. Block $i,j$, $\Psi_{i-j}$ can
 be computed by setting $\Psi_0 = I$ and computing $\Psi_1,\ldots,\Psi_{h-1}$
 with the recurrence:
@@ -104,35 +103,47 @@ where as before $A_i$ and $B_j$ are taken as $0$ for $i>p$, $j>q$. Then
 \begin{equation}
   \label{eq:eR2}
   e = \Psi\eps_{1:h}\quad\text{and}\quad
-  R = S - \Psi\Theta \Psi^\top.  
+  R = S - \Psi\overline{\Sigma} \Psi^\top.  
 \end{equation}
 % 
-$\Psi_j$ is actually the $j$-th coefficient of the series obtained by rewriting
-\eqref{eq:varma} in pure moving-average form.
+The $\Psi_j$ are actually the coefficients of the series obtained by rewriting
+\eqref{eq:varma} in pure moving-average form, often referred to as the
+impulse-response coefficients. 
 
 \section{Simulation}
 Consider now the generation of several simulated replicates of $x_{1:n}$. To
 begin with the conditional covariance matrix $R$ should be calculated along with
 its Cholesky factor, $L_R$, as well as that of $\Sigma$, $L_\Sigma$. The
-Cholesky factor of $\Theta$ is block diagonal with blocks $L_\Sigma$, and it is
-most efficient to compute $\hat{\Psi} = \Psi L_\Theta$ first. Then dsyrk from the
-level-3 BLAS can be used to form $R = S - \hat{\Psi} \hat{\Psi}^\top$. Assume $M$
-replicates are desired, consisting of an $hr \times M$ matrix $X$ with the first
-$h$ terms of the simulated series, and an $(n-h) \times M$ matrix $Y$ with the
-remaining terms. The following algorithm can then be followed:
+Cholesky factor of $\overline{\Sigma}$ is block diagonal with blocks $L_\Sigma$,
+and it is most efficient to compute $\hat{\Psi} = \Psi L_{\overline{\Sigma}}$
+first. Then \texttt{dsyrk} from the level-3 BLAS can be used to form $R =
+S - \hat{\Psi} \hat{\Psi}^\top$.
 
-\begin{enumerate}
-\item Fill an $rh \times M$ matrix $E$ with replicates of $\eps_t$ drawn from $\N(0,\Sigma)$.
-\item Let $E:=\Psi E$ (then its columns contain conditional means, $e$)
-\item Fill $X$ with multivariate normals drawn from $\N(0, R)$.
-\item Let $X := E + X$.
-\item Use \eqref{eq:varma} to compute the remaining states of each replicate.
-\end{enumerate}
-
-Step 3 involves multiplying a matrix of $\N(0,I)$ columns with $L_R$ and for
-that dtrmm from the level-3 BLAS can be used. Level-3 BLAS (dgemm) can also be
-used in step 5 by multiplying relevant rows of $X$ and/or $Y$ with matrices $A =
-[A_p,\ldots,A_1]$ and $B = [B_q,\ldots,B_1]$.
+Assume $M$ replicates are desired, consisting of an $hr \times M$ matrix $X$
+with the first $h$ terms of the simulated series, and an $(n-h) \times M$ matrix
+$Y$ with the remaining terms. The following algorithm contains some details of
+the computation:
+%
+\begin{algorithm}[H]
+  \caption*{VARMA simulation}
+  \begin{algorithmic}[1]
+    \item Compute $\Psi$ using \eqref{eq:psi-j}.
+    \item Find the vector-Yule-Walker right-hand sides $G_j$ with \eqref{eq:Gj}.
+    \item Solve for $S$.
+    \item Compute $R$ with \eqref{eq:eR2}.
+    \item Fill $E$ with $\varepsilon_t \!\sim\! \mathcal N(0,\Sigma)$.
+    \item Let $E := \Psi E$.
+    \item Fill $X$ with $\mathcal N(0,R)$ draws and set $X := X + E$.\label{it1:X}
+    \item Use \eqref{eq:varma} to compute remaining states.\label{it:remaining}
+  \end{algorithmic}
+\end{algorithm}
+\vspace{-\baselineskip}
+%
+Step \ref{it1:X} involves Cholesky factorization of $R$ (\texttt{dpotrf})
+followed by multiplication of $\mathcal N(0,I)$ columns with $L_R$
+(\texttt{dtrmm}), and step \ref{it:remaining} involves \texttt{dgemm}
+multiplication with $A=[A_p,\ldots,A_1]$ and $B=[B_q,\ldots,B_1]$ for each
+remaining state block row of $E$.
 
 The 2008 algorithm paper takes a somewhat different but mathematically
 equivalent approach. Instead of drawing the first $h$ shocks first, the first
@@ -142,13 +153,14 @@ at more closely, that method turns out to be more complex and more expensive
 than the current one.
 
 \section{Notes}
-The R package \texttt{ts.extend} described by \citet{oneill2021tsextend}
-implements burn-in-free simulation of scalar ARMA processes via conditional
-distributions, closely related to the method used here. The package was formerly
-available in the CRAN repository but is now accessible on Github and in the CRAN archive.
+\paragraph{Related work} The R package \texttt{ts.extend} described by
+\citet{oneill2021tsextend} implements burn-in-free simulation of scalar ARMA
+processes via conditional distributions, closely related to the method used
+here. The package was formerly available in the CRAN repository but is now
+accessible on Github and in the CRAN archive.
 
-\citet{giurcanu2015} discusses the simulation of non-causal VARMA processes,
-where x_t depends on both past and future innovations. His method requires a
+\citet{giurcanu2015noncausal} discusses the simulation of non-causal VARMA processes,
+where $x_t$ depends on both past and future innovations. His method requires a
 burn-in period.
 
 Burn-in is an important consideration in time-series simulation and analysis.
@@ -163,13 +175,26 @@ simulation procedure or burn-in. Nevertheless, their work illustrates continuing
 interest in the estimation and diagnostic testing of VARMA models, where the
 availability of burn-in-free simulation methods could be useful.
 
-Popular Python libraries such as statsmodels and PyFlux provide estimation and
-forward simulation for VAR and VARMA models, typically by means of a state-space
-representation. However, these tools simulate conditionally on prespecified
-initial states and do not appear to offer an option to draw the initial h
-observations from the exact stationary distribution.
+\paragraph{Python packages} Popular Python libraries such as statsmodels and
+PyFlux provide estimation and forward simulation for VAR and VARMA models,
+typically by means of a state-space representation. However, these tools
+simulate conditionally on prespecified initial states and do not appear to offer
+an option to draw the initial h observations from the exact stationary
+distribution.
 
-\paragraph{Note on VARMAX}
+\paragraph{Singular conditional variance}
+It may happen that well behaved models give a singular positive semidefinite
+$R$. This is for example the case for the two dimensional VAR(1) model $x_t = A
+x_{t-1} + \eps_t$ with $a_{ij} = 0.1$ for all $i,j$ and $\Sigma = 2I$.
+Then it is not difficult to see that $R$ is singular with $r_{ij} = 1/24$ for
+all $i,j$. In fact in an unguarded Matlab program its \texttt{chol} function
+fails for this particular model. When using BLAS the solution is to use
+\texttt{dpstrf} (positive semidefinite triangular factorization) to obtain
+a pivoted Cholesky factorization of $R$ and use that to draw $x_{1:h}$ from
+the conditional distribution. When using Matlab, such factorization may be
+determined via eigenvalue computation for $R$.
+
+\paragraph{VARMAX}
 The inclusion of deterministic or fixed exogenous variables $u_t$ leads to the
 $\mathrm{VARMAX}(p,q,s)$ extension
 \begin{equation}

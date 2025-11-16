@@ -5,8 +5,22 @@
 #include "ExampleUtil.h"
 #include "BlasGateway.h"
 #include "xAssert.h"
+#include "VarmaMisc.h"
+#include "VYW.h"
+#include "Tests.h"
 #include <math.h>
 #include <stdio.h>
+
+void write_matrix(const char *fname, int m, int n, const double *A) {
+  FILE *fp = fopen(fname, "w");
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < n; j++) {
+      fprintf(fp, "%.17g ", A[i + j*n]);
+    }
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+}
 
 double mean(const double *x, int n) {
   // Mean of vector
@@ -47,6 +61,12 @@ int almostSame(double a, double b) {
   return relabsdiff(&a, &b, 1) < 5.0e-14;
 }
 
+int almostZero(double a[], int n) {
+  // true if a ≈ 0
+  int ia = iamax(n, a, 1);
+  return fabs(a[ia]) < 5.0e-14;
+}
+
 int almostEqual(double a[], double b[], int n) {
   // true if relative difference between vectors a and b < 5e-14
   return relabsdiff(a, b, n) < 5.0e-14;
@@ -84,9 +104,8 @@ void mean3(double X[], int m, int n, int k, int idim, double mu[]) {
 }
 
 void cov(char *transp, int m, int n, double X[], double C[]) {
-  // C := covariance between columns of op(X). X is an m by n matrix.
-  // If transp begins with N, op(X) = X, and C is n by n, but if
-  // it begins with T, op(X) = X^T and C is m by m.
+  // C := covariance between columns of the m by n matrix op(X). If transp begins with N,
+  // op(X) = X, but if it begins with T, op(X) = X^T. C is n by n.
   double *mu, *Xm;
   int i, tmp;
   if (transp[0] == 'T') { tmp = n; n = m; m = tmp; }
@@ -143,4 +162,30 @@ void autocov(char *transp, char *norm, int r, int n, double X[], int maxlag, dou
       gemm("T", "N", r, r, n-k, fctr, Z, n, Y, n, 0.0, Ck, r);
     }
   }
+}
+
+void SCbuild(double A[], double B[], double Sig[], int p, int q, int r, int n,
+                    double CC[], double SS[]) {
+  int *piv, info, nVYW = r*r*p - r*(r-1)/2, k, j;
+  double *C, *G, *W, *S, *vywFactors;
+  allocate(C, r*r*(q+1));
+  allocate(G, r*r*(q+1));
+  allocate(W, r*r*(q+1));
+  allocate(S, r*r*(p+1));
+  FindCGW(A, B, Sig, p, q, r, C, G, W);
+  nVYW = max(0, nVYW);
+  allocate(vywFactors, nVYW * nVYW);
+  allocate(piv, nVYW);
+  VYWFactorize(A, vywFactors, piv, p, r, &info);
+  xAssert(info == 0);
+  VYWSolve(A, vywFactors, S, G, 1, q+1, piv, p, r);
+  SBuild("All", S, A, G, p, q, r, n, SS);
+  setzero(r*n * r*n, CC);
+  for (k=0; k<n; k++) {
+    for (j=0; j<=q && k+j<n; j++) {
+      // CC{k+j, k} = C{j};
+      lacpy("All", r, r, &C[j*r*r], r, &CC[k*r*r*n + (k+j)*r], r*n); 
+    }
+  }
+  freem(piv); freem(vywFactors); freem(S); freem(W); freem(G); freem(C);
 }

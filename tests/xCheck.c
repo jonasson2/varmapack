@@ -11,7 +11,7 @@ static char commonmsg[60] = "";
 static char addmsg[60] = "";
 
 void xCheckFunc(const char *message, char* file, int line) {
-  // Print filename, line number, and upto three messages.
+  // Print filename, line number, and upto two messages.
   char fmt[] = "%s:%d: %s test failed: %s is false";
   fprintf(stderr, fmt, file, line, commonmsg, message);
   if (strlen(addmsg) > 0) fprintf(stderr, " (%s)", addmsg);

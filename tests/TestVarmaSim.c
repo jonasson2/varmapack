@@ -21,7 +21,7 @@
 //        series are each split into two halfs thus giving two sets of 20000 
 //        observations of length max(p,q). The data covariance of these two 
 //        sets is compared with the theoretical covariance. This should reveal
-//        possible deficiency in the stated spinup-free-ness of VarmaSim.
+//        possible deficiency in the stated spinup-freem-ness of VarmaSim.
 //
 //     5) One step ahead and two steps ahead predictions are constructed
 //        starting from given values of X, and their 
@@ -62,7 +62,7 @@ int TestVarmaSim(char *code) { // code for example = "PF" for print, full,
   FULL  = strchr(code, 'F') != 0;
   RandRng *rng = rand_create();
   rand_settype(PARKMILLER, rng);
-  rand_setPMseed(123456, rng);
+  rand_setPMseed(42, rng);
   icase = 1;
   n1 = 20;
   M1 = 1000;
@@ -207,7 +207,7 @@ int TestVarmaSim(char *code) { // code for example = "PF" for print, full,
     icase++;
     //break;
   }
-  rand_free(rng);
+  rand_freem(rng);
   return ifail;
 }
 

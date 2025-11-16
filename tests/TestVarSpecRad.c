@@ -109,9 +109,9 @@ static void checkAllNamedStationary(void) {
     }
     xCheck(rho < 1.0 - strict_tol);
 
-    free(A);
-    free(B);
-    free(Sig);
+    freem(A);
+    freem(B);
+    freem(Sig);
   }
 }
 

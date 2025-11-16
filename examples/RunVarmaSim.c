@@ -14,52 +14,48 @@
 #include "ExtraUtil.h"
 #include "VarmaUtilities.h"
 #include "ACVF.h"
+#include "xAssert.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
 
 static void print_testcase_table(void) {
+  int p, q, r, icase, ncases;
+  bool ok;
+  Testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0); // how many?
+  char name[32];
   printf("No. Name          p  q  r\n");
-  printf(" 1  tinyAR        1  0  1\n");
-  printf(" 2  tinyMA        0  1  1\n");
-  printf(" 3  tinyARMA      1  1  1\n");
-  printf(" 4  smallAR       1  0  2\n");
-  printf(" 5  smallMA       0  2  2\n");
-  printf(" 6  smallARMA1    1  1  2\n");
-  printf(" 7  smallARMA2    1  2  2\n");
-  printf(" 8  mediumAR      1  0  3\n");
-  printf(" 9  mediumARMA1   3  3  3\n");
-  printf("10  mediumARMA2   3  3  3\n");
-  printf("11  mediumMA      0  2  3\n");
-  printf("12  largeAR       5  0  7\n");
+  for(icase = 1; icase <= ncases; icase++) {
+    name[0] = 0;
+    ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+    xAssert(ok);
+    printf("%2d  %-12s %2d %2d %2d\n", icase, name, p, q, r);
+  }
 }
 
 static void print_help(void) {
-  printf("RunVarmaSim — simulate spin-up-free VAR/VARMA time series\n");
+  printf("RunVarmaSim — simulate spin-up-freem VAR/VARMA time series\n");
   printf("Usage: RunVarmaSim testcase [options]\n\n");
   printf("  testcase may be a named testcase (e.g. smallMA), a number (1–12),\n");
   printf("  or dimensions p,q,r.\n\n");
 
   printf("Options:\n");
   printf("  -h         Show this help message\n");
-  printf("  -n number  Number of terms to generate (default 1000)\n");
-  printf("  -P         Use Park–Miller random number generator\n");
-  printf("             (default: Xorshift128+)\n");
+  printf("  -n number  Number of terms to generate (default 20)\n");
+  printf("  -P         Use Park–Miller RNG (default: Xorshift128+)\n");
   printf("  -e seed    RNG seed (default randomized, but 42 for Park-Miller)\n");
   printf("  -p         Print generated series (otherwise only a summary)\n\n");
-
   printf("Default RNG: Xorshift128+.\n");
-  printf("To randomize with -P set seed to -1");
-  printf("Summary fields: n, one-step correlation matrix Corr[x(t), x(t-1)],\n");
-  printf("and run-time (N/A in this build).\n\n");
-
+  printf("To randomize with -P set seed to -1\n");
+  printf("Summary fields: length of series, n\n");
+  printf("                one-step correlation matrix Corr(x(t), x(t-1))\n");
+  printf("                run-time (N/A in this build).\n\n");
   printf("Available named testcases:\n");
   print_testcase_table();
 }
 
-/* --- helpers to interpret the testcase token --- */
-
 #define FAIL(...) do { fprintf(stderr, __VA_ARGS__); \
                        fputc('\n', stderr); return false; } while (0)
+
 static bool all_digits(const char *s) {
   if (*s == 0) return false;
   for (const char *p = s; *p; ++p)
@@ -68,29 +64,22 @@ static bool all_digits(const char *s) {
 }
 
 static bool parse_dims_token(const char *s, int *p, int *q, int *r) {
-  // returns true if ok, else false; expects "p,q,r" with 0 <= p,q <= 12, 1 <= r <= 7
-  int result = sscanf(s, "%d,%d,%d", p, q, r);
+  // returns true if ok, else false; expects "p,q,r" p, q ≥ 0 and r ≥ 1
+  int result;
+  result = sscanf(s, "%d,%d,%d", p, q, r);
   if (result != 3) FAIL("Wrong number of testcase dimensions");
   if (*p < 0 || *q < 0 || *r < 1) FAIL("Illegal testcase dimensions");
-  if (*p > 12 || *q > 12 || *r > 7) FAIL("Illegal testcase dimensions");
   return true;
 }
 
-// Parse options; returns true on success, false on error
-static bool get_options(int argc, char **argv,
-                        char *testcase,
-                        bool *print,
-                        bool *ParkMiller,
-                        bool *help,
-                        int *n,
-                        int *seed) {
-  
+static bool get_options(int argc, char **argv, char *testcase, bool *print, bool
+                        *ParkMiller, bool *help, int *n, int *seed) {
   opterr = 0;
   optind = 1;
   int opt;
   *print = *ParkMiller = *help = false;
   *seed = -1; // to indicate no seed
-  *n = 1000;
+  *n = 20;
 
   while ((opt = getopt(argc, argv, "hn:Pe:p")) != -1) {
     switch (opt) {
@@ -138,13 +127,14 @@ static bool testcase_dims(char *s, int *p, int *q, int *r, int *icase) {
   } 
   else {
     bool ok;
+    char name[16] = "";
     if (!strcmp(s, "")) FAIL("Empty argument");  
     char MAX[TCN + 1] = "max";
     if (!Testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0)) FAIL("Internal error");
     if (all_digits(s)) { // Pure digits (indexed testcase) → ask Testcase() for dimensions
       *icase = atoi(s);
       if (*icase < 1 || *icase > ncase) FAIL("Illegal testcase index");
-      ok = Testcase(0, 0, 0, 0, p, q, r, icase, 0, stderr);
+      ok = Testcase(0, 0, 0, name, p, q, r, icase, 0, stderr);
     }
     else { // Named testcase → ask Testcase() for dimensions
       ok = Testcase(0, 0, 0, s, p, q, r, icase, 0, stderr);
@@ -155,8 +145,7 @@ static bool testcase_dims(char *s, int *p, int *q, int *r, int *icase) {
 }
 
 int main(int argc, char **argv) {
-  bool ok;
-  int vsok;
+  bool ok, vsok;
   int n = 0, p, q, r, icase, seed;
   char testcase[TCN + 1];
   double *A, *B, *Sig, *X;
@@ -174,32 +163,34 @@ int main(int argc, char **argv) {
   RandRng *rng = RandCreate();  
   if (ParkMiller) RandSetPM(rng);
   if (seed >= 0) RandSeed(seed, rng);
-  
-  if (!Testcase(A, B, Sig, 0, &p, &q, &r, &icase, rng, stderr)) return 1;
-
-  VarmaSim(A, B, Sig, 0, p, q, r, n, 1, 0, rng, X, 0, &vsok);
-
+  char name[16] = "";
+  if (!Testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) return 1;
+  //
+  VarmaSim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0, &vsok);
+  //
+  printM("X", X, r, n);
   double *mu, *Gamma;
   allocate(mu, r);
   allocate(Gamma, r*r);
   meanmat("T", r, n, X, r,  mu);
-  printM("Mean", mu, 1, r);
   ACVF(A, B, Sig, p, q, r, Gamma, 1);
   if (print) {
+    print4I("p, q, r, n", p, q, r, n);
     printMsg("Model definition matrices:");
     printM("A",  A,  r, r * p);
     printM("B",  B,  r, r * q);
     printM("Sig", Sig, r, r);
     printM("Gamma", Gamma, r, 2*r);
-    // printM("X", X, r, n);
+    printM("X", X, r, n);
+    printMT("X", X, r, n);
   }
   else
     printf("This will later print a summary\n");
-  free(A);
-  free(B);
-  free(Sig);
-  free(X);
-  free(mu);
+  freem(A);
+  freem(B);
+  freem(Sig);
+  freem(X);
+  freem(mu);
   RandFree(rng);
   return 0;
 }

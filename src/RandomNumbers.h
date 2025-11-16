@@ -76,33 +76,28 @@ void RandN( // Generate standard normal random numbers N(0,1)
 );
 
 void RandNM( // Generate multivariate normal random vectors N(mu, Sig)
+  char *transp,   // in      "N" to get n×d X, "T" to get d×n X
   double mu[],    // in      d-vector: mean (NULL → zero-mean)
   double Sig[],   // in      d×d covariance matrix (NULL → use L as-is)
-  int n,          // in      Number of replicates
   int d,          // in      Dimension of each vector
-  double X[],     // out     n×d matrix of generated vectors
+  int n,          // in      Number of replicates
+  double X[],     // out     n×d or d×n matrix of generated vectors
   double L[],     // in/out  d×d lower Cholesky factor of Sig (or NULL)
-  double *del,    // out     Multiple of I added to make Sig positive definite
-  RandRng *rng,   // in      Random number generator
-  int *ok         // out     0 if Sig not positive definite, else 1
+  RandRng *rng    // in      Random number generator
 );
 // NOTE 1: Sig, X and L are stored columnwise in Fortran fashion.
-// NOTE 2: There are situations when Sig is indefinite but close to being
-//         positive definite, for example due to rounding errors. An attempt
-//         is made to remedy this by adding a small multiple, del, of the
-//         identity matrix, I, to Sig. It was found empirically that the
-//         distribution of X does not depend critically on del, and the
-//         formula for del0 below was determined to be approximately the
-//         minimum needed. The while loop further esures that.
-// NOTE 3: In case the calling program needs the Cholesky factor of the
-//         (possibly modified) Sig, this may be returned in L by letting it be
-//         an d × d array instead of 0 in the call.
-// NOTE 4: When RandNM is to be called multiple times for the same covariance
-//         it is possible to save execution time by reusing the Cholesky
-//         factorization of Sig on all calls but the first. Specify Sig and
-//         return L on the first call, and let Sig be null and specify L on
-//         subsequent calls. If both Sig and L are null, the function exits
-//         with ok = 0.
+// NOTE 2: There are situations when Sig is indefinite but close to being positive
+//         definite, for example due to rounding errors. To remedy this a pivoted Cholesky
+//         factorization of Sig is employed, which may return an L matrix which is
+//         not lower and has some trailing columns 0, but does satisfy L·L' = Sig, and
+//         can thus be used to generate vectors with the right distribution.
+// NOTE 3: In case the calling program needs the Cholesky factor of Sig this may be
+//         returned in L by letting it be a d × d array instead of 0 in the call.
+// NOTE 4: When RandNM is to be called multiple times for the same covariance it is
+//         possible to save execution time by reusing the Cholesky factorization of Sig on
+//         all calls but the first. Specify Sig and return L on the first call, and let
+//         Sig be null and specify L on subsequent calls. If both Sig and L are null, the
+//         function exits with ok = 0.
 
 #ifdef __cplusplus
 }

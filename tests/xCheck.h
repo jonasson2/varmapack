@@ -6,7 +6,8 @@
 // returns silently if the condition e is true, but if it is false, then it is printed
 // (literally) on stderr along with the source file name and line number where the check
 // was made, the common message set with xCheckInit, and the additional message set with
-// xCheckAddMsg (if any).
+// xCheckAddMsg (if any). The counter returned by xCheckNTotal is incremented and failures
+// also increment the static counter returned by xCheckNfailures.
 
 #define xCheckMessage(e,msg)  ((e) ? (void)xCheckOK() : xCheckFunc(msg,__FILE__,__LINE__))
 // xCheckMessage(e, msg) behaves as xCheck except that msg is printed instead of the

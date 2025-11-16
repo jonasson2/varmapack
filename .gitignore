@@ -20,8 +20,9 @@ a.out
 .#*
 .DS_Store
 doc/
-build/
+build*/
 lib/
 bin/
+article/
 /nogit/
 .Rproj.user
