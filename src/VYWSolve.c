@@ -8,7 +8,7 @@ void VYWSolve ( // Solve modified Yule-Walker equations
   double LU[],  // in   LU factors of the N×N matrix F where N = r*r*p-r*(r-1)/2
   double S[],   // out  r × r × nrhs × (p+1), solution to system
   double Y[],   // in   r × r × nrhs × nY, rhs of system to solve
-  int nrhs,     // in   number of right hand sides (1 or, for derivatives, nPar)
+  int nrhs,     // in   number of right hand sides (must be 1 in this version)
   int nY,       // in   number of Y arrays (either q+1 or p+1)
   int piv[],    // in   N-vector with pivoting info from VYWFactorize
   int p,        // in   number of autoregressive terms
@@ -16,6 +16,7 @@ void VYWSolve ( // Solve modified Yule-Walker equations
 { 
   // If nrhs=1 and Y = G then S = [S0 S1...Sp], with Si = cov(x(t),x(t-i))
   // If nY=q+1 and q<p then Y(q+1)...Y(p) are set to 0.
+  xAssert(nrhs == 1);
   int i, j, k, info, rr = r*r;
   double *g, *g1, *Yp, *g0k, *Ykp, *Ap, *gptr, *gii0k, *gj, *Sk, *Sii0k, *Sp;
   double *Skp, *Skpmi, *Ai;

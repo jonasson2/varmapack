@@ -2,11 +2,10 @@
 #include <Rinternals.h>
 #include <string.h>
 #include <stdint.h>
-#include "VarmaSim.h"
-#include "VarmaMisc.h"
+#include "varmapack.h"
 #include "RandomNumbers.h" // RandRng, rand_create, rand_settype, rand_setPMseed, rand_free
 
-// Name table for named cases (order must match your C Testcase’s enumeration)
+// Name table for named cases (order must match your C varmapack_testcase’s enumeration)
 static const char *CASE_NAMES[] = {
   "tinyAR","tinyMA","tinyARMA",
   "smallAR","smallMA","smallARMA1","smallARMA2",
@@ -52,7 +51,7 @@ SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
 
     // pre-query dims for named case
     char tmpname[64] = {0};
-    Testcase(NULL, NULL, NULL, tmpname, &p, &q, &r, icase, rng);
+    varmapack_testcase(NULL, NULL, NULL, tmpname, &p, &q, &r, icase, rng);
   } else {
     // random case: use provided dims
     p = INTEGER(p_)[0];
@@ -68,7 +67,7 @@ SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
 
   // fill via C
   char outname[64] = {0};
-  Testcase((p > 0) ? REAL(A) : NULL,
+  varmapack_testcase((p > 0) ? REAL(A) : NULL,
            (q > 0) ? REAL(B) : NULL,
            REAL(Sig),
            outname,

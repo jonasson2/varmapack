@@ -35,6 +35,16 @@ static void vprint(const char *fmt, ...) {
   fflush(stdout);
 }
 
+static void option_error(const char *fmt, ...) {
+  // Prints option error message formatted by fmt and exits
+  char msg_opt[256];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(msg_opt, sizeof(msg_opt), fmt, args);
+  va_end(args);
+  xErrorExit(msg_opt);
+}
+
 static void run_test(const char *name, void (*fn)(void)) {
   int ntotal, nfail;
   xCheckInit(name);
@@ -62,8 +72,8 @@ int main(int argc, char **argv) {
   run_test("TestFindCG",     TestFindCG);
   run_test("ExtraUtil",      TestExtraUtil);
   run_test("RandomNumbers",  TestRandomNumbers);
-  run_test("Testcase",       TestTestcase);
-  run_test("VarSpecRad",     TestVarSpecRad);
+  run_test("varmapack_testcase",       TestTestcase);
+  run_test("varmapack_spec_rad",     Testvarmapack_spec_rad);
   run_test("Psi functions",  TestPsi);
   //run_test("AgainstMatlab",  TestAgainstMatlab);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);

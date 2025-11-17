@@ -21,13 +21,9 @@
 #ifndef RANDOMNUMBERS_H
 #define RANDOMNUMBERS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 #include <stdbool.h>
 #include <stdint.h>
-#include "random.h"  // provides rng_type, rand_rng, and backend RNG functions
+//#include "random.h"  // provides rng_type, rand_rng, and backend RNG functions
 
 typedef struct rand_rng RandRng;
 
@@ -99,7 +95,4 @@ void RandNM( // Generate multivariate normal random vectors N(mu, Sig)
 //         Sig be null and specify L on subsequent calls. If both Sig and L are null, the
 //         function exits with ok = 0.
 
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 #endif /* RANDOMNUMBERS_H */

@@ -1,11 +1,11 @@
-// TestVarSpecRad.c
+// Testvarmapack_spec_rad.c
 #include "ExtraUtil.h"
 #include "allocate.h"
 #include "xAssert.h"
 #include "xCheck.h"
 #include "Tests.h"
 
-#include "Testcase.h"   // Testcase(...)
+#include "varmapack.h"   // varmapack_testcase(...)
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@
 #include <stdbool.h>
 
 // Prototype under test
-double VarSpecRad(double A[], int r, int p);
+double varmapack_spec_rad(double A[], int r, int p);
 
 // --- helpers ---------------------------------------------------------------
 static int nearly_one(double x, double tol) { return fabs(x - 1.0) <= tol; }
@@ -30,7 +30,7 @@ static void check2x2(void) {
     0.10, 0.20   // col 2
   };
 
-  double rho = VarSpecRad(A, r, p);
+  double rho = varmapack_spec_rad(A, r, p);
   xCheck(nearly_one(rho, 1e-14));
   xCheck(rho <= 1.0 + 1e-14);
 }
@@ -45,7 +45,7 @@ static void checkScaling(void) {
     0.10 * 20, 0.20 * 20
   };
 
-  double rho = VarSpecRad(A, r, p);
+  double rho = varmapack_spec_rad(A, r, p);
   xCheck(almostSame(rho, 20.0));
   xCheck(rho > 19.999 && rho < 20.001);
 }
@@ -56,7 +56,7 @@ static void checkScaling(void) {
 static void checkZero(void) {
   const int r = 3, p = 1;
   double A[9] = {0.0};
-  double rho = VarSpecRad(A, r, p);
+  double rho = varmapack_spec_rad(A, r, p);
   xCheck(almostSame(rho, 0.0));
 }
 
@@ -66,7 +66,7 @@ static void checkZero(void) {
 //   1) query dimensions with A=B=Sig=0 (OK by API)
 //   2) allocate A (r*r*p), B (r*r*q), Sig (r*r) — ALL nonzero
 //   3) fetch the testcase
-//   4) assert VarSpecRad(A,r,p) < 1 (strict stationarity of AR part)
+//   4) assert varmapack_spec_rad(A,r,p) < 1 (strict stationarity of AR part)
 // ---------------------------------------------------------------------------
 static void checkAllNamedStationary(void) {
   const double strict_tol = 1e-12;
@@ -76,7 +76,7 @@ static void checkAllNamedStationary(void) {
     char name[32] = {0};
 
     // Step 1: query dims (A=B=Sig=0 is required when any is 0)
-    bool ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stderr);
+    bool ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stderr);
     xCheck(ok);
 
     // Some named cases might be ARMA(p,q) with p >= 0. We can handle p==0.
@@ -95,15 +95,15 @@ static void checkAllNamedStationary(void) {
     allocate(Sig, nS);
 
     // Step 3: fetch the data (A,B,Sig all nonzero per API)
-    ok = Testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stderr);
+    ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stderr);
     xCheck(ok);
 
     // Step 4: spectral radius of AR companion (treat p==0 as rho=0)
-    double rho = (p == 0) ? 0.0 : VarSpecRad(A, r, p);
+    double rho = (p == 0) ? 0.0 : varmapack_spec_rad(A, r, p);
 
     if (!(rho < 1.0 - strict_tol)) {
       fprintf(stderr,
-              "[TestVarSpecRad] Nonstationary/borderline: case %d (%s), "
+              "[Testvarmapack_spec_rad] Nonstationary/borderline: case %d (%s), "
               "rho=%.15g (p=%d, q=%d, r=%d)\n",
               icase, name, rho, p, q, r);
     }
@@ -118,9 +118,9 @@ static void checkAllNamedStationary(void) {
 // ---------------------------------------------------------------------------
 //  Entry point
 // ---------------------------------------------------------------------------
-void TestVarSpecRad(void) {
+void Testvarmapack_spec_rad(void) {
   check2x2();                // boundary (rho == 1)
   checkScaling();            // scaling sanity
   checkZero();               // degenerate
-  checkAllNamedStationary(); // the 12 named Testcase models
+  checkAllNamedStationary(); // the 12 named varmapack_testcase models
 }

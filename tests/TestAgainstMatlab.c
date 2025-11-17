@@ -6,8 +6,8 @@
 #include "printX.h"
 #include "Tests.h"
 
-#include "Testcase.h"
-#include "VarmaSim.h"
+#include "varmapack.h"
+#include "varmapack.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,13 +27,13 @@ void TestAgainstMatlab(void) {
     int pk, qk, rk, k = icase - case1;
 
     // Set additional message to testcase number
-    char addmsg[32] = "Testcase number **";
-    if (icase < 100) snprintf(addmsg, 32, "Testcase number %2d", icase);
+    char addmsg[32] = "varmapack_testcase number **";
+    if (icase < 100) snprintf(addmsg, 32, "varmapack_testcase number %2d", icase);
     xCheckAddMsg(addmsg);
 
     // Query testcase dimensions and check them
     char name[64] = {0};
-    bool ok = Testcase(0, 0, 0, name, &pk, &qk, &rk, &icase, 0, stderr);
+    bool ok = varmapack_testcase(0, 0, 0, name, &pk, &qk, &rk, &icase, 0, stderr);
     xCheck(ok);
     xCheck(pk == p[k]);
     xCheck(qk == q[k]);
@@ -47,7 +47,7 @@ void TestAgainstMatlab(void) {
     allocate(Ak, nA);
     allocate(Bk, nB);
     allocate(Sigk, r2);
-    ok = Testcase(Ak, Bk, Sigk, name, &pk, &qk, &rk, &icase, 0, stderr);
+    ok = varmapack_testcase(Ak, Bk, Sigk, name, &pk, &qk, &rk, &icase, 0, stderr);
     xCheck(ok);
 
     // Compare A, B, Sig against MATLAB reference
@@ -55,7 +55,7 @@ void TestAgainstMatlab(void) {
     xCheck(almostEqual(Bk, B[k], nB));
     xCheck(almostEqual(Sigk, Sig[k], r2));
 
-    // Simulate with VarmaSim and compare the simulated series with Matlab's
+    // Simulate with varmapack_sim and compare the simulated series with Matlab's
     double *mu = 0, *X0 = 0, *Xsim, *eps;
     int M = 1;
     bool sim_ok;
@@ -65,7 +65,7 @@ void TestAgainstMatlab(void) {
     printM("Ak", Ak, rk, rk*pk);
     printM("Bk", Bk, rk, rk*qk);
     printM("Sigk", Sigk, rk, rk);
-    VarmaSim(Ak, Bk, Sigk, mu, pk, qk, rk, nk, M, X0, 0, rng, Xsim, eps, &sim_ok);
+    varmapack_sim(Ak, Bk, Sigk, mu, pk, qk, rk, nk, M, X0, 0, rng, Xsim, eps, &sim_ok);
     printSetNdec(15);
     printM("Xsim", Xsim, rk, nk);
     printSetNdec(3);

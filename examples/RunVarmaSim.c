@@ -8,12 +8,12 @@
 #include "allocate.h"
 #include "RandomNumbers.h"
 #include "printX.h"
-#include "Testcase.h"
-#include "VarmaSim.h"
+#include "varmapack.h"
+#include "varmapack.h"
 #include "getopt.h"
-#include "ExtraUtil.h"
+//#include "ExtraUtil.h"
 #include "VarmaUtilities.h"
-#include "ACVF.h"
+#include "varmapack.h"
 #include "xAssert.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
@@ -21,20 +21,20 @@
 static void print_testcase_table(void) {
   int p, q, r, icase, ncases;
   bool ok;
-  Testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0); // how many?
+  varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0); // how many?
   char name[32];
   printf("No. Name          p  q  r\n");
   for(icase = 1; icase <= ncases; icase++) {
     name[0] = 0;
-    ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+    ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
     xAssert(ok);
     printf("%2d  %-12s %2d %2d %2d\n", icase, name, p, q, r);
   }
 }
 
 static void print_help(void) {
-  printf("RunVarmaSim — simulate spin-up-freem VAR/VARMA time series\n");
-  printf("Usage: RunVarmaSim testcase [options]\n\n");
+  printf("Runvarmapack_sim — simulate spin-up-freem VAR/VARMA time series\n");
+  printf("Usage: Runvarmapack_sim testcase [options]\n\n");
   printf("  testcase may be a named testcase (e.g. smallMA), a number (1–12),\n");
   printf("  or dimensions p,q,r.\n\n");
 
@@ -112,7 +112,7 @@ static bool get_options(int argc, char **argv, char *testcase, bool *print, bool
   if (optind + 1 < argc)
     FAIL("Too many arguments");
   int tclen = snprintf(testcase, TCN + 1, "%s", argv[optind]);
-  if (tclen > TCN) FAIL("Testcase argument, too many characters");
+  if (tclen > TCN) FAIL("varmapack_testcase argument, too many characters");
   return true;
 }
 
@@ -130,14 +130,14 @@ static bool testcase_dims(char *s, int *p, int *q, int *r, int *icase) {
     char name[16] = "";
     if (!strcmp(s, "")) FAIL("Empty argument");  
     char MAX[TCN + 1] = "max";
-    if (!Testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0)) FAIL("Internal error");
-    if (all_digits(s)) { // Pure digits (indexed testcase) → ask Testcase() for dimensions
+    if (!varmapack_testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0)) FAIL("Internal error");
+    if (all_digits(s)) { // Pure digits (indexed testcase) → ask varmapack_testcase() for dimensions
       *icase = atoi(s);
       if (*icase < 1 || *icase > ncase) FAIL("Illegal testcase index");
-      ok = Testcase(0, 0, 0, name, p, q, r, icase, 0, stderr);
+      ok = varmapack_testcase(0, 0, 0, name, p, q, r, icase, 0, stderr);
     }
-    else { // Named testcase → ask Testcase() for dimensions
-      ok = Testcase(0, 0, 0, s, p, q, r, icase, 0, stderr);
+    else { // Named testcase → ask varmapack_testcase() for dimensions
+      ok = varmapack_testcase(0, 0, 0, s, p, q, r, icase, 0, stderr);
     }
     if (!ok) return false;
   }
@@ -164,16 +164,16 @@ int main(int argc, char **argv) {
   if (ParkMiller) RandSetPM(rng);
   if (seed >= 0) RandSeed(seed, rng);
   char name[16] = "";
-  if (!Testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) return 1;
+  if (!varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) return 1;
   //
-  VarmaSim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0, &vsok);
+  varmapack_sim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0, &vsok);
   //
   printM("X", X, r, n);
   double *mu, *Gamma;
   allocate(mu, r);
   allocate(Gamma, r*r);
   meanmat("T", r, n, X, r,  mu);
-  ACVF(A, B, Sig, p, q, r, Gamma, 1);
+  varmapack_acvf(A, B, Sig, p, q, r, Gamma, 1);
   if (print) {
     print4I("p, q, r, n", p, q, r, n);
     printMsg("Model definition matrices:");

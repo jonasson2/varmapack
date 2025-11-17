@@ -3,12 +3,12 @@
 #include "allocate.h"
 #include "xAssert.h"
 #include "xCheck.h"
-#include "Testcase.h"
+#include "varmapack.h"
 #include "VarmaPackUtil.h"
 #include "ExtraUtil.h"
 
 void TestFindCG(void) {
-  // Just a rudimentary test. Tested thoroughly by TestVarmaSim.
+  // Just a rudimentary test. Tested thoroughly by Testvarmapack_sim.
   int p, q, r, icase;
   char name[16] = "";
   double *A, *B, *Sig, *C, *G;
@@ -16,7 +16,7 @@ void TestFindCG(void) {
 
   // First call: query dimensions for testcase 6
   icase = 6;
-  ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(p == 1);
   xCheck(q == 1);
@@ -29,9 +29,9 @@ void TestFindCG(void) {
   allocate(C, r*r*(q + 1));
   allocate(G, r*r*(q + 1));
 
-  ok = Testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
-  FindCG(A, B, Sig, p, q, r, C, G);
+  varmapack_FindCG(A, B, Sig, p, q, r, C, G);
 
   // Expected values from MATLAB for testcase 6.
   // [ 2.0  1.0  1.4  1.3

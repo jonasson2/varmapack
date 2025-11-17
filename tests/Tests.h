@@ -6,7 +6,7 @@
 void TestExtraUtil(void);
 void TestRandomNumbers(void);
 void TestTestcase(void);
-void TestVarSpecRad(void);
+void Testvarmapack_spec_rad(void);
 void TestAgainstMatlab(void);
 void TestFindCG(void);
 void TestPsi(void);

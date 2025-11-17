@@ -6,7 +6,6 @@
 
 #ifndef BLASREF_H
 #define BLASREF_H
-#include "BlasUpper.h"
 
 void daxpy_(int *n, double *alpha, double x[], int *incx, double y[], int *incy);
 

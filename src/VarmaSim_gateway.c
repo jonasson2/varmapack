@@ -1,14 +1,14 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <stdbool.h>
-#include "VarmaSim.h"
+#include "varmapack.h"
 #include "RandomNumbers.h"
 #include "printX.h"
 
-SEXP VarmaSim_gateway(SEXP A, SEXP B, SEXP Sig, SEXP mu, SEXP p, SEXP q, SEXP r,
+SEXP varmapack_sim_gateway(SEXP A, SEXP B, SEXP Sig, SEXP mu, SEXP p, SEXP q, SEXP r,
                       SEXP n, SEXP M, SEXP X0, SEXP X, SEXP eps, SEXP ok,
                       SEXP park_miller, SEXP seed) {
-  // R-to-C gateway function to be called by .Call in varma_sim.R
+  // R-to-C gateway function to be called by .Call in varmapack_sim.R
   double
     *Ap = REAL(A),
     *Bp = REAL(B),
@@ -47,7 +47,7 @@ SEXP VarmaSim_gateway(SEXP A, SEXP B, SEXP Sig, SEXP mu, SEXP p, SEXP q, SEXP r,
   // printM("X", Xp, rv, nv);
   // printM("eps", epsp, rv, nv);
   // printI("okp", *okp);
-  VarmaSim(Ap, Bp, Sigp, mup, pv, qv, rv, nv, Mv, X0p, rng, Xp, epsp, okp);
+  varmapack_sim(Ap, Bp, Sigp, mup, pv, qv, rv, nv, Mv, X0p, rng, Xp, epsp, okp);
   rand_free(rng);  
   return R_NilValue; // .Call wants a return value.
 }

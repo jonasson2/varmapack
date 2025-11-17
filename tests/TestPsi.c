@@ -2,7 +2,7 @@
 #include "Tests.h"
 #include "allocate.h"
 #include "xAssert.h"
-#include "Testcase.h"
+#include "varmapack.h"
 #include "xCheck.h"
 #include "ExtraUtil.h"
 #include "VarmaPackUtil.h"
@@ -17,10 +17,10 @@ static void TestFindPsi(void) {
 
   // Query dimensions for testcase 9
   icase = 9;
-  ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(r == 3 && p == 3 && q == 3);
-  h = max(p, q);
+  h = imax(p, q);
 
   // Allocate and load testcase data
   allocate(A, r*r*p);
@@ -28,7 +28,7 @@ static void TestFindPsi(void) {
   allocate(Sig, r*r);
   allocate(Psi, r*h*r*h);
 
-  ok = Testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
 
   FindPsi(A, B, Psi, p, q, r);
@@ -58,8 +58,8 @@ static void TestFindPsiHat(void) {
   double *A, *B, *Sig, *Psi, *Psi_hat;
   
   icase = 9;
-  Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
-  h = max(p, q);
+  varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+  h = imax(p, q);
   
   allocate(A, r*r*p);
   allocate(B, r*r*q);
@@ -67,7 +67,7 @@ static void TestFindPsiHat(void) {
   allocate(Psi, r*h*r*h);
   allocate(Psi_hat, r*h*r*h);
 
-  Testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
+  varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   FindPsi(A, B, Psi, p, q, r);
   double Sig_mod[] = {
     1.0, 1.0, 1.0,
@@ -96,9 +96,9 @@ static void TestFindPsiHat(void) {
 static void TestPsiTinyAR(void) {
   // Matlab comparison
   double A[1], B[1], Sig[1], Psi[1], PsiHat[1];
-  int p=1, q=0, r=1, icase, h=max(p, q);
+  int p=1, q=0, r=1, icase, h=imax(p, q);
   bool ok;
-  ok = Testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   FindPsi(A, B, Psi, p, q, r);
   FindPsiHat(Psi, PsiHat, Sig, r, h);
@@ -115,10 +115,10 @@ static void TestPsiSimple(void) {
   double A2[] = {0.1, 0.3, 0.2, 0.4};
 
   icase = 7;
-  ok = Testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(r == 2);
-  h = max(p, q);
+  h = imax(p, q);
 
   allocate(A, r*r*(p+1));
   allocate(B, r*r*q);
@@ -126,7 +126,7 @@ static void TestPsiSimple(void) {
   allocate(Psi, r*h*r*h);
   allocate(Psi_hat, r*h*r*h);
 
-  ok = Testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
+  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(r == 2);
 

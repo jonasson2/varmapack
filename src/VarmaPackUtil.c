@@ -1,9 +1,9 @@
 #include "BlasGateway.h"
 #include "allocate.h"
-#include "VarmaMisc.h"
 #include "printX.h"
+#include "VarmaUtilities.h"
 
-void FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
+void varmapack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   double A[],   // in   r×r×p, autoregressive parameter matrices
   double B[],   // in   r×r×q, moving average parameter matrices
   double Sig[], // in   r×r, covariance of the shock terms eps(t)
@@ -58,7 +58,7 @@ static void setEye(int n, double A[], int lda) {
 
 void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   // Prepare
-  int h = max(p, q), rr = r*r, hr = h*r, i, j, k, l;
+  int h = imax(p, q), rr = r*r, hr = h*r, i, j, k, l;
   double *Aflp, *Psi_jj;
   if (h == 0) return;
   allocate(Aflp, p*rr);

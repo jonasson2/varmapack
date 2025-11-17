@@ -8,7 +8,7 @@
 // -----------------------------------------------------------------------------
 // Compute the Ci and Gi matrices for a VARMA(p, q) model
 // -----------------------------------------------------------------------------
-void FindCG(
+void varmapack_FindCG(
   double A[],   // in   r×r×p  autoregressive parameter matrices
   double B[],   // in   r×r×q  moving average parameter matrices
   double Sig[], // in   r×r    covariance of the shock terms eps(t)
