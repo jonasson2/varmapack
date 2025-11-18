@@ -22,7 +22,7 @@ void varmapack_sim ( // Simulate VARMA time series
   int M,        // in      number of replicates to generate
   double X0[],  // in      r×nX0 with nX0 ≥ max(p,q); optional starter or NULL
   int nX0,      // in      length of x0
-  RandRng *rng, // in/out  random number generator
+  randompack_rng *rng, // in/out  random number generator
   double X[],   // out     r×n×M generated series
   double E[],   // out     r×n×M shock series (or NULL to skip)
   bool *ok      // out     1 if stationary (or X0 non-NULL), else 0
@@ -66,7 +66,7 @@ bool varmapack_testcase( // Create a testcase for VARMA calculation
   int *qp,       // in/out  Number of moving avg. terms
   int *rp,       // in/out  dimension of each x(t)
   int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
-  RandRng *rng,  // in      random number generator
+  randompack_rng *rng,  // in      random number generator
   FILE *fp);     // in      stream to print errors (or null)
 
 #ifdef __cplusplus

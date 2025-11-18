@@ -160,9 +160,9 @@ int main(int argc, char **argv) {
   allocate(B, q*r*r);
   allocate(Sig, r*r);
   allocate(X, r*n);
-  RandRng *rng = RandCreate();  
-  if (ParkMiller) RandSetPM(rng);
-  if (seed >= 0) RandSeed(seed, rng);
+  const char *rngtype = ParkMiller ? "PM" : "Xorshift";
+  int rngseed = (seed < 0) ? 0 : seed;
+  randompack_rng *rng = randompack_create(rngtype, rngseed);
   char name[16] = "";
   if (!varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) return 1;
   //
@@ -191,6 +191,6 @@ int main(int argc, char **argv) {
   freem(Sig);
   freem(X);
   freem(mu);
-  RandFree(rng);
+  randompack_free(rng);
   return 0;
 }

@@ -20,9 +20,7 @@
 void TestAgainstMatlab(void) {
   // Bring in MATLAB reference data
 #include "matlabcompare.inc"
-  RandRng *rng = RandCreate();
-  RandSetPM(rng);
-  
+
   for (int icase = case1; icase <= caseN; icase++) {
     int pk, qk, rk, k = icase - case1;
 
@@ -38,7 +36,7 @@ void TestAgainstMatlab(void) {
     xCheck(pk == p[k]);
     xCheck(qk == q[k]);
     xCheck(rk == r[k]);
-    
+
     // Allocate and fetch actual testcase coefficients
     int r2 = rk*rk, nk = n[k];
     int nA = pk > 0 ? r2*pk : 1;
@@ -61,7 +59,7 @@ void TestAgainstMatlab(void) {
     bool sim_ok;
     allocate(Xsim, rk*nk);
     allocate(eps,  rk*nk);
-    RandSeed(42, rng);
+    randompack_rng *rng = randompack_create("PM", 42);
     printM("Ak", Ak, rk, rk*pk);
     printM("Bk", Bk, rk, rk*qk);
     printM("Sigk", Sigk, rk, rk);
@@ -78,6 +76,7 @@ void TestAgainstMatlab(void) {
     freem(Sigk);
     freem(Xsim);
     freem(eps);
+    randompack_free(rng);
   }
   xCheckAddMsg("");
 }

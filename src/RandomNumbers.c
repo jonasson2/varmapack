@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>
 #include <time.h>
 #include "allocate.h"
 #include "RandomNumbers.h"
@@ -65,42 +66,52 @@ static int LastNonzeroColumn(int m, int n, double A[]) {
   return k + 2;
 }
 
-RandRng *RandCreate(void) {
-  return rand_create();
+randompack_rng *randompack_create(const char *type, int seed) {
+  randompack_rng *rng = rand_create();
+  if (!rng) return 0;
+
+  // Parse type string
+  rng_type rtype = DEFAULT;
+  if (type) {
+    if (strcmp(type, "Park-Miller")==0 || strcmp(type, "PM")==0) {
+      rtype = PARKMILLER;
+    }
+    else if (strcmp(type, "Xorshift128+")==0 || strcmp(type, "Xorshift")==0 ||
+             strcmp(type, "X+")==0) {
+      rtype = DEFAULT;
+    }
+    else if (strcmp(type, "R")==0 || strcmp(type, "R-default")==0) {
+      rtype = DEFAULT;
+    }
+  }
+  rand_settype(rtype, rng);
+
+  // Seed or randomize
+  if (seed == 0) {
+    rand_randomize(0, rng);
+  }
+  else if (seed < 0) {
+    rand_randomize((uint64_t)(-seed), rng);
+  }
+  else {
+    uint32_t pm = (uint32_t)seed;
+    uint64_t x = (uint64_t)(uint32_t)seed;
+    uint64_t s0 = rand_splitmix64(&x);
+    uint64_t s1 = rand_splitmix64(&x);
+    if (s0 == 0 && s1 == 0) s1 = 1;
+    rand_setPMseed(pm, rng);
+    rand_setstate(s0, s1, rng);
+  }
+
   (void)rand_keepalive; // To suppress warnings of unused rand_ functions
+  return rng;
 }
 
-void RandFree(RandRng *rng) {
+void randompack_free(randompack_rng *rng) {
   rand_free(rng);
 }
 
-void RandSetPM(RandRng *rng) {
-  rand_settype(PARKMILLER, rng);
-}
-
-void RandSetDefault(RandRng *rng) {
-  rand_settype(DEFAULT, rng);
-}
-
-void RandSeed(int seed, RandRng *rng) {
-  uint32_t pm = (uint32_t)seed;
-  uint64_t x = (uint64_t)(uint32_t)seed;
-  uint64_t s0 = rand_splitmix64(&x);
-  uint64_t s1 = rand_splitmix64(&x);
-  if (s0 == 0 && s1 == 0) s1 = 1;
-  rand_setPMseed(pm, rng);
-  rand_setstate(s0, s1, rng);
-}
-
-void RandRandomize(RandRng *rng) {
-  rand_randomize(0, rng);
-}
-
-void RandThreadRandomize(uint64_t thread_id, RandRng *rng) {
-  rand_randomize(thread_id, rng);
-}
-
-void Rand (double x[], int n, RandRng *rng) {
+void randompack_u01(double x[], int n, randompack_rng *rng) {
 #ifdef USING_R
   if (rng->type == PARKMILLER)
     rand_dble(x, n, rng);
@@ -116,7 +127,7 @@ void Rand (double x[], int n, RandRng *rng) {
 #endif  
 }
 
-void RandN (double x[], int n, RandRng *rng) {
+void randompack_norm(double x[], int n, randompack_rng *rng) {
 #ifdef USING_R
   if (rng->type == PARKMILLER)
     rand_normal(x, n, rng);
@@ -155,8 +166,8 @@ void RandN (double x[], int n, RandRng *rng) {
 //   return macheps;
 // }
 
-void RandNM (char *transp, double mu[], double Sig[], int d, int n, double X[], double
-	     L[], RandRng *rng) {
+void randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, double X[],
+                       double L[], randompack_rng *rng) {
   // If Sig, fill L if it is supplied, otherwise use L
   // Sig is d × d, X is either n × d (if transp="N...") or d × n (if transp="T...")
   int i, info, rank;
@@ -193,7 +204,7 @@ void RandNM (char *transp, double mu[], double Sig[], int d, int n, double X[], 
   }
   rank = LastNonzeroColumn(d, d, L);
   if (rank == d) {
-    RandN(X, n*d, rng);
+    randompack_norm(X, n*d, rng);
     if (TRAN) {
       trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, d);
     }
@@ -203,9 +214,9 @@ void RandNM (char *transp, double mu[], double Sig[], int d, int n, double X[], 
   else { // Singular Sig, use workspace for the N(0,1) randoms
     double *Wrk;
     allocate(Wrk, n*rank);
-    RandN(Wrk, n*rank, rng);
+    randompack_norm(Wrk, n*rank, rng);
     if (TRAN)
-      gemm("NoT", "NoT", d, n, rank, 1.0, L, d, Wrk, n, 0.0, X, d);
+      gemm("NoT", "NoT", d, n, rank, 1.0, L, d, Wrk, rank, 0.0, X, d);
     else
       gemm("NoT", "T", n, d, rank, 1.0, Wrk, n, L, d, 0.0, X, n);
     free(Wrk);

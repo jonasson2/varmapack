@@ -25,7 +25,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   int *qp,       // in/out  Number of moving avg. terms (or null)
   int *rp,       // in/out  dimension of each x(t) (or null)
   int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
-  RandRng *rng,  // in      random number generator
+  randompack_rng *rng,  // in      random number generator
   FILE *fp)      // in      stream to print errors (or null)
 {
   // TESTCASE CREATION
@@ -223,7 +223,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   }
   else if (*icase == 0) {
     if (A && p>0) {
-      Rand(A, r*r*p, rng);
+      randompack_u01(A, r*r*p, rng);
       scal(r*r*p, 0.5/(p*r), A, 1); 
       double *tmpS;
       allocate(tmpS, r*r*(p+1));
@@ -244,7 +244,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
       freem(tmpS);
     }
     if (B && q>0) {
-      Rand(B, r*r*q, rng);
+      randompack_u01(B, r*r*q, rng);
       scal(r*r*q, 1.0/(q*r), B, 1);
     }
   }

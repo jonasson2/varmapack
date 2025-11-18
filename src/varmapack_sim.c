@@ -91,7 +91,7 @@ static void SBuild( char *uplo, double S[], double A[], double G[], int p, int q
 static void CCBuild( double A[], double C[], int p, int q, int r, int n, double CC[]);
 
 void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int q,
-              int r, int n, int M, double X0[], int nX0, RandRng *rng, double X[],
+              int r, int n, int M, double X0[], int nX0, randompack_rng *rng, double X[],
               double E[], bool *ok)
 {
   int h = imax(p,q), k = (X0 == 0 ? h : nX0), rk = r*k;
@@ -132,8 +132,8 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     varmapack_FindPsiHat(Psi, PsiHat, Sig, r, h);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
-    RandNM("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
-    RandNM("T", 0, R, rh, M, Wrk, 0, rng);  // draw Wrk from N(0, R)
+    randompack_mvn("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
+    randompack_mvn("T", 0, R, rh, M, Wrk, 0, rng);  // draw Wrk from N(0, R)
     lacpy("All", rh, M, Wrk, rh, X, rh);    // copy to X1
     gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, // X1 := Psi*E(1:h) + X1
          rh, E, rn, 1.0, X, rn);
@@ -158,12 +158,12 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
       lacpy("Low", r, r, Sig, r, R + j*r*(rk + 1), rk);
     }
     syrk("L", "T", rk, rk, 1.0, Chat, rk, 1.0, R, rk);
-    RandNM("T", e, R, rk, M, E, 0, rng); // first k shocks
+    randompack_mvn("T", e, R, rk, M, E, 0, rng); // first k shocks
     freem(e); freem(x0bar); freem(CC); 
   }
   freem(C);
   freem(R); freem(SS); 
-  RandNM("T", 0, Sig, r, (n-k)*M, E + rk, 0, rng); // remaining shocks
+  randompack_mvn("T", 0, Sig, r, (n-k)*M, E + rk, 0, rng); // remaining shocks
   copy((n-k)*r*M, E + rk, 1, X + rk, 1);
   double *Aflp, *Bflp;
   allocate(Aflp, r*p);

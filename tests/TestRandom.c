@@ -26,9 +26,8 @@ static void test_uniform_basic(void) {
   double *x = NULL;
   allocate(x, N);
 
-  RandRng *rng = RandCreate();
-  RandSetDefault(rng);
-  Rand(x, N, rng);
+  randompack_rng *rng = randompack_create("Xorshift", 0);
+  randompack_u01(x, N, rng);
 
   // Check range
   double xmin = x[0], xmax = x[0];
@@ -42,7 +41,7 @@ static void test_uniform_basic(void) {
   xCheck(fabs(mu - exactmu) < meantol);
   xCheck(fabs(va - exactvar) < vartol);
 
-  RandFree(rng);
+  randompack_free(rng);
   freem(x);
 }
 
@@ -55,8 +54,8 @@ static void test_normal_basic(void) {
   double *x = NULL;
   allocate(x, N);
 
-  RandRng *rng = RandCreate();
-  RandN(x, N, rng);
+  randompack_rng *rng = randompack_create("Xorshift", 0);
+  randompack_norm(x, N, rng);
   double mu = mean(x, N);
   double va = var(x, N, mu);
   printD("va", va);
@@ -65,7 +64,7 @@ static void test_normal_basic(void) {
   xCheck(fabs(mu - exactmu) < meantol);
   xCheck(fabs(va - exactvar) < vartol);
 
-  RandFree(rng);
+  randompack_free(rng);
   freem(x);
 }
 
@@ -78,20 +77,16 @@ static void test_determinism_default_seed(void) {
   allocate(a, N);
   allocate(b, N);
 
-  RandRng *r1 = RandCreate();
-  RandRng *r2 = RandCreate();
-  RandSetDefault(r1);
-  RandSetDefault(r2);
-  RandSeed(123, r1);
-  RandSeed(123, r2);
+  randompack_rng *r1 = randompack_create("Xorshift", 123);
+  randompack_rng *r2 = randompack_create("Xorshift", 123);
 
-  RandN(a, N, r1);
-  RandN(b, N, r2);
+  randompack_norm(a, N, r1);
+  randompack_norm(b, N, r2);
 
   xCheck(almostEqual(a, b, N));
 
-  RandFree(r1);
-  RandFree(r2);
+  randompack_free(r1);
+  randompack_free(r2);
   freem(a);
   freem(b);
 }
@@ -103,24 +98,19 @@ static void test_pm_vs_default_selection(void) {
   allocate(a, N);
   allocate(b, N);
 
-  RandRng *r = RandCreate();
+  randompack_rng *r1 = randompack_create("Xorshift", 123);
+  randompack_u01(a, N, r1);
 
-  RandSetDefault(r);
-  RandSeed(123, r);
-  Rand(a, N, r);
-
-  RandSetPM(r);
-  RandSeed(123, r);
-  Rand(b, N, r);
+  randompack_rng *r2 = randompack_create("PM", 123);
+  randompack_u01(b, N, r2);
 
   xCheck(!almostEqual(a, b, N));
 
-  RandFree(r);
+  randompack_free(r1);
+  randompack_free(r2);
   freem(a);
   freem(b);
 }
-
-
 
 // Test randomize changes stream
 static void test_randomize_changes_stream(void) {
@@ -130,21 +120,22 @@ static void test_randomize_changes_stream(void) {
   allocate(b, N);
   allocate(c, N);
 
-  RandRng *r = RandCreate();
-  RandSetDefault(r);
+  randompack_rng *r1 = randompack_create("Xorshift", 42);
+  randompack_u01(a, N, r1);
 
-  RandSeed(42, r);
-  Rand(a, N, r);
-  RandRandomize(r);
-  Rand(b, N, r);
-  RandThreadRandomize(42, r);
-  Rand(c, N, r);
+  randompack_rng *r2 = randompack_create("Xorshift", 0);
+  randompack_u01(b, N, r2);
+
+  randompack_rng *r3 = randompack_create("Xorshift", -42);
+  randompack_u01(c, N, r3);
 
   xCheck(!almostEqual(a, b, N));
   xCheck(!almostEqual(a, c, N));
   xCheck(!almostEqual(b, c, N));
 
-  RandFree(r);
+  randompack_free(r1);
+  randompack_free(r2);
+  randompack_free(r3);
   freem(a);
   freem(b);
   freem(c);
@@ -183,10 +174,10 @@ static bool ok7sig(double x[], double sig[], int n) {
   return true;
 }
 
-static void check_cov(char *transp, int N, double Sig[], double X[], RandRng *rng) {
+static void check_cov(char *transp, int N, double Sig[], double X[], randompack_rng *rng) {
   double C[16], Sms[4], Smsstd[4], Cmc[4], Cmcstd[4];
   int k, kk, ii, ij, jj;
-  RandNM(transp, 0, Sig, 4, N, X, 0, rng);
+  randompack_mvn(transp, 0, Sig, 4, N, X, 0, rng);
   if (transp[0] == 'N')
     cov("N", N, 4, X, C);
   else
@@ -220,17 +211,22 @@ static void test_randnm(double Sig[], int rank) {
   if (rank < 4)  msg("Positive semidefinite sigma");
   const int N = 10000, N1 = 10, N2 = 5;
   double mu[4] = {5, 10, 15, 20};
-  double X[N*4], X1[N1*4], X2[N1*4], X3[N1*4], LSig[16], S[16];
+  double *X, *X1, *X2, *X3, LSig[16], S[16];
   double means[4], meanstd_N[4];
+  allocate(X, N*4);
+  allocate(X1, N1*4);
+  allocate(X2, N1*4);
+  allocate(X3, N1*4);
   printM("Sig", Sig, 4, 4);
-  RandRng *rng = RandCreate();
-  
+  randompack_rng *rng;
+
   stdevs(Sig, meanstd_N, 4, N); // Stddev of means:
-  
+
   msg("Check that singular Sig gives singular LSig");
-  RandSeed(9, rng);
-  RandNM("NoT", mu, Sig, 4, N1, X1, LSig, rng);
+  rng = randompack_create("Xorshift", 9);
+  randompack_mvn("NoT", mu, Sig, 4, N1, X1, LSig, rng);
   xCheck(rank == 4 ? LSig[15] > 0 : LSig[15] == 0);
+  randompack_free(rng);
 
   msg("Check LSig·LSig' = Sig:");
   laset("Upper", 4, 4, 0.0, 0.0, S, 4);
@@ -240,23 +236,26 @@ static void test_randnm(double Sig[], int rank) {
   msg("LSig 0:");
 
   msg("Reuse LSig (Sig=0):");
-  RandSeed(9, rng);
-  RandNM("NoT", mu, 0, 4, N1, X2, LSig, rng);
+  rng = randompack_create("Xorshift", 9);
+  randompack_mvn("NoT", mu, 0, 4, N1, X2, LSig, rng);
   xCheck(almostEqual(X1, X2, N1*4));
+  randompack_free(rng);
 
   msg("Check setting seed to same value");
-  RandSeed(9, rng);
-  RandNM("NoT", mu, Sig, 4, N1, X3, 0, rng);
+  rng = randompack_create("Xorshift", 9);
+  randompack_mvn("NoT", mu, Sig, 4, N1, X3, 0, rng);
   xCheck(almostEqual(X2, X3, N1*4));
-  
-  
+  randompack_free(rng);
+
   msg("-Check that X is in the range of LSig:");
-  RandNM("NoT", 0, Sig, 4, N2, X, LSig, rng);
+  rng = randompack_create("Xorshift", 0);
+  randompack_mvn("NoT", 0, Sig, 4, N2, X, LSig, rng);
   test_range(4, rank, LSig, N2, X);
-  
+  randompack_free(rng);
+
   msg("Check correct means with specified mu:");
-  RandSeed(9, rng);
-  RandNM("NoT", mu, 0, 4, N, X, LSig, rng);
+  rng = randompack_create("Xorshift", 9);
+  randompack_mvn("NoT", mu, 0, 4, N, X, LSig, rng);
   meanmat("N", N, 4, X, N, means);
   //printM("(a) X", X, N2, 4);
   printV("means", means, 4);
@@ -264,24 +263,32 @@ static void test_randnm(double Sig[], int rank) {
   printV("mu", mu, 4);
   printV("meanstd", meanstd_N, 4);
   xCheck(ok7sig(means, meanstd_N, 4));
-  RandSeed(9, rng);
-  RandNM("T", mu, 0, 4, N, X, LSig, rng); // also for X^T
+  randompack_free(rng);
+
+  rng = randompack_create("Xorshift", 9);
+  randompack_mvn("T", mu, 0, 4, N, X, LSig, rng); // also for X^T
   //printM("(b) X", X, 4, N2);
   meanmat("T", 4, N, X, 4, means);
   printV("means", means, 4);
   axpy(4, -1.0, mu, 1, means, 1);
   xCheck(ok7sig(means, meanstd_N, 4));
-  
+  randompack_free(rng);
+
   msg("– and with mu=0:");
-  RandNM("NoT", 0, Sig, 4, N, X, LSig, rng);
+  rng = randompack_create("Xorshift", 0);
+  randompack_mvn("NoT", 0, Sig, 4, N, X, LSig, rng);
   meanmat("N", N, 4, X, N, means);
   printV("means", means, 4);
   xCheck(ok7sig(means, meanstd_N, 4));
-  
+
   msg("-Sample covariance");
   check_cov("NoT", N, Sig, X, rng);
   check_cov("T", N, Sig, X, rng);
-  RandFree(rng);
+  randompack_free(rng);
+  freem(X);
+  freem(X1);
+  freem(X2);
+  freem(X3);
 }
 
 static void test_multivariate_normal(void) {
@@ -293,17 +300,74 @@ static void test_multivariate_normal(void) {
       0, 0, 0, 1},
     Lsing[16] = {
       1, 2, 3, 2,
-      0, 2, 1, 1};
+      0, 2, 1, 1,
+      0, 0, 0, 0,
+      0, 0, 0, 0};
   //scal(16, 0.1, Lnonsing, 1);
   xCheckAddMsg("Test positive definite Sigma");
   laset("Upper", 4, 4, 0.0, 0.0, Sig, 4);
   syrk("Lower", "NoT", 4, 4, 1.0, Lnonsing, 4, 0.0, Sig, 4);
   test_randnm(Sig, 4);
-  //
+
   xCheckAddMsg("Test positive semidefinite Sigma");
   laset("Upper", 4, 4, 0.0, 0.0, Sig, 4);
   syrk("Lower", "NoT", 4, 4, 1.0, Lsing, 4, 0.0, Sig, 4);
-  //test_randnm(Sig, 2);  
+  test_randnm(Sig, 2);  
+}
+
+// Test type name aliases produce identical output
+static void test_type_name_aliases(void) {
+  const int N = 100;
+  double *a = NULL, *b = NULL, *c = NULL, *d = NULL, *e = NULL;
+  allocate(a, N);
+  allocate(b, N);
+  allocate(c, N);
+  allocate(d, N);
+  allocate(e, N);
+
+  randompack_rng *r1 = randompack_create("Xorshift128+", 123);
+  randompack_u01(a, N, r1);
+
+  randompack_rng *r2 = randompack_create("Xorshift", 123);
+  randompack_u01(b, N, r2);
+
+  randompack_rng *r3 = randompack_create("X+", 123);
+  randompack_u01(c, N, r3);
+
+  xCheck(almostEqual(a, b, N));
+  xCheck(almostEqual(a, c, N));
+
+  randompack_free(r1);
+  randompack_free(r2);
+  randompack_free(r3);
+
+  randompack_rng *r4 = randompack_create("Park-Miller", 456);
+  randompack_u01(d, N, r4);
+
+  randompack_rng *r5 = randompack_create("PM", 456);
+  randompack_u01(e, N, r5);
+
+  xCheck(almostEqual(d, e, N));
+
+  randompack_free(r4);
+  randompack_free(r5);
+
+  randompack_rng *r6 = randompack_create("R", 789);
+  randompack_u01(a, N, r6);
+
+  randompack_rng *r7 = randompack_create("R-default", 789);
+  randompack_u01(b, N, r7);
+
+  xCheck(almostEqual(a, b, N));
+
+  randompack_free(r6);
+  randompack_free(r7);
+
+  freem(a);
+  freem(b);
+  freem(c);
+  freem(d);
+  freem(e);
 }
 
 // static void run_test(const char *name, void (*fn)(void)) {
@@ -324,4 +388,5 @@ void TestRandomNumbers(void) {
   RUN_TEST(determinism_default_seed);
   RUN_TEST(pm_vs_default_selection);
   RUN_TEST(randomize_changes_stream);
+  RUN_TEST(type_name_aliases);
 }

@@ -38,18 +38,20 @@ static inline void PM_rand_int(int bound, int x[], int n, rand_rng *rng) {
 }
 
 static inline void rand_int(int bound, int x[], int n, rand_rng *rng) {
-  // TODO fix this (make it work for any int size, and check also for ILP64
-  // by using uint64_t instead of int in the testing
-  assert(bound >=0);  
+  assert(bound >=0);
 #if UINT_MAX == UINT32_MAX // int is 32 bits
   if (rng->type == PARKMILLER)
     PM_rand_int(bound, x, n, rng);
   else
     rand_uint32((uint32_t) bound, (uint32_t*) x, n, rng);
-#elif UINT_MAX == UINT64_MAX
-  assert(rng->type != PARKMILLER); // Unsupported int size with Park-Miller
-  rand_uint64((uint64_t) bound, (uint64_t*) x, n, rng);
-  // Needs an ILP64 compiler to test, e.g. Cray
+#elif UINT_MAX == UINT64_MAX // int is 64 bits (ILP64)
+  if (rng->type == PARKMILLER) {
+    assert(bound <= INT32_MAX); // Park-Miller limited to 31-bit values
+    PM_rand_int(bound, x, n, rng);
+  }
+  else {
+    rand_uint64((uint64_t) bound, (uint64_t*) x, n, rng);
+  }
 #else
 #error "Unsupported int size"
 #endif
