@@ -2,6 +2,7 @@ test_sources = files(
   'RunTests.c',
   'TestRandom.c',
   'TestExtraUtil.c',
+  'TestCovar.c',
   'TestTestcase.c',
   'TestVarSpecRad.c',
   'TestAgainstMatlab.c',

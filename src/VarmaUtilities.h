@@ -125,6 +125,18 @@ static inline void copylowertoupper(int n, double A[], int ldA) {
   }
 }
 
+static inline void setEye(int n, double A[], int lda) {
+  // Set matrix to identity
+  laset("All", n, n, 0.0, 1.0, A, lda);
+}
+
+static inline void flipmat(double A[], double Aflp[], int r, int k) {
+  // [A1 ... Ak] –> [Ak ... A1]
+  for (int i = 0; i < k; i++) {
+    lacpy("All", r, r, A + i*r*r, r, Aflp + (k - 1 - i)*r*r, r);
+  }
+}
+
 static inline bool anynan(int n, double A[]) { // return true if A[i] != A[i] for any i
   int i;
   for (i=0; i<n; i++) if (A[i] != A[i]) return true;

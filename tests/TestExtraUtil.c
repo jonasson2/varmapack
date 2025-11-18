@@ -23,20 +23,6 @@ static void checkmeancov(void) {
   xCheck(almostEqual(C, D, 4));
 }
 
-static void checkmean3(void) {
-  // Check correctness of mean3 with a simple 2 by 3 by 4 array.
-  double X[2*3*4], mu[3*4];
-  int i;
-  for (i=0; i<2*3*4; i++) X[i] = i+1;
-  mean3(X, 2, 3, 4, 1, mu);
-  for (i=0; i<12; i++) xCheck(fabs(mu[i] - (1.5 + 2*i)) < 1e-14);
-  mean3(X, 2, 3, 4, 2, mu);
-  for (i=0; i<8; i+=2)
-    xCheck(fabs(mu[i] - (3 + 3*i)) + fabs(mu[i+1] - (4 + 3*i)) < 1e-14);
-  mean3(X, 2, 3, 4, 3, mu);
-  for (i=0; i<6; i++) xCheck(fabs(mu[i] - (10 + i)) < 1e-14);
-}
-
 static void checkvar(void) {
   // Also checks mean
   double x[] = {1.0, 2.0, 3.0, 4.0};
@@ -78,7 +64,6 @@ void TestExtraUtil(void) {
   xCheck(almostSame(b[1], b[2]));
   xCheck(!almostSame(a[1], a[2]));
   checkdiff(); // more checks of the above
-  checkmean3();
   checkmeancov();
   checkvar();
 }

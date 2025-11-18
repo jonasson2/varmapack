@@ -6,8 +6,9 @@
 void TestExtraUtil(void);
 void TestRandomNumbers(void);
 void TestTestcase(void);
-void Testvarmapack_spec_rad(void);
+void Testvarmapack_specrad(void);
 void TestAgainstMatlab(void);
 void TestFindCG(void);
 void TestPsi(void);
+void TestCovar(void);
 #endif /* TESTS_H */

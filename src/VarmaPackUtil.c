@@ -46,17 +46,7 @@ void varmapack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   }
 }
 
-void flipmat(double *A, double *Aflp, int r, int k) {
-  // [A1 A2...Ak] ––> [Ak...A2 A1]
-  int i;
-  for (i=0; i<k; i++) lacpy("All", r, r, A + i*r*r, r, Aflp + (k-1-i)*r*r, r);
-}
-
-static void setEye(int n, double A[], int lda) {
-  laset("All", n, n, 0.0, 1.0, A, lda);
-}
-
-void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
+void varmapack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   // Prepare
   int h = imax(p, q), rr = r*r, hr = h*r, i, j, k, l;
   double *Aflp, *Psi_jj;
@@ -85,7 +75,7 @@ void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   freem(Aflp);
 }
 
-void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
+void varmapack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
   double *LSig, *Psi_hat_kk;
   int info, hr = h*r, rr = r*r, k, nrow;
   allocate(LSig, rr);

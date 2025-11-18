@@ -2,13 +2,13 @@
 #include <stdbool.h>
 #include "BlasGateway.h"
 #include "allocate.h"
-#include "VYW.h"
 #include "VarmaUtilities.h"
 #include "RandomNumbers.h"
 #include "varmapack.h"
 #include "printX.h"
 #define DEBUG
 #include "debugprint.h"
+#include "varmapack_VYW.h"
 
 static void flipud(int m, int n, double src[], double dst[]);
 static void hilb(double A[], int m);
@@ -188,8 +188,8 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   double *Bv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
   double *Sigv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
 
-  int nVYW, i, j, *piv, info, ok;
-  double *VYWfactors;
+  int i, j;
+  bool ok;
   // Finish defining the starting matrices:
   Av[0]=A1; Av[2]=A3; Av[3]=A4; Av[5]=A6; Av[6]=A7; Av[7]=A8; Av[8]=A9; Av[9]=A10; Av[11]=A12;
   Bv[1]=B2; Bv[2]=B3; Bv[4]=B5; Bv[5]=B6; Bv[6]=B7; Bv[8]=B9; Bv[9]=B10; Bv[10]=B11;
@@ -225,20 +225,23 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     if (A && p>0) {
       Rand(A, r*r*p, rng);
       scal(r*r*p, 0.5/(p*r), A, 1); 
-      nVYW = r*r*p - r*(r-1)/2;
-      allocate(VYWfactors, nVYW*nVYW);
-      allocate(piv, nVYW);
+      double *tmpS;
+      allocate(tmpS, r*r*(p+1));
+      double *tmpB = 0;
+      if (q > 0) {
+        allocate(tmpB, r*r*q);
+        setzero(r*r*q, tmpB);
+      }
       j = 0;
       while (true) {
-        VYWFactorize(A, VYWfactors, piv, p, r, &info);
-        // ok = info == 0 && IsStationary(A, Sig, VYWfactors, piv, p, r);
-        ok = true; // TODO: fix this
+        ok = varmapack_VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
         if (ok) break;
         scal(r*p, 0.5, A, 1);
         j++;
         xAssert(j < 10);
       }
-      freem(piv); freem(VYWfactors);
+      if (q > 0) freem(tmpB);
+      freem(tmpS);
     }
     if (B && q>0) {
       Rand(B, r*r*q, rng);

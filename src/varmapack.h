@@ -28,13 +28,34 @@ void varmapack_sim ( // Simulate VARMA time series
   bool *ok      // out     1 if stationary (or X0 non-NULL), else 0
   );
 
-double varmapack_spec_rad( // Spectral radius of companion matrix of a VAR process
+double varmapack_specrad( // Spectral radius of companion matrix of a VAR process
   double A[],   // in   r×r×p, autoregressive parameter matrices
-  int r,        // in   row count of A
+  int r,        // in   dimension of each x(t), row count of A
   int p);       // in   number of autoregressive terms
 
-bool varmapack_acvf(double A[], double B[], double Sig[], // Theoretical autocovariance
-                    int p, int q, int r, double Gamma[], int maxlag);
+bool varmapack_is_stationary(
+  double A[],   // in   r×r×p, autoregressive parameter matrices
+  int r,        // in   dimension of each x(t)
+  int p);       // in   number of autoregressive terms
+
+bool varmapack_acvf( // Theoretical autocovariance function of VARMA model
+  double A[],    // in   r×r×p autoregressive matrices
+  double B[],    // in   r×r×q moving average matrices
+  double Sig[],  // in   r×r shock's covariance
+  int p,         // in   number of autoregressive terms
+  int q,         // in   number of moving-average terms
+  int r,         // in   dimension of each x(t)
+  double Gamma[],// out  r×r×(maxlag+1) covariance sequence, Γk = Cov(xt, x{t-k})
+  int maxlag);   // in   largest lag to compute
+
+void varmapack_autocov( // Sample autocovariance of observed data
+  const char *transp, // in   "N": X r×n with x(t) in column t; "T": n×r, x(t) in row t
+  const char *norm,   // in   "ML" for 1/n scaling, "C" for 1/(n−k) correction
+  int r,              // in   dimension of each observation
+  int n,              // in   number of observations
+  double X[],         // in   data matrix in storage indicated by transp
+  int maxlag,         // in   number of lags to compute (≤ n−1)
+  double C[]);        // out  r×r×(maxlag+1) array of lag-k covariance matrices
 
 bool varmapack_testcase( // Create a testcase for VARMA calculation
   double A[],    // out     r×r×p, autoregressive parameter matrices (or null)

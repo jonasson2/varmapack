@@ -19,11 +19,8 @@ void varmapack_FindCG(
   double G[]    // out  r×r×(q+1)  Gi = cov(y(t), x(t−i))
 );
 
-void flipmat(double *A, double *Aflp, int r, int k);
-// [A1 A2...Ak] ––> [Ak...A2 A1]
-
-void FindPsi(double *A, double *B, double *Psi, int p, int q, int r);
+void varmapack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r);
 // TODO: doc
 
-void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h);
+void varmapack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h);
 // TODO: doc

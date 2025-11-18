@@ -79,12 +79,12 @@
 #include <stdbool.h>
 #include "allocate.h"
 #include "BlasGateway.h"
-#include "VYW.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
 #include "RandomNumbers.h"
 #include "varmapack.h"
 #include "xAssert.h"
+#include "varmapack_VYW.h"
 
 static void SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r, int n,
              double SS[]);
@@ -97,6 +97,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   int h = imax(p,q), k = (X0 == 0 ? h : nX0), rk = r*k;
   int rn = r*n;  // Total number of observations
   int rh = r*h;  // Observation count in starting segment, order of SS, CC and EE
+  int info;
   bool Ealloc = E==0;
   xAssert(p>=0 && q>=0 && r>0 && M>0);
   xAssertMessage(n > h, "Illegal parameter in varmapack_sim, n must be > max(p,q)");
@@ -106,27 +107,19 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   if (Ealloc) allocate(E, rn*M);
                  
   // SOLVE VECTOR-YULE-WALKER EQUATIONS FOR COVARIANCE OF X
-  double *vywFactors;
-  int *piv, info;
-  int nVYW = (p == 0) ? 0 : r*r*p - r*(r-1)/2; // order of matrix of VYW-equations
-  allocate(vywFactors, nVYW * nVYW);
-  allocate(piv, nVYW);
-  VYWFactorize(A, vywFactors, piv, p, r, &info);
-  if (info != 0) {
-    freem(piv); freem(vywFactors);
-    xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
-  }
   double *C, *G, *S;
   allocate(C, r*r*(q+1));
   allocate(G, r*r*(q+1));
   allocate(S, r*r*(p+1));
-  varmapack_FindCG(A, B, Sig, p, q, r, C, G);
-  VYWSolve(A, vywFactors, S, G, 1, q+1, piv, p, r);
+  if (!varmapack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
+    freem(S); freem(G); freem(C);
+    xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
+  }
   double *SS;
   allocate(SS, rk*rk);
   SBuild("Low", S, A, G, p, q, r, k, SS);
-  freem(S); freem(G); freem(C);
-  freem(piv); freem(vywFactors);
+  freem(S);
+  freem(G);
   double *R;
   allocate(R, rk*rk);
   // GENERATE INITIAL SEGMENT OF X
@@ -135,8 +128,8 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     allocate(Wrk, rh*M);
     allocate(Psi, rh*rh);
     allocate(PsiHat, rh*rh);
-    FindPsi(A, B, Psi, p, q, r);
-    FindPsiHat(Psi, PsiHat, Sig, r, h);
+    varmapack_FindPsi(A, B, Psi, p, q, r);
+    varmapack_FindPsiHat(Psi, PsiHat, Sig, r, h);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
     RandNM("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
@@ -151,7 +144,6 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     allocate(CC, rk*rk);
     allocate(x0bar, rk);
     allocate(e, rk*M);
-    SBuild("Low", S, A, G, p, q, r, k, SS);
     LS = SS;
     potrf("Low", rk, LS, rk, &info); // Cholesky factorize SS
     xAssert(info == 0);
@@ -169,6 +161,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     RandNM("T", e, R, rk, M, E, 0, rng); // first k shocks
     freem(e); freem(x0bar); freem(CC); 
   }
+  freem(C);
   freem(R); freem(SS); 
   RandNM("T", 0, Sig, r, (n-k)*M, E + rk, 0, rng); // remaining shocks
   copy((n-k)*r*M, E + rk, 1, X + rk, 1);

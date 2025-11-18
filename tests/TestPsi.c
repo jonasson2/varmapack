@@ -31,7 +31,7 @@ static void TestFindPsi(void) {
   ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
 
-  FindPsi(A, B, Psi, p, q, r);
+  varmapack_FindPsi(A, B, Psi, p, q, r);
 
   // Expected Psi from Matlab find_Psi(A,B) for testcase 9 (3x9x3 flattened)
   double Psi_exp[] = {
@@ -68,13 +68,13 @@ static void TestFindPsiHat(void) {
   allocate(Psi_hat, r*h*r*h);
 
   varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
-  FindPsi(A, B, Psi, p, q, r);
+  varmapack_FindPsi(A, B, Psi, p, q, r);
   double Sig_mod[] = {
     1.0, 1.0, 1.0,
     1.0, 2.0, 1.0,
     1.0, 1.0, 2.0
   };
-  FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
+  varmapack_FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
 
   // Expected Psi_hat from Matlab find_Psi_hat for testcase 9 with modified Sig:
   double Psi_hat_exp[] = {
@@ -100,8 +100,8 @@ static void TestPsiTinyAR(void) {
   bool ok;
   ok = varmapack_testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
-  FindPsi(A, B, Psi, p, q, r);
-  FindPsiHat(Psi, PsiHat, Sig, r, h);
+  varmapack_FindPsi(A, B, Psi, p, q, r);
+  varmapack_FindPsiHat(Psi, PsiHat, Sig, r, h);
   xCheck(Psi[0] == 1);
   xCheck(almostSame(PsiHat[0], 0.894427190999916));
 }
@@ -134,8 +134,8 @@ static void TestPsiSimple(void) {
   p = 2;
   Sig[0] = 1.0;              // So LSig is simple
 
-  FindPsi(A, B, Psi, p, q, r);
-  FindPsiHat(Psi, Psi_hat, Sig, r, h);
+  varmapack_FindPsi(A, B, Psi, p, q, r);
+  varmapack_FindPsiHat(Psi, Psi_hat, Sig, r, h);
   
   double Psi_exp[] = {
     1,  0, .6, .4,

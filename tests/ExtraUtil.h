@@ -9,7 +9,6 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
-void write_matrix(const char *fname, int m, int n, const double *A); // for Matlab
 double mean(const double *x, int n);               // Mean of vector
 double var(const double *x, int n, double mu);     // Unbiased variance of vector
 double relabsdiff(double a[], double b[], int n);  // max(relative diff, absolute diff)
@@ -19,10 +18,6 @@ int almostSame(double a, double b);                // are a and b are almost equ
 int almostEqual(double a[], double b[], int n);    // is rel.diff. beween a and b < 5e-14?
 int almostAllSame(double a[], int n);              // is max diff. among x-elements < 5e-14?
 int almostZero(double a[], int n);                 // is a ≈ 0?
-
-void mean3(double X[], int m, int n, int k, int idim, double mu[]);
-// Calculate the mean of the m by n by k array X along the dimension idim. The mean is
-// returned in mu which is n by k, m by k or m by n for idim = 1, 2 and 3 respectively.
 
 void cov(char *transp, int m, int n, double X[], double C[]);
 // C := covariance between columns of op(X). X is an m by n matrix. If transp begins with

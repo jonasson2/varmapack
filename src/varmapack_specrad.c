@@ -1,11 +1,12 @@
-// varmapack_spec_rad  Spectral radius of companion matrix of a VAR process
+// varmapack_specrad  Spectral radius of companion matrix of a VAR process
 #include <math.h>
+#include <stdbool.h>
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
 #include "allocate.h"
 #include "xAssert.h"
 
-double varmapack_spec_rad(double *A, int r, int p) {
+double varmapack_specrad(double *A, int r, int p) {
   int i, k, lwork, info;
   int n = r*p;
   double *Ac, *wr, *wi, *work, alwork, hyp, rho, dummy[1];
@@ -30,4 +31,9 @@ double varmapack_spec_rad(double *A, int r, int p) {
   freem(wr);
   freem(Ac);
   return rho;
+}
+
+// Model is stationary iff the spectral radius is less than 1
+bool varmapack_is_stationary(double *A, int r, int p) {
+  return varmapack_specrad(A, r, p) < 1.0;
 }

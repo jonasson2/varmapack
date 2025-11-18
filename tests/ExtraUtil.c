@@ -5,22 +5,10 @@
 #include "ExtraUtil.h"
 #include "BlasGateway.h"
 #include "xAssert.h"
-#include "VYW.h"
 #include "Tests.h"
 #include "varmapack.h"
 #include <math.h>
 #include <stdio.h>
-
-void write_matrix(const char *fname, int m, int n, const double *A) {
-  FILE *fp = fopen(fname, "w");
-  for (int i = 0; i < m; i++) {
-    for (int j = 0; j < n; j++) {
-      fprintf(fp, "%.17g ", A[i + j*n]);
-    }
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
-}
 
 double mean(const double *x, int n) {
   // Mean of vector
@@ -86,23 +74,6 @@ int almostAllSame(double a[], int n) {
   return (maxel - minel) <= 5e-14*fmax(1,amax);
 }
 
-void mean3(double X[], int m, int n, int k, int idim, double mu[]) {
-  // Calculate the mean of the m by n by k array X along the dimension idim.
-  // The mean is returned in mu which is n by k, m by k or m by n for idim =
-  // 1, 2 and 3 respectively.
-  int i;
-  switch(idim) {
-  case(1):
-    for (i=0; i<k; i++) meanmat("N", m, n, X + i*m*n, m, mu + i*n);
-    break;
-  case(2):
-    for (i=0; i<k; i++) meanmat("T", m, n, X + i*m*n, m, mu + i*m);
-    break;
-  case(3):
-    for (i=0; i<n; i++) meanmat("T", m, k, X + i*m, m*n, mu + i*m);
-  }
-}
-
 void cov(char *transp, int m, int n, double X[], double C[]) {
   // C := covariance between columns of the m by n matrix op(X). If transp begins with N,
   // op(X) = X, but if it begins with T, op(X) = X^T. C is n by n.
@@ -122,44 +93,4 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   syrk("Low", "T", n, m, 1.0/(m-1), Xm, m, 0.0, C, n);
   copylowertoupper(n, C, n);
   freem(Xm); freem(mu);
-}
-
-void autocov(char *transp, char *norm, int r, int n, double X[], int maxlag, double C[]) {
-  // Compute Ck = sample lag-k autocovariance matrix of X for k = 0,…,maxlag.
-  //
-  // When transp begins with "N", X is an r×n matrix whose column t contains the t-th
-  // observation of an r-dimensional time series. When transp begins with "T", X is n×r,
-  // with the t-th observation in row t.
-  //
-  // C is an r×r×(maxlag + 1) array returning Ck in its k-th subarray, C(:,:,k).
-  //
-  // When norm begins with "B" the estimation is *biased* (ML), normalizing all Ck by 1/n.
-  // When norm begins with "U" it is *unbiased*, normalizing Ck by 1/(n−k−1).
-  //
-  // Mathematically:
-  //
-  //   Ck(i,j) = Cov(xi_t, xj_{t−k})
-  //   Ck      = Cov(x_t, x_{t−k}) = Z·Y' / N
-  //
-  // where Y has the leading (n−k) columns of X and Z has the trailing (n−k) columns,
-  // and N is the normalization factor: N = n (biased) or N = n−k−1 (unbiased).
-  double fctr, *Y, *Z, *Ck;
-  bool biased = (*norm == 'B');
-  xAssert(*transp == 'N' || *transp == 'T');
-  xAssert(biased || *norm == 'U');
-  if (biased) xAssert(maxlag <= n-1);
-  else        xAssert(maxlag <= n-2);
-  Y = X;
-  for (int k=0; k <= maxlag; k++) {
-    fctr = biased ? 1.0/n : 1.0/(n - k - 1);
-    Ck = C + r*r*k;
-    if (*transp == 'N') {
-      Z = X + r*k;
-      gemm("N", "T", r, r, n-k, fctr, Z, r, Y, r, 0.0, Ck, r);
-    }
-    else {
-      Z = X + k;
-      gemm("T", "N", r, r, n-k, fctr, Z, n, Y, n, 0.0, Ck, r);
-    }
-  }
 }

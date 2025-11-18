@@ -9,8 +9,8 @@
 #include "xCheck.h"
 
 static int NTOTAL = 0, NFAIL = 0;
-static const char *headr_fmt = "%-15s %8s %8s\n";
-static const char *table_fmt = "%-15s %8d %8d\n";
+static const char *headr_fmt = "%-20s %8s %8s\n";
+static const char *table_fmt = "%-20s %8d %8d\n";
 int TESTVERBOSITY = 0; // External
 
 static void print_help(void) {
@@ -69,12 +69,13 @@ int main(int argc, char **argv) {
   if (TESTVERBOSITY <= 1) printOff();
   vprint("\n");
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
-  run_test("TestFindCG",     TestFindCG);
-  run_test("ExtraUtil",      TestExtraUtil);
-  run_test("RandomNumbers",  TestRandomNumbers);
-  run_test("varmapack_testcase",       TestTestcase);
-  run_test("varmapack_spec_rad",     Testvarmapack_spec_rad);
-  run_test("Psi functions",  TestPsi);
+  run_test("TestFindCG",         TestFindCG);
+  run_test("ExtraUtil",          TestExtraUtil);
+  run_test("RandomNumbers",      TestRandomNumbers);
+  run_test("varmapack_testcase", TestTestcase);
+  run_test("varmapack_specrad",  Testvarmapack_specrad);
+  run_test("varmapack_covar",    TestCovar);
+  run_test("Psi functions",      TestPsi);
   //run_test("AgainstMatlab",  TestAgainstMatlab);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
