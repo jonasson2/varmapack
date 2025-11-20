@@ -20,4 +20,10 @@ debugprint_demo = executable(
   dependencies : [varmapack_dep],
 )
 
+xassert_demo = executable(
+  'error-demo',
+  ['error_demo.c'],
+  dependencies : [varmapack_dep],
+)
+
 # No `test()` calls here; these are just demos.
