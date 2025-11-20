@@ -9,7 +9,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "printX.h"
-#include "xAssert.h"
+#include "error.h"
 
 static const uint32_t mersenne8 = 2147483647;
 

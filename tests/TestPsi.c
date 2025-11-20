@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "Tests.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 #include "varmapack.h"
 #include "xCheck.h"
 #include "ExtraUtil.h"

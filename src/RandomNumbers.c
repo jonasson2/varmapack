@@ -11,7 +11,7 @@
 #include "allocate.h"
 #include "randompack.h"
 #include "BlasGateway.h"
-#include "xAssert.h"
+#include "error.h"
 //#include "ExtraUtil.h"
 
 // These typedef-s from random.h can't be forward declared for C-technical reasons

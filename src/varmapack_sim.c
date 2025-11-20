@@ -62,7 +62,7 @@
 //   function returns (quietly) with ok = 0 (false). In exceptional cases,
 //   (which should only be possible when X0 is specified and the series is
 //   nonstationary) needed matrices may be singular, and then the function exits
-//   by calling one of the function defined in xAssert.h, which are expected to
+//   by calling one of the function defined in error.h, which are expected to
 //   print an error message and terminate the program.
 //
 // REFERENCES:
@@ -83,7 +83,7 @@
 #include "VarmaPackUtil.h"
 #include "randompack.h"
 #include "varmapack.h"
-#include "xAssert.h"
+#include "error.h"
 #include "varmapack_VYW.h"
 
 static void SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r, int n,

@@ -4,7 +4,7 @@
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 
 static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info);
 static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,

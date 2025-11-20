@@ -1,6 +1,6 @@
 #include "ExtraUtil.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 #include "xCheck.h"
 #include <math.h>
 #include <stdio.h>

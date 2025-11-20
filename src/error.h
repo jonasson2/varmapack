@@ -12,7 +12,23 @@
 #define XASSERT(cond, fmt, ...)                                      \
   do {                                                               \
     if (!(cond)) {                                                   \
-      error_report(__FILE__, __LINE__, fmt, ##__VA_ARGS__);      \
+      error_report(__FILE__, __LINE__, fmt, ##__VA_ARGS__);          \
+      return false;                                                  \
+    }                                                                \
+  } while (0)
+
+#define ALLOC(ptr, count)                                            \
+  do {                                                               \
+    if ((count) < 0) {                                               \
+      error_report(__FILE__, __LINE__,                               \
+                   "negative allocation request for %s", #ptr);      \
+      return false;                                                  \
+    }                                                                \
+    (ptr) = calloc((size_t)(count), sizeof(*(ptr)));                 \
+    if ((count) > 0 && !(ptr)) {                                     \
+      error_report(__FILE__, __LINE__,                               \
+                   "allocation failed for %s (len=%d)",              \
+                   #ptr, (int)(count));                              \
       return false;                                                  \
     }                                                                \
   } while (0)

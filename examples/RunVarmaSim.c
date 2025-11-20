@@ -14,7 +14,7 @@
 //#include "ExtraUtil.h"
 #include "VarmaUtilities.h"
 #include "varmapack.h"
-#include "xAssert.h"
+#include "error.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
 

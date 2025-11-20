@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 
-#include "xAssert.h"
+#include "error.h"
 #include "xCheck.h"
 
 static bool fail_helper(FILE *stream) {
@@ -17,7 +18,14 @@ static bool pass_helper(FILE *stream) {
   return true;
 }
 
-void TestXAssert(void) {
+static bool alloc_helper(int len) {
+  double *buf = 0;
+  ALLOC(buf, len);
+  free(buf);
+  return true;
+}
+
+void TestError(void) {
   FILE *tmp = tmpfile();
   xCheck(tmp != 0);
   bool ok = fail_helper(tmp);
@@ -27,7 +35,6 @@ void TestXAssert(void) {
   char buf[128] = {0};
   size_t n = fread(buf, 1, sizeof(buf)-1, tmp);
   xCheck(n > 0);
-  xCheck(strstr(buf, "error in TestXAssert.c") != 0);
   xCheck(strstr(buf, "forced failure 42") != 0);
   fclose(tmp);
 
@@ -44,4 +51,13 @@ void TestXAssert(void) {
   varmapack_set_errstream(0);
   ok = fail_helper(0);
   xCheck(!ok);
+
+  FILE *tmp2 = tmpfile();
+  xCheck(tmp2 != 0);
+  varmapack_set_errstream(tmp2);
+  ok = alloc_helper(0);
+  xCheck(ok);
+  ok = alloc_helper(16);
+  xCheck(ok);
+  fclose(tmp2);
 }

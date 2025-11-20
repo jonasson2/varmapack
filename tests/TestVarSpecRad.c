@@ -1,7 +1,7 @@
 // Testvarmapack_specrad.c
 #include "ExtraUtil.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 #include "xCheck.h"
 #include "Tests.h"
 

@@ -1,7 +1,7 @@
 // TestCompareWithMatlab.c
 #include "ExtraUtil.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 #include "xCheck.h"
 #include "printX.h"
 #include "Tests.h"

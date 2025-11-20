@@ -1,7 +1,7 @@
 src_files = files(
   'RandomNumbers.c',
   'VarmaPackUtil.c',
-  'xAssert.c',
+  'error.c',
   'printX.c',
   'varmapack_VYW.c',
   'varmapack_sim.c',

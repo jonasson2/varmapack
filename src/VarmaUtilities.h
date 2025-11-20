@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include "BlasGateway.h"
-#include "xAssert.h"
+#include "error.h"
 #include "allocate.h"
 
 static inline void copytranspose(int m, int n, double A[], int ldA, double B[], int ldB){

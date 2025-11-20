@@ -4,7 +4,7 @@
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
 #include "allocate.h"
-#include "xAssert.h"
+#include "error.h"
 
 double varmapack_specrad(double *A, int r, int p) {
   int i, k, lwork, info;

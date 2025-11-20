@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
-#include "xAssert.h"
+#include "error.h"
 
 static FILE *error_stream = 0;
 static bool error_stream_explicit = false;

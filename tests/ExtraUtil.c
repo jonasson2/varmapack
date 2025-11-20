@@ -4,7 +4,7 @@
 #include "allocate.h"
 #include "ExtraUtil.h"
 #include "BlasGateway.h"
-#include "xAssert.h"
+#include "error.h"
 #include "Tests.h"
 #include "varmapack.h"
 #include <math.h>

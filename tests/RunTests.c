@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include "printX.h"
 #include "Tests.h"
-#include "xAssert.h"
+#include "error.h"
 #include "xCheck.h"
 
 static int NTOTAL = 0, NFAIL = 0;
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   run_test("TestFindCG",         TestFindCG);
   run_test("ExtraUtil",          TestExtraUtil);
   run_test("RandomNumbers",      TestRandomNumbers);
-  run_test("XAssert",            TestXAssert);
+  run_test("Error helpers",      TestError);
   run_test("varmapack_testcase", TestTestcase);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
   run_test("varmapack_covar",    TestCovar);
