@@ -40,7 +40,7 @@
 #include "VarmaUtilities.h"
 #include "VarmaMisc.h"
 #include "Tests.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "debugprint.h"
 
 static void expX(double A[], double B[], double X[], double mu[], double CC[],

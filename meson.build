@@ -9,6 +9,11 @@ project('varmapack', 'c', 'fortran',
 
 add_project_arguments('-Wno-do-subscript', language : 'fortran')
 
+buildtype = get_option('buildtype')
+if buildtype.startswith('debug')
+  add_project_arguments('-DDEBUG_PRINT', language : 'c')
+endif
+
 blas_option = get_option('blas')
 
 # ---- BLAS selection ----

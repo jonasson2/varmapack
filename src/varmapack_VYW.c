@@ -12,7 +12,7 @@ static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs,
 static void kronecker(int n, double alpha, double A[], double B[], double C[]);
 static void kronI(int n, double alpha, double A[], double C[]);
 
-bool varmapack_VYWFactorizeSolve(double A[], double B[], double Sig[],
+bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
                         int p, int q, int r,
                         double S[], double C[], double G[])
 {
@@ -34,7 +34,7 @@ bool varmapack_VYWFactorizeSolve(double A[], double B[], double Sig[],
     ownG = true;
   }
 
-  varmapack_FindCG(A, B, Sig, p, q, r, Cbuf, Gbuf);
+  vpack_FindCG(A, B, Sig, p, q, r, Cbuf, Gbuf);
 
   if (p == 0) {
     copy(rr, Gbuf, 1, S, 1);

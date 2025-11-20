@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include <stdbool.h>
 #include <stdio.h>
 

@@ -1,5 +1,5 @@
 *     This is an exact copy from Netlib, but the function is renamed to
-*     LAPACK_DPSTRF to avoid name conflicts with DPSTRF in linked
+*     VPACK_DPSTRF to avoid name conflicts with DPSTRF in linked
 *     libraries such as Openblas, MKL or Accelerate. It is used in
 *     Varmapack because the Accelerate version is buggy, and returns for
 *     example nan when applied to the matrix [-1e-20].
@@ -145,8 +145,8 @@
 *> \ingroup pstrf
 *
 *  =====================================================================
-      SUBROUTINE LAPACK_DPSTRF( UPLO, N, A, LDA, PIV, RANK, TOL, WORK,
-     $                   INFO )
+      SUBROUTINE VPACK_DPSTRF( UPLO, N, A, LDA, PIV, RANK, TOL,
+     $                             WORK, INFO )
 *
 *  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
@@ -180,7 +180,7 @@
       EXTERNAL           DLAMCH, ILAENV, LSAME, DISNAN
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DGEMV, LAPACK_DPSTF2, DSCAL, DSWAP, DSYRK,
+      EXTERNAL           DGEMV, VPACK_DPSTF2, DSCAL, DSWAP, DSYRK,
      $                   XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -200,7 +200,7 @@
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPSTRF', -INFO )
+         CALL XERBLA( 'VPACK_DPSTRF', -INFO )
          RETURN
       END IF
 *
@@ -216,7 +216,7 @@
 *
 *        Use unblocked code
 *
-         CALL LAPACK_DPSTF2( UPLO, N, A( 1, 1 ), LDA, PIV, RANK, TOL,
+         CALL VPACK_DPSTF2( UPLO, N, A( 1, 1 ), LDA, PIV, RANK, TOL,
      $        WORK, INFO )
          GO TO 200
 *
@@ -449,6 +449,6 @@
   200 CONTINUE
       RETURN
 *
-*     End of DPSTRF
+*     End of VPACK_DPSTRF
 *
-      END
+      END SUBROUTINE VPACK_DPSTRF

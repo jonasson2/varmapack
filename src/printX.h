@@ -1,6 +1,8 @@
 #ifndef PRINTX_H
 #define PRINTX_H
 
+#ifdef DEBUG_PRINT
+
 void printOff(void);
 void printOn(void);
 int  printIsOff(void);
@@ -34,5 +36,41 @@ void print4I(const char *s, int i1, int i2, int i3, int i4); // print 4 integers
 void print5I(const char *s, int i1, int i2, int i3, int i4, int i5); // 5 ints
 void print6I(const char *s, int i1, int i2, int i3, int i4, int i5,
                            int i6); // 6 ints
+
+#else
+
+#define printOff()          ((void)0)
+#define printOn()           ((void)0)
+#define printIsOff()        (1)
+#define printSetStatus(x)   ((void)0)
+#define printSetNdec(x)     ((void)0)
+#define printSetWidth(x)    ((void)0)
+#define printSetFmtChar(x)  ((void)0)
+#define printSetFmt(w,n,f)  ((void)0)
+#define printGetNdec()      (0)
+
+#define printNewl()                             ((void)0)
+#define printMsg(s)                             ((void)0)
+#define printMsgUpper(s)                        ((void)0)
+#define printMsgUnderl(s)                       ((void)0)
+
+#define printI(name, i)                         ((void)0)
+#define printP(name, p)                         ((void)0)
+#define printD(name, d)                         ((void)0)
+#define printV(name, x, n)                      ((void)0)
+#define printIV(name, iv, n)                    ((void)0)
+#define printS(name, s)                         ((void)0)
+
+#define printM(name, A, nr, nc)                 ((void)0)
+#define printMP(name, ap, nr, nc, A, ldA)       ((void)0)
+#define printMT(name, A, nr, nc)                ((void)0)
+
+#define print2I(s, i1, i2)                      ((void)0)
+#define print3I(s, i1, i2, i3)                  ((void)0)
+#define print4I(s, i1, i2, i3, i4)              ((void)0)
+#define print5I(s, i1, i2, i3, i4, i5)          ((void)0)
+#define print6I(s, i1, i2, i3, i4, i5, i6)      ((void)0)
+
+#endif /* DEBUG_PRINT */
 
 #endif /* PRINTX_H */

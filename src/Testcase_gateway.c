@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "varmapack.h"
-#include "RandomNumbers.h" // RandRng, rand_create, rand_settype, rand_setPMseed, rand_free
+#include "randompack.h" // RandRng, rand_create, rand_settype, rand_setPMseed, rand_free
 
 // Name table for named cases (order must match your C varmapack_testcase’s enumeration)
 static const char *CASE_NAMES[] = {
@@ -43,7 +43,7 @@ SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
 
   int p = 0, q = 0, r = 0;
   int icase = 0;
-  const char *in_name = NULL;
+  const char *in_name = 0;
 
   if (!isNull(name_)) {
     in_name = CHAR(STRING_ELT(name_, 0));
@@ -51,7 +51,7 @@ SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
 
     // pre-query dims for named case
     char tmpname[64] = {0};
-    varmapack_testcase(NULL, NULL, NULL, tmpname, &p, &q, &r, icase, rng);
+    varmapack_testcase(0, 0, 0, tmpname, &p, &q, &r, icase, rng);
   } else {
     // random case: use provided dims
     p = INTEGER(p_)[0];
@@ -67,8 +67,8 @@ SEXP Testcase_gateway(SEXP name_, SEXP p_, SEXP q_, SEXP r_,
 
   // fill via C
   char outname[64] = {0};
-  varmapack_testcase((p > 0) ? REAL(A) : NULL,
-           (q > 0) ? REAL(B) : NULL,
+  varmapack_testcase((p > 0) ? REAL(A) : 0,
+           (q > 0) ? REAL(B) : 0,
            REAL(Sig),
            outname,
            &p, &q, &r, icase, rng);

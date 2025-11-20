@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-bool varmapack_VYWFactorizeSolve(
+bool vpack_VYWFactorizeSolve(
   double A[],   // in   r×r×p, autoregressive parameter matrices
   double B[],   // in   r×r×q, moving average parameter matrices (ignored when q=0)
   double Sig[], // in   r×r, innovation covariance

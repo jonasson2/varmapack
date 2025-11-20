@@ -5,6 +5,7 @@
 
 void TestExtraUtil(void);
 void TestRandomNumbers(void);
+void TestXAssert(void);
 void TestTestcase(void);
 void Testvarmapack_specrad(void);
 void TestAgainstMatlab(void);

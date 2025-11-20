@@ -6,7 +6,7 @@
 #include <assert.h>
 
 #include "allocate.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "printX.h"
 #include "varmapack.h"
 #include "varmapack.h"

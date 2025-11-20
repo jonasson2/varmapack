@@ -31,7 +31,7 @@ void TestFindCG(void) {
 
   ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
-  varmapack_FindCG(A, B, Sig, p, q, r, C, G);
+  vpack_FindCG(A, B, Sig, p, q, r, C, G);
 
   // Expected values from MATLAB for testcase 6.
   // [ 2.0  1.0  1.4  1.3

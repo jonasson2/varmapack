@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 #include "allocate.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "BlasGateway.h"
 #include "xAssert.h"
 //#include "ExtraUtil.h"
@@ -125,6 +125,27 @@ void randompack_u01(double x[], int n, randompack_rng *rng) {
 #else
   rand_dble(x, n, rng);
 #endif  
+}
+
+void randompack_int(int x[], int len, int m, int n, randompack_rng *rng) {
+  if (!rng || len < 0 || m > n) return;
+  int64_t span = (int64_t)n - (int64_t)m + 1;
+  if (span <= 0 || span > INT32_MAX) return;
+  rand_int((int)span, x, len, rng);
+  if (!x) return;
+  for (int i = 0; i < len; i++)
+    x[i] += m;
+}
+
+void randompack_perm(int x[], int n, randompack_rng *rng) {
+  if (!rng || !x || n < 0) return;
+  rand_perm(x, n, rng);
+}
+
+void randompack_sample(int x[], int n, int k, randompack_rng *rng) {
+  if (!rng || n < 0 || k < 0 || k > n) return;
+  if (!x) return;
+  rand_sample(x, n, k, rng);
 }
 
 void randompack_norm(double x[], int n, randompack_rng *rng) {

@@ -29,7 +29,7 @@ bool varmapack_acvf(double A[], double B[], double Sig[], int p, int q, int r, d
               int maxlag) {
   double *S = Gamma;
   xAssert(p >= 0 && q >= 0 && r > 0);
-  if (!varmapack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, 0, 0)) {
+  if (!vpack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, 0, 0)) {
     return false;
   }
   for (int j=p+1; j<=maxlag; j++) {

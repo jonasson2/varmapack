@@ -1,6 +1,6 @@
 // Include file declaring the reference blas functions
 //
-// Note that lapack_dpstrf_ is used instead of dpstrf_ because the latter routine is
+// Note that vpack_dpstrf_ is used instead of dpstrf_ because the latter routine is
 // faulty in Accelerate; lapack_dpstrf.f with Netlib's official code must be compiled and
 // linked against.
 
@@ -42,7 +42,7 @@ double dnrm2_(int *n, double x[], int *incx);
 
 void dpotrf_(char *uplo, int *n, double a[], int *lda, int *info, int lenuplo);
 
-void lapack_dpstrf_(char *uplo, int *n, double a[], int *lda, int piv[], int *rank,
+void vpack_dpstrf_(char *uplo, int *n, double a[], int *lda, int piv[], int *rank,
 	     double *tol, double work[], int *info, int lenuplo);
 
 void dposv_(char *uplo, int *n, int *nrhs, double a[], int *lda, double b[], int *ldb,

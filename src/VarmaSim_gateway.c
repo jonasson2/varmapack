@@ -2,7 +2,7 @@
 #include <Rinternals.h>
 #include <stdbool.h>
 #include "varmapack.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "printX.h"
 
 SEXP varmapack_sim_gateway(SEXP A, SEXP B, SEXP Sig, SEXP mu, SEXP p, SEXP q, SEXP r,

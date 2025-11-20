@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
   run_test("TestFindCG",         TestFindCG);
   run_test("ExtraUtil",          TestExtraUtil);
   run_test("RandomNumbers",      TestRandomNumbers);
+  run_test("XAssert",            TestXAssert);
   run_test("varmapack_testcase", TestTestcase);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
   run_test("varmapack_covar",    TestCovar);

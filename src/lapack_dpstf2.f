@@ -1,5 +1,5 @@
 *     This is an exact copy from Netlib, but the function is renamed to
-*     LAPACK_DPSTF2 to avoid name conflicts with DPSTF2 in linked
+*     VPACK_DPSTF2 to avoid name conflicts with DPSTF2 in linked
 *     libraries such as Openblas, MKL or Accelerate. It is used in
 *     Varmapack because the Accelerate version is buggy, and returns for
 *     example nan when applied to the matrix [-1e-20].
@@ -144,8 +144,8 @@
 *> \ingroup pstf2
 *
 *  =====================================================================
-      SUBROUTINE LAPACK_DPSTF2( UPLO, N, A, LDA, PIV, RANK, TOL, WORK,
-     $                   INFO )
+      SUBROUTINE VPACK_DPSTF2( UPLO, N, A, LDA, PIV, RANK, TOL,
+     $                             WORK, INFO )
 *
 *  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
@@ -197,7 +197,7 @@
          INFO = -4
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'DPSTF2', -INFO )
+         CALL XERBLA( 'VPACK_DPSTF2', -INFO )
          RETURN
       END IF
 *
@@ -390,6 +390,6 @@
   170 CONTINUE
       RETURN
 *
-*     End of DPSTF2
+*     End of VPACK_DPSTF2
 *
-      END
+      END SUBROUTINE VPACK_DPSTF2

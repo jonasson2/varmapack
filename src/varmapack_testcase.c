@@ -3,7 +3,7 @@
 #include "BlasGateway.h"
 #include "allocate.h"
 #include "VarmaUtilities.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "varmapack.h"
 #include "printX.h"
 #define DEBUG
@@ -234,7 +234,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
       }
       j = 0;
       while (true) {
-        ok = varmapack_VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
+        ok = vpack_VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
         if (ok) break;
         scal(r*p, 0.5, A, 1);
         j++;

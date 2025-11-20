@@ -33,7 +33,7 @@
 //   parameter. Several different generators are possible: The built-in R
 //   generator (when called from R), an xorshift128+ generator implemented in
 //   the package, and a Park-Miller generator allowing generation of identical
-//   shock series across environments (R, Matlab, and C). See RandomNumbers.h
+//   shock series across environments (R, Matlab, and C). See randompack.h
 //   for details.
 // 
 // STARTING VALUES:
@@ -81,7 +81,7 @@
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "varmapack.h"
 #include "xAssert.h"
 #include "varmapack_VYW.h"
@@ -111,7 +111,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   allocate(C, r*r*(q+1));
   allocate(G, r*r*(q+1));
   allocate(S, r*r*(p+1));
-  if (!varmapack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
+  if (!vpack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
     freem(S); freem(G); freem(C);
     xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
   }
@@ -128,8 +128,8 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     allocate(Wrk, rh*M);
     allocate(Psi, rh*rh);
     allocate(PsiHat, rh*rh);
-    varmapack_FindPsi(A, B, Psi, p, q, r);
-    varmapack_FindPsiHat(Psi, PsiHat, Sig, r, h);
+    vpack_FindPsi(A, B, Psi, p, q, r);
+    vpack_FindPsiHat(Psi, PsiHat, Sig, r, h);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
     randompack_mvn("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
@@ -228,7 +228,7 @@ static void SBuild( // Build covariance matrix of all the values of a VARMA time
   //                  y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q),
   //
   //  and x(t), y(t) and eps(t) are r-dimensional with eps(t) N(0,Sig). S and G
-  //  can (for example) have been obtained with varmapack_FindCG. The SS matrix is:
+  //  can (for example) have been obtained with vpack_FindCG. The SS matrix is:
   //
   //                   S0  S1' S2'...Sn-1'
   //                   S1  S0  S1'...Sn-2'

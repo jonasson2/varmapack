@@ -1,4 +1,4 @@
-// RandomNumbers — random number generation utilities for VARMASIM
+// randompack — random number generation utilities for VARMASIM
 //
 // This header provides user-facing functions for generating random values
 // drawn from uniform, normal, and multivariate normal distributions, along
@@ -18,8 +18,8 @@
 // NOTES:
 //   Implementation details and additional references are in RandomNumbers.c.
 
-#ifndef RANDOMNUMBERS_H
-#define RANDOMNUMBERS_H
+#ifndef RANDOMPACK_H
+#define RANDOMPACK_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -27,8 +27,8 @@
 typedef struct rand_rng randompack_rng;
 
 randompack_rng *randompack_create( // Create RNG with specified type and seed
-  char *type,  // in   Park-Miller/PM, Xorshift128+/Xorshift/X+, R/R-default
-  int seed     // in   0 to randomize, >0 to seed, <0 for thread randomize
+  const char *type,  // in   Park-Miller/PM, Xorshift128+/Xorshift/X+, R/R-default
+  int seed           // in   0 to randomize, >0 to seed, <0 for thread randomize
 );
 
 void randompack_free(   // Free an RNG created with randompack_create
@@ -38,6 +38,27 @@ void randompack_free(   // Free an RNG created with randompack_create
 void randompack_u01(    // Generate uniform random numbers in [0,1)
   double x[],           // out  n-vector: uniform random numbers in [0,1)
   int n,                // in   Number of variates
+  randompack_rng *rng   // in   Random number generator
+);
+
+void randompack_int(    // Generate uniform integers in [m, n]
+  int x[],              // out  len-vector of integers
+  int len,              // in   Number of integers requested
+  int m,                // in   Inclusive minimum
+  int n,                // in   Inclusive maximum
+  randompack_rng *rng   // in   Random number generator
+);
+
+void randompack_perm(   // Generate a random permutation of 0..n-1
+  int x[],              // out  n-vector containing the permutation
+  int n,                // in   Permutation size
+  randompack_rng *rng   // in   Random number generator
+);
+
+void randompack_sample( // Sample without replacement from 0..n-1
+  int x[],              // out  k-vector of sampled indices
+  int n,                // in   Population size
+  int k,                // in   Sample size (0 <= k <= n)
   randompack_rng *rng   // in   Random number generator
 );
 
@@ -74,4 +95,4 @@ void randompack_mvn(    // Generate multivariate normal random vectors N(mu,Sig)
 //         subsequent calls. If both Sig and L are null, the function exits with
 //         ok = 0.
 
-#endif /* RANDOMNUMBERS_H */
+#endif /* RANDOMPACK_H */

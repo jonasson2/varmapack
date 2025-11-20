@@ -3,7 +3,7 @@
 #include "printX.h"
 #include "VarmaUtilities.h"
 
-void varmapack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
+void vpack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   double A[],   // in   r×r×p, autoregressive parameter matrices
   double B[],   // in   r×r×q, moving average parameter matrices
   double Sig[], // in   r×r, covariance of the shock terms eps(t)
@@ -46,7 +46,7 @@ void varmapack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   }
 }
 
-void varmapack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
+void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   // Prepare
   int h = imax(p, q), rr = r*r, hr = h*r, i, j, k, l;
   double *Aflp, *Psi_jj;
@@ -75,7 +75,7 @@ void varmapack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   freem(Aflp);
 }
 
-void varmapack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
+void vpack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
   double *LSig, *Psi_hat_kk;
   int info, hr = h*r, rr = r*r, k, nrow;
   allocate(LSig, rr);

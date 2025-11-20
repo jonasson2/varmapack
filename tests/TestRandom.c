@@ -5,7 +5,7 @@
 #include <math.h>
 #include "xCheck.h"
 
-#include "RandomNumbers.h"
+#include "randompack.h"
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
 #include "ExtraUtil.h"    // for mean, var, relabsdiff, almostSame, almostEqual
@@ -139,6 +139,62 @@ static void test_randomize_changes_stream(void) {
   freem(a);
   freem(b);
   freem(c);
+}
+
+static void test_int_api(void) {
+  const int N = 128;
+  int a[N], b[N];
+  randompack_rng *r1 = randompack_create("Xorshift", 99);
+  randompack_rng *r2 = randompack_create("Xorshift", 99);
+  randompack_int(a, N, -3, 8, r1);
+  randompack_int(b, N, 0, 11, r2);
+  for (int i = 0; i < N; i++) {
+    xCheck(a[i] >= -3 && a[i] <= 8);
+    xCheck(b[i] >= 0 && b[i] <= 11);
+    xCheck(a[i] + 3 == b[i]);
+  }
+  randompack_free(r1);
+  randompack_free(r2);
+}
+
+static void test_perm_api(void) {
+  const int N = 32;
+  int perm[N];
+  int seen[N];
+  for (int i = 0; i < N; i++) seen[i] = 0;
+  randompack_rng *rng = randompack_create("Xorshift", 77);
+  randompack_perm(perm, N, rng);
+  for (int i = 0; i < N; i++) {
+    int v = perm[i];
+    xCheck(v >= 0 && v < N);
+    xCheck(!seen[v]);
+    seen[v] = 1;
+  }
+  randompack_free(rng);
+}
+
+static void test_sample_api(void) {
+  const int N = 50;
+  const int K = 10;
+  int sample1[K], sample2[K];
+  int used[N];
+  randompack_rng *r1 = randompack_create("Xorshift", 11);
+  randompack_rng *r2 = randompack_create("Xorshift", 11);
+  randompack_sample(sample1, N, K, r1);
+  randompack_sample(sample2, N, K, r2);
+  for (int i = 0; i < N; i++) used[i] = 0;
+  for (int i = 0; i < K; i++) {
+    int v = sample1[i];
+    xCheck(v >= 0 && v < N);
+    xCheck(!used[v]);
+    used[v] = 1;
+    xCheck(sample1[i] == sample2[i]);
+  }
+  randompack_rng *r3 = randompack_create("Xorshift", 5);
+  randompack_sample(0, N, 0, r3); // ensure k=0 is a no-op
+  randompack_free(r1);
+  randompack_free(r2);
+  randompack_free(r3);
 }
 
 static void test_range(int m, int n, double A[], int k, double Y[]) {
@@ -370,6 +426,7 @@ static void test_type_name_aliases(void) {
   freem(e);
 }
 
+
 // static void run_test(const char *name, void (*fn)(void)) {
 //   xCheckAddMsg(name);
 //   fn();
@@ -388,5 +445,8 @@ void TestRandomNumbers(void) {
   RUN_TEST(determinism_default_seed);
   RUN_TEST(pm_vs_default_selection);
   RUN_TEST(randomize_changes_stream);
+  RUN_TEST(int_api);
+  RUN_TEST(perm_api);
+  RUN_TEST(sample_api);
   RUN_TEST(type_name_aliases);
 }

@@ -1,4 +1,6 @@
 #include "printX.h"
+#ifdef DEBUG_PRINT
+
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
@@ -194,3 +196,5 @@ void print6I(const char *s, int i1, int i2, int i3, int i4, int i5, int i6) { //
   printf("%s = %d, %d, %d, %d, %d, %d\n", s, i1, i2, i3, i4, i5, i6);
   fflush(0);
 }
+
+#endif /* DEBUG_PRINT */

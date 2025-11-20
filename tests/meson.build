@@ -1,6 +1,7 @@
 test_sources = files(
   'RunTests.c',
   'TestRandom.c',
+  'TestXAssert.c',
   'TestExtraUtil.c',
   'TestCovar.c',
   'TestTestcase.c',

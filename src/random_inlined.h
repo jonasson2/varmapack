@@ -9,6 +9,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "printX.h"
+#include "xAssert.h"
 
 static const uint32_t mersenne8 = 2147483647;
 
@@ -26,19 +27,17 @@ static inline uint32_t PM_rand_bits(rand_rng *rng) {
 
 static inline void PM_rand_int(int bound, int x[], int n, rand_rng *rng) {
   assert(bound > 0);
-//#if UINT_MAX == UINT32_MAX // int is 32 bits
   uint32_t ubound = (uint32_t)bound;
   for (int i = 0; i < n; i++) {
     uint32_t r = PM_rand_bits(rng);      // returns uint32_t
     x[i] = (int)(r % ubound);            // result is in [0, bound-1]
   }
-//#else
-//#error "Unsupported int size with Park-Miller"
-//#endif
 }
 
 static inline void rand_int(int bound, int x[], int n, rand_rng *rng) {
-  assert(bound >=0);
+  // Sets x to integers in [0, bound), where 1 <= bound <= INT32_MAX.
+  xAssert(bound > 0);
+  xAssert(bound <= INT32_MAX);
 #if UINT_MAX == UINT32_MAX // int is 32 bits
   if (rng->type == PARKMILLER)
     PM_rand_int(bound, x, n, rng);
@@ -46,11 +45,24 @@ static inline void rand_int(int bound, int x[], int n, rand_rng *rng) {
     rand_uint32((uint32_t) bound, (uint32_t*) x, n, rng);
 #elif UINT_MAX == UINT64_MAX // int is 64 bits (ILP64)
   if (rng->type == PARKMILLER) {
-    assert(bound <= INT32_MAX); // Park-Miller limited to 31-bit values
     PM_rand_int(bound, x, n, rng);
   }
   else {
-    rand_uint64((uint64_t) bound, (uint64_t*) x, n, rng);
+    // rand_uint32 writes tightly packed 32-bit words, while our ILP64 callers
+    // hand us 64-bit ints. Fill a scratch buffer and copy the values so each
+    // result ends up in its own element.
+    enum { RAND_INT_CHUNK = 64 };
+    uint32_t tmp[RAND_INT_CHUNK];
+    int i = 0;
+    while (i < n) {
+      int chunk = n - i;
+      if (chunk > RAND_INT_CHUNK) chunk = RAND_INT_CHUNK;
+      rand_uint32((uint32_t) bound, tmp, chunk, rng);
+      for (int j = 0; j < chunk; j++) {
+        x[i + j] = (int) tmp[j];
+      }
+      i += chunk;
+    }
   }
 #else
 #error "Unsupported int size"
@@ -130,4 +142,3 @@ static inline int rand_i(int bound, rand_rng *rng) {
 }
 
 #endif
-
