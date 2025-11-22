@@ -1,14 +1,13 @@
-run(5, 5)
+run(8,8)
 function run(case1, caseN)
-  folder = "~/dropbox/varma/varmapack/dev";
-  fid = fopen(folder + "/matlabcompare.inc", "w");
+  fid = fopen("matlabcompare.inc", "w");
   fprintf(fid, "  int case1 = %d, caseN = %d;\n", case1, caseN);
   for k=case1:caseN
     if k < 12, ndec = 3; else, ndec = 15; end
-    if k < 12, n = 4; else, n = 6; end
+    if k < 12, n = 2; else, n = 10; end
     [A, B, Sig, p, q, r] = testcase(k);
     rand_init('ParkMillerPolar', 42);
-    X = varma_sim(A, B, Sig, n, 0, 1);
+    X = new_varma_sim(A, B, Sig, n, 0, 1);
     printdims(fid, k-1, p, q, r, n)
     fprintf(fid, "  double\n");
     printmat(fid, "A", A, k-1, ndec, ",")

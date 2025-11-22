@@ -240,8 +240,8 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
         j++;
         xAssert(j < 10);
       }
-      if (q > 0) freem(tmpB);
-      freem(tmpS);
+      if (q > 0) FREE(tmpB);
+      FREE(tmpS);
     }
     if (B && q>0) {
       randompack_u01(B, r*r*q, rng);

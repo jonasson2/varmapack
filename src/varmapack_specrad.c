@@ -26,10 +26,10 @@ double varmapack_specrad(double *A, int r, int p) {
     hyp = hypot(wr[k], wi[k]);
     rho = imax(rho, hyp);
   }
-  freem(work);
-  freem(wi);
-  freem(wr);
-  freem(Ac);
+  FREE(work);
+  FREE(wi);
+  FREE(wr);
+  FREE(Ac);
   return rho;
 }
 

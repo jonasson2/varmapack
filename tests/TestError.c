@@ -8,13 +8,13 @@
 
 static bool fail_helper(FILE *stream) {
   varmapack_set_errstream(stream);
-  XASSERT(false, "forced failure %d", 42);
+  ASSERT(false, "forced failure %d", 42);
   return true;
 }
 
 static bool pass_helper(FILE *stream) {
   varmapack_set_errstream(stream);
-  XASSERT(true, "should not trigger");
+  ASSERT(true, "should not trigger");
   return true;
 }
 

@@ -2,7 +2,7 @@
 #include "debugprint.h"
 // Not a very comprehensive test.
 // Try compiling with and without -DNODEBUG.
-int main() {
+int main(void) {
   int a = 64, b=-55, c=888, d=9999;
   size_t s = 12345678901234567890LLU;
   double x[] = {1,1.333, 3.14,2.45, 1.22,3.41, 8.22};

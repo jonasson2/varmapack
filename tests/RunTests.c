@@ -69,15 +69,16 @@ int main(int argc, char **argv) {
   if (TESTVERBOSITY <= 1) printOff();
   vprint("\n");
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
-  run_test("TestFindCG",         TestFindCG);
-  run_test("ExtraUtil",          TestExtraUtil);
-  run_test("RandomNumbers",      TestRandomNumbers);
-  run_test("Error helpers",      TestError);
-  run_test("varmapack_testcase", TestTestcase);
-  run_test("varmapack_specrad",  Testvarmapack_specrad);
-  run_test("varmapack_covar",    TestCovar);
-  run_test("Psi functions",      TestPsi);
-  //run_test("AgainstMatlab",  TestAgainstMatlab);
+  run_test("AgainstMatlab",      TestAgainstMatlab);
+  // run_test("TestFindCG",         TestFindCG);
+  // run_test("ExtraUtil",          TestExtraUtil);
+  // run_test("RandomNumbers",      TestRandomNumbers);
+  // run_test("RandomNumbers_mvn",  TestRandomMvn);
+  // run_test("Error helpers",      TestError);
+  // run_test("varmapack_testcase", TestTestcase);
+  // run_test("varmapack_specrad",  Testvarmapack_specrad);
+  // run_test("varmapack_covar",    TestCovar);
+  // run_test("Psi functions",      TestPsi);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
 }

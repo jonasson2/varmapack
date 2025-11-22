@@ -86,6 +86,6 @@ void varmapack_autocov(const char *transp, const char *norm, int r, int n,
       gemm("N", "T", r, r, n-k, fctr, Y, r, Z, r, 0.0, Ck, r);
     }
   }
-  freem(mu);
-  freem(Xc);
+  FREE(mu);
+  FREE(Xc);
 }

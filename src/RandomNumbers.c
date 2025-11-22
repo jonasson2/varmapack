@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include "allocate.h"
 #include "randompack.h"
 #include "BlasGateway.h"
 #include "error.h"
@@ -66,7 +65,7 @@ static int LastNonzeroColumn(int m, int n, double A[]) {
   return k + 2;
 }
 
-randompack_rng *randompack_create(const char *type, int seed) {
+randompack_rng *randompack_create(const char *type, long long seed) {
   randompack_rng *rng = rand_create();
   if (!rng) return 0;
 
@@ -91,11 +90,11 @@ randompack_rng *randompack_create(const char *type, int seed) {
     rand_randomize(0, rng);
   }
   else if (seed < 0) {
-    rand_randomize((uint64_t)(-seed), rng);
+    rand_randomize(-(uint64_t)(seed), rng); // note safe cast-before minus
   }
   else {
     uint32_t pm = (uint32_t)seed;
-    uint64_t x = (uint64_t)(uint32_t)seed;
+    uint64_t x = (uint64_t)seed;
     uint64_t s0 = rand_splitmix64(&x);
     uint64_t s1 = rand_splitmix64(&x);
     if (s0 == 0 && s1 == 0) s1 = 1;
@@ -110,58 +109,78 @@ randompack_rng *randompack_create(const char *type, int seed) {
 void randompack_free(randompack_rng *rng) {
   rand_free(rng);
 }
+unsigned int randompack_getPMseed(randompack_rng *rng) {
+  if (rng == 0) return 0;
+  return (unsigned int)rng->PMseed;
+}
 
-void randompack_u01(double x[], int n, randompack_rng *rng) {
+bool randompack_u01(double x[], int len, randompack_rng *rng) {
+  if (!len && !x) return true;
+  ASSERT(x && rng && len >= 0, "illegal arguments to randompack_u01");
 #ifdef USING_R
   if (rng->type == PARKMILLER)
-    rand_dble(x, n, rng);
+    rand_dble(x, len, rng);
   else {
     GetRNGstate();
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < len; i++) {
       x[i] = unif_rand(); // R-s built-in generator
     }
     PutRNGstate();
   }
 #else
-  rand_dble(x, n, rng);
-#endif  
+  rand_dble(x, len, rng);
+#endif
+  return true;
 }
 
-void randompack_int(int x[], int len, int m, int n, randompack_rng *rng) {
-  if (!rng || len < 0 || m > n) return;
+bool randompack_int(int x[], int len, int m, int n, randompack_rng *rng) {
+  //  if (!rng || len < 0 || m > n) return;
+  if (!len && !x) return true;
   int64_t span = (int64_t)n - (int64_t)m + 1;
-  if (span <= 0 || span > INT32_MAX) return;
+  ASSERT(x && rng, "illegal arguments to randompack_int");
+  ASSERT(len >= 0, "randompack_int: len must be ≥ 0");
+  ASSERT(m <= n, "randompack_int: m must not be bigger than n");
+  ASSERT(span <= INT32_MAX - 1, "maximum span for random integers is 2^31 - 1");
   rand_int((int)span, x, len, rng);
-  if (!x) return;
   for (int i = 0; i < len; i++)
     x[i] += m;
+  return true;
 }
 
-void randompack_perm(int x[], int n, randompack_rng *rng) {
-  if (!rng || !x || n < 0) return;
-  rand_perm(x, n, rng);
+bool randompack_perm(int x[], int len, randompack_rng *rng) {
+  if (!len && !x) return true;
+  ASSERT(x && rng && len >= 0, "illegal argument(s) to randompack_perm");
+  rand_perm(x, len, rng);
+  return true;
 }
 
-void randompack_sample(int x[], int n, int k, randompack_rng *rng) {
-  if (!rng || n < 0 || k < 0 || k > n) return;
-  if (!x) return;
-  rand_sample(x, n, k, rng);
+bool randompack_sample(int x[], int len, int k, randompack_rng *rng) {
+  if ((!len && !x) || k == 0) return true;
+  ASSERT(rng, "randompack_sample: rng must not be NULL");
+  ASSERT(len >= 0, "randompack_sample: len is negative");
+  ASSERT(0 <= k && k <= len, "randompack_sample: k must be in [0, len]");
+  ASSERT(x, "randompack_sample: x must not be NULL when k, len > 0");
+  rand_sample(x, len, k, rng);
+  return true;
 }
 
-void randompack_norm(double x[], int n, randompack_rng *rng) {
+bool randompack_norm(double x[], int len, randompack_rng *rng) {
+  if (!len && !x) return true;
+  ASSERT(x && rng && len>=0, "illegal arguments to randompack_norm");
 #ifdef USING_R
   if (rng->type == PARKMILLER)
-    rand_normal(x, n, rng);
+    rand_normal(x, len, rng);
   else {
     GetRNGstate();
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < len; i++) {
       x[i] = unif_rand(); // R-s built-in generator
     }
     PutRNGstate();
   }
 #else
-  rand_normal(x, n, rng);
+  rand_normal(x, len, rng);
 #endif  
+  return true;
 }
 
 // static double get_macheps(void) {
@@ -187,66 +206,80 @@ void randompack_norm(double x[], int n, randompack_rng *rng) {
 //   return macheps;
 // }
 
-void randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, double X[],
-                       double L[], randompack_rng *rng) {
-  // If Sig, fill L if it is supplied, otherwise use L
-  // Sig is d × d, X is either n × d (if transp="N...") or d × n (if transp="T...")
+bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, double X[],
+                    int ldX, double L[], randompack_rng *rng) {
+  // If Sig, fill L if it is supplied, otherwise use L Sig is d × d, X is either n × d (if
+  // transp="N...") or d × n (if transp="T...") if (!n && !X) return true. X having two
+  // possible shape is modelled after dsyrk.
+  ASSERT(Sig || L, "randompack_mvn: either Sig or L must be specified");
+  ASSERT(X && rng && d > 0 && n >= 0, "illegal arguments to randompack_mvn");
+  ASSERT(transp && strchr("NT", transp[0]), "transp must begin with \"N\" or \"T\"");
   int i, info, rank;
   bool Lalloc = false;
   bool TRAN = (transp[0] == 'T');
   //double macheps = get_macheps();
-  if (n == 0 || d == 0) return;
-  xAssert(L != 0 || Sig != 0);
   if (Sig) {
     double *work, *A;
     int *piv;
+    if (!L && X == 0) return true;
     if (!L) {
       Lalloc = true;
-      allocate(L, d*d);
+      ALLOC(L, d*d);
     }
     else
       laset("Upper", d, d, 0.0, 0.0, L, d);
-    allocate(work, 2*d);
-    allocate(piv, d);
+    ALLOC(work, 2*d);
+    ALLOC(piv, d);
     // printM("before lacpy, L", L, d, d);
     lacpy("Lower", d, d, Sig, d, L, d);
     potrf("Low", d, L, d, &info);
+    printM("in randompack_mvn, L", L, d, d);
+    printI("info", info);
     if (info > 0) {
       lacpy("Lower", d, d, Sig, d, L, d);      
       pstrf("Low", d, L, d, piv, &rank, 1e-14, work, &info); // PSD Chol fact.
-      allocate(A, rank*d);
+      ALLOC(A, rank*d);
       copy(rank*d, L, 1, A, 1);
       // Set L to [A(piv, 1:rank) 0]
       for (int i=0; i<d; i++) copy(rank, A + piv[i], d, L + i, d);
       laset("All", d, d-rank, 0.0, 0.0, L + d*rank, d);
-      free(A);
+      FREE(A);
     }
-    freem(piv); freem(work);
+    FREE(piv); FREE(work);
   }
   rank = LastNonzeroColumn(d, d, L);
+  if (n == 0) return true;
   if (rank == d) {
-    randompack_norm(X, n*d, rng);
+    printM("L", L, d, d);
     if (TRAN) {
-      trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, d);
+      for (int i=0; i<n; i++) randompack_norm(X + i*ldX, d, rng);
+      printMP("X before transform", X, d, n, X, ldX);
+      trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, ldX);
+      printMP("(T) X", X, d, n, X, ldX);
     }
-    else
-      trmm("Right", "Lower", "T", "NotUdia", n, d, 1.0, L, d, X, n);
+    else {
+      for (int i=0; i<d; i++) randompack_norm(X + i*ldX, n, rng);
+      printMP("X before transform", X, n, d, X, ldX);
+      trmm("Right", "Lower", "T", "NotUdia", n, d, 1.0, L, d, X, ldX);
+      printMP("(NT) X", X, n, d, X, ldX);
+    }
   }
   else { // Singular Sig, use workspace for the N(0,1) randoms
     double *Wrk;
-    allocate(Wrk, n*rank);
+    ALLOC(Wrk, n*rank);
     randompack_norm(Wrk, n*rank, rng);
     if (TRAN)
-      gemm("NoT", "NoT", d, n, rank, 1.0, L, d, Wrk, rank, 0.0, X, d);
+      gemm("NoT", "NoT", d, n, rank, 1.0, L, d, Wrk, rank, 0.0, X, ldX);
     else
-      gemm("NoT", "T", n, d, rank, 1.0, Wrk, n, L, d, 0.0, X, n);
-    free(Wrk);
+      gemm("NoT", "T", n, d, rank, 1.0, Wrk, n, L, d, 0.0, X, ldX);
+    FREE(Wrk);
   }
   if (mu) {
     if (TRAN) for (i=0; i<n; i++) axpy(d, 1.0, mu, 1, X+i*d, 1); // add mu to each col
     else      for (i=0; i<n; i++) axpy(d, 1.0, mu, 1, X+i, n);   // add mu to each row
-    if (Lalloc) freem(L);
+    if (Lalloc) FREE(L);
   }
+  return true;
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -276,7 +309,7 @@ static rand_rng *rand_create(void) {
 }
 
 static void rand_free(rand_rng *rng) {
-  free(rng);
+  FREE(rng);
 }
 
 static void rand_normal(double x[], int n, rand_rng *rng) {
@@ -530,7 +563,7 @@ static void rand_randomize(uint64_t thread_id, rand_rng *rng) {
     s0 = rand_splitmix64(&x);
     s1 = rand_splitmix64(&x);
     if (s0 == 0 && s1 == 0) {
-      s1 = 1;
+      s0 = 1; // Assures both state and PMseed not 0
     }
   }
 

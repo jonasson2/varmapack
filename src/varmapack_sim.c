@@ -1,4 +1,4 @@
-// varmapack_sim — simulate spin-up freem AR, VAR, ARMA or VARMA time series
+// varmapack_sim — simulate spin-up FREE AR, VAR, ARMA or VARMA time series
 //
 // See varmapack.h for parameter descriptions and storage conventions
 //
@@ -40,7 +40,7 @@
 //   When starting values for the simulation are specified in X0, each generated
 //   series will start with X0, and subsequent terms are simulated using X0 as
 //   input. An important feature is that the simulated series have an accurate
-//   distribution from term one (they are spin-up freem). Thus there is no need
+//   distribution from term one (they are spin-up FREE). Thus there is no need
 //   to throw a way an initial segent of the simulated series. If X0 is not
 //   used, the first h x(t) and eps(t) values (with h = max(p,q)) are drawn from
 //   the correct joint distribution of these variables, and if X0 is used the
@@ -85,19 +85,21 @@
 #include "varmapack.h"
 #include "error.h"
 #include "varmapack_VYW.h"
+#include "printX.h"
 
 static void SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r, int n,
-             double SS[]);
+		    double SS[]);
 static void CCBuild( double A[], double C[], int p, int q, int r, int n, double CC[]);
 
 void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int q,
-              int r, int n, int M, double X0[], int nX0, randompack_rng *rng, double X[],
-              double E[], bool *ok)
+		   int r, int n, int M, double X0[], int nX0, randompack_rng *rng, double X[],
+		   double E[], bool *ok)
 {
   int h = imax(p,q), k = (X0 == 0 ? h : nX0), rk = r*k;
   int rn = r*n;  // Total number of observations
   int rh = r*h;  // Observation count in starting segment, order of SS, CC and EE
   int info;
+  double *C, *G, *S;
   bool Ealloc = E==0;
   xAssert(p>=0 && q>=0 && r>0 && M>0);
   xAssertMessage(n > h, "Illegal parameter in varmapack_sim, n must be > max(p,q)");
@@ -107,22 +109,24 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   if (Ealloc) allocate(E, rn*M);
                  
   // SOLVE VECTOR-YULE-WALKER EQUATIONS FOR COVARIANCE OF X
-  double *C, *G, *S;
   allocate(C, r*r*(q+1));
   allocate(G, r*r*(q+1));
   allocate(S, r*r*(p+1));
   if (!vpack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
-    freem(S); freem(G); freem(C);
+    FREE(S); FREE(G); FREE(C);
     xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
   }
+  printM("S", S, r, r*(p+1));
+  printM("G", G, r, r*(q+1));
   double *SS;
   allocate(SS, rk*rk);
   SBuild("Low", S, A, G, p, q, r, k, SS);
-  freem(S);
-  freem(G);
+  printM("SS", SS, rk, rk);
+  FREE(S);
+  FREE(G);
   double *R;
   allocate(R, rk*rk);
-  // GENERATE INITIAL SEGMENT OF X
+  randompack_mvn("T", 0, Sig, r, n*M, E, r, 0, rng);
   if (X0 == 0) {  // Start series from scratch
     double *Wrk, *Psi, *PsiHat;
     allocate(Wrk, rh*M);
@@ -130,14 +134,19 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     allocate(PsiHat, rh*rh);
     vpack_FindPsi(A, B, Psi, p, q, r);
     vpack_FindPsiHat(Psi, PsiHat, Sig, r, h);
+    printM("PsiHat", PsiHat, rh, rh);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
-    randompack_mvn("T", 0, Sig, r, h*M, E, 0, rng); // first h shocks
-    randompack_mvn("T", 0, R, rh, M, Wrk, 0, rng);  // draw Wrk from N(0, R)
-    lacpy("All", rh, M, Wrk, rh, X, rh);    // copy to X1
+    printM("R", R, rk, rk);
+    printM("Sig", Sig, r, r);
+    printMP("E1", E, rh, M, E, rn);
+    randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng); // draw Wrk from N(0, R)
+    printM("Wrk", Wrk, rh, M);
+    lacpy("All", rh, M, Wrk, rh, X, rn);    // copy to X1
     gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, // X1 := Psi*E(1:h) + X1
          rh, E, rn, 1.0, X, rn);
-    freem(PsiHat); freem(Psi); freem(Wrk);
+    printI("Seed after X1 creation", randompack_getPMseed(rng));
+    FREE(PsiHat); FREE(Psi); FREE(Wrk);
   }
   else { // initialize series with X0
     double *CC, *Chat, *LS, *x0bar, *e;
@@ -154,17 +163,19 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     for (int i=0; i<rk; i+=r) axpy(r, -1.0, mu, 1, x0bar, 1);
     trsv("Lo", "NT", "NotUD", rk, LS, rk, x0bar, 1);
     gemv("T", rk, rk, 1.0, Chat, rk, x0bar, 1, 0.0, e, 1);
+    printM("e", e, rk, M);
     for (int j=0; j<k; j++) { // Put Sig on diagonal blocks of R
       lacpy("Low", r, r, Sig, r, R + j*r*(rk + 1), rk);
     }
     syrk("L", "T", rk, rk, 1.0, Chat, rk, 1.0, R, rk);
-    randompack_mvn("T", e, R, rk, M, E, 0, rng); // first k shocks
-    freem(e); freem(x0bar); freem(CC); 
+    printM("R", R, rk, rk);
+    randompack_mvn("T", e, R, rk, M, E, rn, 0, rng); // first k shocks
+    FREE(e); FREE(x0bar); FREE(CC); 
   }
-  freem(C);
-  freem(R); freem(SS); 
-  randompack_mvn("T", 0, Sig, r, (n-k)*M, E + rk, 0, rng); // remaining shocks
-  copy((n-k)*r*M, E + rk, 1, X + rk, 1);
+  FREE(C);
+  FREE(R); FREE(SS); 
+  printM("E", E, rn, M);
+  lacpy("All", (n-k)*r, M, E + rk, rn, X + rk, rn);
   double *Aflp, *Bflp;
   allocate(Aflp, r*p);
   allocate(Bflp, r*q);
@@ -175,11 +186,13 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
       iX = r*t,
       iA = r*(t - p),
       iB = r*(t - q);
+    print4I("t, iX, iA, iB", t, iX, iA, iB);
     gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0, X + iX, rn);
-    gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, X + iB, rn, 1.0, X + iX, rn);
+    gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0, X + iX, rn);
+    printM("X", X, rn, M);
   }
-  freem(Bflp); freem(Aflp);
-  if (Ealloc) freem(E);
+  FREE(Bflp); FREE(Aflp);
+  if (Ealloc) FREE(E);
 }
 
 static void SExtend ( // Extend Sj matrices to include S(p+1)...S(n-1)
@@ -263,7 +276,7 @@ static void SBuild( // Build covariance matrix of all the values of a VARMA time
       lacpy("Low", r*(n-j), r, Scol, r*m, SSj, r*n);
     }
   }
-  freem(Scol);
+  FREE(Scol);
 }
 
 static void CCBuild( // Build covariance between terms and shocks of VARMA time series

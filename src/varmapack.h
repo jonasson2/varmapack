@@ -1,4 +1,4 @@
-// Main header file for varmapack. 
+/// Main header file for varmapack. 
 
 #ifndef VARMAPACK_H
 #define VARMAPACK_H

@@ -38,8 +38,8 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
 
   if (p == 0) {
     copy(rr, Gbuf, 1, S, 1);
-    if (ownG) freem(Gbuf);
-    if (ownC) freem(Cbuf);
+    if (ownG) FREE(Gbuf);
+    if (ownC) FREE(Cbuf);
     return true;
   }
 
@@ -55,10 +55,10 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
     vyw_solve(A, vywFactors, S, Gbuf, 1, q+1, piv, p, r);
   }
 
-  freem(piv);
-  freem(vywFactors);
-  if (ownG) freem(Gbuf);
-  if (ownC) freem(Cbuf);
+  FREE(piv);
+  FREE(vywFactors);
+  if (ownG) FREE(Gbuf);
+  if (ownC) FREE(Cbuf);
   return info == 0;
 }
 
@@ -138,9 +138,9 @@ static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
     j1 += r-j;
   }
   getrf(N, N, F, N, piv, info);
-  freem(F0r);
-  freem(F0c);
-  freem(F00);
+  FREE(F0r);
+  FREE(F0c);
+  FREE(F00);
 }
 
 static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
@@ -207,7 +207,7 @@ static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs,
       gemm("NoT", "NoT", r, r, r, 1.0, Ai, r, Skpmi, r, 1.0, Skp, r);
     }
   }
-  freem(g);
+  FREE(g);
 }
 
 static void kronecker(int n, double alpha, double A[], double B[], double C[])

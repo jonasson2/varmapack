@@ -27,9 +27,6 @@ ARCHITECTURE
 STATUS / EXPECTATIONS
 ---------------------------
 - Only varmapack_* and randompack_* APIs are public; internal helpers must stay private.
-- After applying code changes, stage and commit them using:
-    git add -A
-    git commit -m "codex: <summary>"
 
 ---------------------------
 OUTPUT

@@ -68,7 +68,11 @@ void TestAgainstMatlab(void) {
     printM("Xsim", Xsim, rk, nk);
     printSetNdec(3);
     xCheck(sim_ok == 1);
-    xCheck(almostEqual(Xsim, X[k], rk*nk));
+    {
+      double diff = relabsdiff(Xsim, X[k], rk*nk);
+      printD("max_relabsdiff_Xsim_vs_matlab", diff);
+      xCheck(almostEqual(Xsim, X[k], rk*nk));
+    }
 
     // Free memory
     freem(Ak);

@@ -72,7 +72,7 @@ void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
     Psi_jj = Psi + j*hr*r + j*r;
     lacpy("All", hr - j*r, r, Psi, hr, Psi_jj, hr);
   }
-  freem(Aflp);
+  FREE(Aflp);
 }
 
 void vpack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
@@ -88,5 +88,5 @@ void vpack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
     nrow = hr - k*r;
     trmm("Right", "Low", "NoT", "NonUnit", nrow, r, 1.0, LSig, r, Psi_hat_kk, hr);
   }
-  freem(LSig);
+  FREE(LSig);
 }

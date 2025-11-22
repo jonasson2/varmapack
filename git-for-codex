@@ -1,0 +1,3 @@
+- After applying code changes, stage and commit them using:
+    git add -A
+    git commit -m "codex: <summary>"
