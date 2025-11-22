@@ -23,6 +23,7 @@ typedef struct rand_rng {      // State holder for the active RNG
   rng_type type;   // RNG type
   uint64_t       state[2];
   uint32_t       PMseed;
+  double         spare_norm; // cached spare normal or NAN if none
 } rand_rng;
 
 // Forward declarations to rand functions formerly in random.h, but now below.
@@ -252,7 +253,9 @@ bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, doubl
   if (rank == d) {
     printM("L", L, d, d);
     if (TRAN) {
-      for (int i=0; i<n; i++) randompack_norm(X + i*ldX, d, rng);
+      for (int i=0; i<n; i++) {
+	randompack_norm(X + i*ldX, d, rng);
+      }
       printMP("X before transform", X, d, n, X, ldX);
       trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, ldX);
       printMP("(T) X", X, d, n, X, ldX);
@@ -305,6 +308,7 @@ static rand_rng *rand_create(void) {
   if (!rng) return NULL;
   rng->type = DEFAULT;
   rand_randomize(0, rng);
+  rng->spare_norm = NAN;
   return rng;
 }
 
@@ -315,33 +319,34 @@ static void rand_free(rand_rng *rng) {
 static void rand_normal(double x[], int n, rand_rng *rng) {
   // Normal random numbers from N(0,1); uses polar method.
   double u=0.0, v=0.0, uv[2], s=0.0, R;
-  uint64_t k;
   if (n<=0) return;
-  if (n<=2) {
-    while (1) {
-      rand_dble(uv, 2, rng);
-      u = uv[0]*2.0 - 1.0;
-      v = uv[1]*2.0 - 1.0;
-      s = u*u + v*v;
-      if (s > 0.0 && s < 1.0) break;
-    }
-    R = sqrt(-2.0*log(s)/s);
-    x[0] = u*R;
-    if (n==2) x[1] = v*R;
+  int k = 0;
+  if (rng->spare_norm == rng->spare_norm) {
+    x[k++] = rng->spare_norm;
+    rng->spare_norm = NAN;
+    if (k >= n) return;
   }
-  else {
-    k = 0;
-    while (k < (uint64_t) n) {
+  while (k + 1 < n) {
+    do {
       rand_dble(uv, 2, rng);
       u = uv[0]*2.0 - 1.0;
       v = uv[1]*2.0 - 1.0;
       s = u*u + v*v;
-      if (s > 0.0 && s < 1.0) {
-        R = sqrt(-2.0*log(s)/s);
-        x[k++] = u*R;
-        if (k < (uint64_t) n) x[k++] = v*R;
-      }
-    }
+    } while (s <= 0.0 || s >= 1.0);
+    R = sqrt(-2.0*log(s)/s);
+    x[k++] = u*R;
+    x[k++] = v*R;
+  }
+  if (k < n) {
+    do {
+      rand_dble(uv, 2, rng);
+      u = uv[0]*2.0 - 1.0;
+      v = uv[1]*2.0 - 1.0;
+      s = u*u + v*v;
+    } while (s <= 0.0 || s >= 1.0);
+    R = sqrt(-2.0*log(s)/s);
+    x[k] = u*R;
+    rng->spare_norm = v*R;
   }
 }
 
@@ -573,8 +578,7 @@ static void rand_randomize(uint64_t thread_id, rand_rng *rng) {
   rng->PMseed = (uint32_t)(s0 & 0xFFFFFFFFUL);
 }
 
-static void rand_keepalive(void)
-{
+static void rand_keepalive(void) {
   (void) rand_perm;
   (void) rand_sample;
   (void) rand_uint64;

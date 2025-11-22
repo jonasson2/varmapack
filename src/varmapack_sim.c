@@ -127,6 +127,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   double *R;
   allocate(R, rk*rk);
   randompack_mvn("T", 0, Sig, r, n*M, E, r, 0, rng);
+  printM("E", E, rn, M);
   if (X0 == 0) {  // Start series from scratch
     double *Wrk, *Psi, *PsiHat;
     allocate(Wrk, rh*M);
@@ -138,8 +139,6 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
     printM("R", R, rk, rk);
-    printM("Sig", Sig, r, r);
-    printMP("E1", E, rh, M, E, rn);
     randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng); // draw Wrk from N(0, R)
     printM("Wrk", Wrk, rh, M);
     lacpy("All", rh, M, Wrk, rh, X, rn);    // copy to X1

@@ -20,11 +20,13 @@
 void TestAgainstMatlab(void) {
   // Bring in MATLAB reference data
 #include "matlabcompare.inc"
-
-  for (int icase = case1; icase <= caseN; icase++) {
-    int pk, qk, rk, k = icase - case1;
+  int ncases = sizeof(cases)/sizeof(cases[0]);
+  for (int k = 0; k < ncases; k++) {
+    int icase = cases[k];
+    int pk, qk, rk;
 
     // Set additional message to testcase number
+    printI("TESTCASE NUMBER", icase);
     char addmsg[32] = "varmapack_testcase number **";
     if (icase < 100) snprintf(addmsg, 32, "varmapack_testcase number %2d", icase);
     xCheckAddMsg(addmsg);
