@@ -1,11 +1,15 @@
-run([1:3,6:10,12])
-function run(cases)
+function matlabcompare(cases)
+  if nargin < 1, cases = [1:3,6:10,12]; end
   fid = fopen("matlabcompare.inc", "w");
+  folder = """" + pwd() + filesep + """";
+  cmd = "  strcpy(matmatfolder, " + folder + ");\n";
+  fprintf(fid, cmd);
+  char *matmatfolder[] = """ + pwd() + filesep + """");
   fprintf(fid, "  int cases[] = {%d", cases(1));
   for k = cases(2:end), fprintf(fid, ", %d", k); end
   fprintf(fid, "};\n");
   for k=cases
-    disp(k)
+    fprintf("Case %d\n", k)
     if k < 12, ndec = 4; else, ndec = 15; end
     if k < 12, n = 3; else, n = 6; end
     [A, B, Sig, p, q, r] = testcase(k);

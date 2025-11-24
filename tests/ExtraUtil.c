@@ -25,25 +25,6 @@ double var(const double *x, int n, double mu) {
   return s/(n - 1);
 }
 
-double relabsdiff(double a[], double b[], int n) {
-  // max(relative diff, absolute diff) where diff is difference between 
-  // vectors a and b
-  int ia, ib, ic;
-  double *c, rmx, r;
-  if (n == 0) return 0.0;
-  allocate(c, n);
-  copy(n, a, 1, c, 1);
-  axpy(n, -1.0, b, 1, c, 1);
-  ia = iamax(n, a, 1);
-  ib = iamax(n, b, 1);
-  ic = iamax(n, c, 1);
-  rmx = fmax(fabs(a[ia]), fabs(b[ib]));
-  rmx = fmax(1.0, rmx);
-  r = fabs(c[ic])/rmx;
-  freem(c);
-  return r;
-}
-
 int almostSame(double a, double b) {
   // true if a and b are almost equal
   return relabsdiff(&a, &b, 1) < 5.0e-14;
@@ -93,4 +74,26 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   syrk("Low", "T", n, m, 1.0/(m-1), Xm, m, 0.0, C, n);
   copylowertoupper(n, C, n);
   freem(Xm); freem(mu);
+}
+
+double condnum(double *A, int n) {
+  // Compute norm-2 condition number of symmetric positive definite matrix
+  // Returns max(eig(A))/min(eig(A))
+  double *Acopy, *w, *work;
+  int lwork, info;
+  double cond;
+  allocate(Acopy, n*n);
+  allocate(w, n);
+  lwork = 3*n;
+  allocate(work, lwork);
+  copy(n*n, A, 1, Acopy, 1);
+  syev("N", "U", n, Acopy, n, w, work, lwork, &info);
+  if (info != 0) {
+    xErrorExit("condnum: syev failed");
+  }
+  cond = w[n-1]/w[0];
+  freem(work);
+  freem(w);
+  freem(Acopy);
+  return cond;
 }

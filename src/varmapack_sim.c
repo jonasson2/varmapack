@@ -86,6 +86,7 @@
 #include "error.h"
 #include "varmapack_VYW.h"
 #include "printX.h"
+#include "DebugUtil.h"
 
 static void SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r, int n,
 		    double SS[]);
@@ -102,7 +103,8 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   double *C, *G, *S;
   bool Ealloc = E==0;
   xAssert(p>=0 && q>=0 && r>0 && M>0);
-  xAssertMessage(n > h, "Illegal parameter in varmapack_sim, n must be > max(p,q)");
+  xAssertMessage(n >= h,
+                 "Illegal parameter in varmapack_sim, n must be >= max(p,q)");
   xAssertMessage(nX0 == 0 || (h <= nX0 && nX0 <= n),
                  "Illegal parameter in varmapack_sim, max(p,q) ≤ nX0 ≤ n");
   *ok = true;
@@ -117,6 +119,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
   }
   printM("S", S, r, r*(p+1));
+  TestMatlabMatrix("S.txt", S, r, r*(p+1));
   printM("G", G, r, r*(q+1));
   double *SS;
   allocate(SS, rk*rk);
@@ -127,7 +130,8 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   double *R;
   allocate(R, rk*rk);
   randompack_mvn("T", 0, Sig, r, n*M, E, r, 0, rng);
-  printM("E", E, rn, M);
+  TestMatlabMatrix("E1.txt", E, rn, M);
+  //printM("E", E, rn, M);
   if (X0 == 0) {  // Start series from scratch
     double *Wrk, *Psi, *PsiHat;
     allocate(Wrk, rh*M);
@@ -135,11 +139,14 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     allocate(PsiHat, rh*rh);
     vpack_FindPsi(A, B, Psi, p, q, r);
     vpack_FindPsiHat(Psi, PsiHat, Sig, r, h);
-    printM("PsiHat", PsiHat, rh, rh);
+    //printM("PsiHat", PsiHat, rh, rh);
+    TestMatlabMatrix("Psi_hat.txt", PsiHat, rh, rh);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
     printM("R", R, rk, rk);
+    TestMatlabMatrix("R.txt", R, rk, rk);
     randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng); // draw Wrk from N(0, R)
+    TestMatlabMatrix("Wrk.txt", Wrk, rh, M);    
     printM("Wrk", Wrk, rh, M);
     lacpy("All", rh, M, Wrk, rh, X, rn);    // copy to X1
     gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, // X1 := Psi*E(1:h) + X1
@@ -175,9 +182,9 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   FREE(R); FREE(SS); 
   printM("E", E, rn, M);
   lacpy("All", (n-k)*r, M, E + rk, rn, X + rk, rn);
-  double *Aflp, *Bflp;
-  allocate(Aflp, r*p);
-  allocate(Bflp, r*q);
+  double *Aflp = 0, *Bflp = 0;
+  if (p > 0) allocate(Aflp, r*r*p);
+  if (q > 0) allocate(Bflp, r*r*q);
   flipmat(A, Aflp, r, p);
   flipmat(B, Bflp, r, q);
   for (int t=k; t<n; t++) {    
@@ -186,10 +193,13 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
       iA = r*(t - p),
       iB = r*(t - q);
     print4I("t, iX, iA, iB", t, iX, iA, iB);
-    gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0, X + iX, rn);
-    gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0, X + iX, rn);
+    if (p > 0)
+      gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0, X + iX, rn);
+    if (q > 0)
+      gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0, X + iX, rn);
     printM("X", X, rn, M);
   }
+  TestMatlabMatrix("X.txt", X, rn, M);    
   FREE(Bflp); FREE(Aflp);
   if (Ealloc) FREE(E);
 }

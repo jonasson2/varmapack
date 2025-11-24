@@ -22,6 +22,25 @@ static inline void copytranspose(int m, int n, double A[], int ldA, double B[], 
   }  
 }
 
+static inline double relabsdiff(double a[], double b[], int n) {
+  // max(relative diff, absolute diff) where diff is difference between
+  // vectors a and b
+  int ia, ib, ic;
+  double *c, rmx, r;
+  if (n == 0) return 0.0;
+  allocate(c, n);
+  copy(n, a, 1, c, 1);
+  axpy(n, -1.0, b, 1, c, 1);
+  ia = iamax(n, a, 1);
+  ib = iamax(n, b, 1);
+  ic = iamax(n, c, 1);
+  rmx = fmax(fabs(a[ia]), fabs(b[ib]));
+  rmx = fmax(1.0, rmx);
+  r = fabs(c[ic])/rmx;
+  freem(c);
+  return r;
+}
+
 static inline void setzero(int n, double *x) {   // set x[0]...x[n-1] to 0.0
   memset(x, 0, n*sizeof(double));
 }

@@ -86,7 +86,12 @@ static inline void scal(int m, double alpha, double *x, int incx) {
   dscal_(&m, &alpha, x, &incx);
 }
 
-static inline void symm(char *side, char *uplo, int m, int n, double alpha, double a[], 
+static inline void syev(char *jobz, char *uplo, int n, double a[], int lda, double w[],
+          double work[], int lwork, int *info) {
+  dsyev_(jobz, uplo, &n, a, &lda, w, work, &lwork, info, 1, 1);
+}
+
+static inline void symm(char *side, char *uplo, int m, int n, double alpha, double a[],
           int lda, double b[], int ldb, double beta, double c[], int ldc) {
   dsymm_(side, uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, 1, 1);
 }

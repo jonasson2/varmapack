@@ -56,6 +56,9 @@ void dspr_(char *uplo, int *n, double *alpha, double x[], int *incx, double ap[]
 void dspr2_(char *uplo, int *n, double *alpha, double x[], int *incx, double y[],
             int *incy, double ap[], int lenuplo);
 
+void dsyev_(char *jobz, char *uplo, int *n, double a[], int *lda, double w[],
+            double work[], int *lwork, int *info, int lenjobz, int lenuplo);
+
 void dsymm_(char *side, char *uplo, int *m, int *n, double *alpha, double a[], 
             int *lda, double b[], int *ldb, double *beta, double c[], int *ldc,
             int lenside, int lenuplo);

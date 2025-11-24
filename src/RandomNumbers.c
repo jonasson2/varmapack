@@ -11,6 +11,8 @@
 #include "randompack.h"
 #include "BlasGateway.h"
 #include "error.h"
+#include "DebugUtil.h"
+#include "VarmaUtilities.h"
 //#include "ExtraUtil.h"
 
 // These typedef-s from random.h can't be forward declared for C-technical reasons
@@ -234,6 +236,7 @@ bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, doubl
     // printM("before lacpy, L", L, d, d);
     lacpy("Lower", d, d, Sig, d, L, d);
     potrf("Low", d, L, d, &info);
+    
     printM("in randompack_mvn, L", L, d, d);
     printI("info", info);
     if (info > 0) {
@@ -252,13 +255,24 @@ bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, doubl
   if (n == 0) return true;
   if (rank == d) {
     printM("L", L, d, d);
+    TestMatlabMatrix("L.txt", L, d, d);
+    double *LLT;
+    ALLOC(LLT, d*d);
+    syrk("L", "N", d, d, 1.0, L, d, 0.0, LLT, d);
+    double diff = relabsdiff(LLT, Sig, d*d);
+    printSetFmtChar('e');
+    printD("rel.abs.diff(L·L', Sig)", diff);
+    printSetFmtChar('f');
+    FREE(LLT);
     if (TRAN) {
       for (int i=0; i<n; i++) {
 	randompack_norm(X + i*ldX, d, rng);
       }
+      if (n == ldX) TestMatlabMatrix("y.txt", X, n, d);
       printMP("X before transform", X, d, n, X, ldX);
       trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, ldX);
       printMP("(T) X", X, d, n, X, ldX);
+      if (n == ldX) TestMatlabMatrix("x.txt", X, n, d);
     }
     else {
       for (int i=0; i<d; i++) randompack_norm(X + i*ldX, n, rng);

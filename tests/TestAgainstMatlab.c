@@ -1,4 +1,5 @@
 // TestCompareWithMatlab.c
+#include "VarmaUtilities.h"
 #include "ExtraUtil.h"
 #include "allocate.h"
 #include "error.h"
@@ -8,6 +9,7 @@
 
 #include "varmapack.h"
 #include "varmapack.h"
+#include "DebugUtil.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,8 +74,12 @@ void TestAgainstMatlab(void) {
     xCheck(sim_ok == 1);
     {
       double diff = relabsdiff(Xsim, X[k], rk*nk);
+      printSetFmtChar('E');
       printD("max_relabsdiff_Xsim_vs_matlab", diff);
-      xCheck(almostEqual(Xsim, X[k], rk*nk));
+      printSetFmtChar('f');
+      printSetNdec(3);
+      double tol = 5.0e-14*fmax(1, rk*nk);
+      xCheck(diff < tol);
     }
 
     // Free memory

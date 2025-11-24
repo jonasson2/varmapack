@@ -2,7 +2,6 @@ src_files = files(
   'RandomNumbers.c',
   'VarmaPackUtil.c',
   'error.c',
-  'printX.c',
   'varmapack_VYW.c',
   'varmapack_sim.c',
   'varmapack_covar.c',
@@ -10,6 +9,8 @@ src_files = files(
   'varmapack_testcase.c',
   'lapack_dpstf2.f',
   'lapack_dpstrf.f',
+  'printX.c',
+  'DebugUtil.c'
 )
 
 libvarmapack = library(
