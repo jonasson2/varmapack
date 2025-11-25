@@ -24,7 +24,7 @@ bool TestMatlabMatrix(char *filename, double *A, int m, int n) {
     ASSERT(nread == 1, "Error: failed to read value %d from '%s'\n", i, filename);
   }
   double rd = relabsdiff(A, B, m * n);
-  snprintf(buf, sizeof(buf), "Matrix %s comparison, rel.abs.diff = %.3e\n", name, rd);
+  snprintf(buf, sizeof(buf), "Matrix %s comparison, rel.abs.diff = %.3e", name, rd);
   printMsg(buf);
   FREE(B);
   fclose(fp);

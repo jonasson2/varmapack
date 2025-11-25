@@ -233,12 +233,9 @@ bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, doubl
       laset("Upper", d, d, 0.0, 0.0, L, d);
     ALLOC(work, 2*d);
     ALLOC(piv, d);
-    // printM("before lacpy, L", L, d, d);
     lacpy("Lower", d, d, Sig, d, L, d);
     potrf("Low", d, L, d, &info);
     
-    printM("in randompack_mvn, L", L, d, d);
-    printI("info", info);
     if (info > 0) {
       lacpy("Lower", d, d, Sig, d, L, d);      
       pstrf("Low", d, L, d, piv, &rank, 1e-14, work, &info); // PSD Chol fact.
@@ -254,31 +251,18 @@ bool randompack_mvn(char *transp, double mu[], double Sig[], int d, int n, doubl
   rank = LastNonzeroColumn(d, d, L);
   if (n == 0) return true;
   if (rank == d) {
-    printM("L", L, d, d);
-    TestMatlabMatrix("L.txt", L, d, d);
-    double *LLT;
-    ALLOC(LLT, d*d);
-    syrk("L", "N", d, d, 1.0, L, d, 0.0, LLT, d);
-    double diff = relabsdiff(LLT, Sig, d*d);
-    printSetFmtChar('e');
-    printD("rel.abs.diff(L·L', Sig)", diff);
-    printSetFmtChar('f');
-    FREE(LLT);
+    // TestMatlabMatrix("L.txt", L, d, d);
     if (TRAN) {
       for (int i=0; i<n; i++) {
 	randompack_norm(X + i*ldX, d, rng);
       }
-      if (n == ldX) TestMatlabMatrix("y.txt", X, n, d);
-      printMP("X before transform", X, d, n, X, ldX);
+      // if (n == ldX) TestMatlabMatrix("y.txt", X, n, d);
       trmm("Left", "Lower", "NoT", "NotUdia", d, n, 1.0, L, d, X, ldX);
-      printMP("(T) X", X, d, n, X, ldX);
-      if (n == ldX) TestMatlabMatrix("x.txt", X, n, d);
+      // if (n == ldX) TestMatlabMatrix("x.txt", X, n, d);
     }
     else {
       for (int i=0; i<d; i++) randompack_norm(X + i*ldX, n, rng);
-      printMP("X before transform", X, n, d, X, ldX);
       trmm("Right", "Lower", "T", "NotUdia", n, d, 1.0, L, d, X, ldX);
-      printMP("(NT) X", X, n, d, X, ldX);
     }
   }
   else { // Singular Sig, use workspace for the N(0,1) randoms

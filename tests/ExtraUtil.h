@@ -15,7 +15,6 @@ int almostSame(double a, double b);                // are a and b are almost equ
 int almostEqual(double a[], double b[], int n);    // is rel.diff. beween a and b < 5e-14?
 int almostAllSame(double a[], int n);              // is max diff. among x-elements < 5e-14?
 int almostZero(double a[], int n);                 // is a ≈ 0?
-bool TestMatlabMatrix(char *filename, double *A, int m, int n);
 double condnum(double *A, int n);                  // norm-2 condition number of sym. PD matrix
 
 void cov(char *transp, int m, int n, double X[], double C[]);

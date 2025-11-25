@@ -12,7 +12,6 @@
 
 static void flipud(int m, int n, double src[], double dst[]);
 static void hilb(double A[], int m);
-static void simplerand(double A[], int n, int seed);
 static int find_named_case(const char *namev[], const char *name, int Ncase);
 static bool error(FILE *errfp, const char *msg);
 
@@ -65,6 +64,12 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   // q and r return dimensions of one of 12 predefined testcases, and when they are
   // non-null they return the data for these cases. See more detailes in varmapack.h.
 
+#define p12 4
+#define r12 5
+#define seed12 42
+#define c12 0.1
+#define n12 (r12*r12*p12)
+  
   const char *namev[] = {// nr   p  q  r
     "tinyAR",      // 1    1  0  1
     "tinyMA",      // 2    0  1  1
@@ -77,11 +82,11 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     "mediumARMA1", // 9    3  3  3
     "mediumARMA2", // 10   3  3  3
     "mediumMA",    // 11   0  2  3
-    "largeAR"      // 12   5  0  7
+    "largeAR"      // 12   5  0  4
   };
-  int    pv[]      = { 1,  0,  1,  1,  0,  1,  1,  1,  3,   3,   0,   5};
+  int    pv[]      = { 1,  0,  1,  1,  0,  1,  1,  1,  3,   3,   0,   p12};
   int    qv[]      = { 0,  1,  1,  0,  2,  1,  2,  0,  3,   3,   2,   0};
-  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  3,  3,   3,   3,   7};
+  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  3,  3,   3,   3,   r12};
   //  Following would be used except that cl complains it is nonstandard
   //                   0   1   2   3   4   5   6   7   8    9   10   11
   //double *Av[]   = {A1,  0, A3, A4,  0, A6, A7, A8, A9, A10,   0, A12};
@@ -159,13 +164,14 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
       0.25, 0.15, 0.05,//  0.12, 0.15, 0.08,
       0.15, 0.05, 0.01,//  0.13, 0.16, 0.09
     },
-    A9[] = {
+    A9[9*3],
+    A10[9*3],
+    A33[] = {
       0.15, 0.10, 0.05,  0.11, 0.14, 0.17,  0.01, 0.04, 0.06,
       0.16, 0.11, 0.06,  0.12, 0.15, 0.18,  0.02, 0.05, 0.08,
       0.17, 0.12, 0.07,  0.13, 0.16, 0.19,  0.03, 0.06, 0.09
     },
-    A10[9*3],
-    A12[7*7*5],
+    A12[n12],
     B2[] = {0.5},
     B3[] = {0.4},
     B5[] = {0.3, 0.1, 0.1, 0.1,   0.3, 0.1, 0.1, 0.1},
@@ -183,7 +189,12 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     S3[] = {2, 1,   1, 2},
     S4[] = {2.0, 0.5, 0.0,   0.5, 2.0, 0.5,   0.0, 0.5, 1.0},
     //S5[] = {1.0, 0.0, 0.0,   0.0, 1.0, 0.0,   0.0, 0.0, 1.0},
-    S6[7*7];
+    S6[r12*r12];
+  copy(9*3, A33, 1, A9, 1);
+  flipud(9, 3, A33, B9);
+  flipud(9, 3, A33, A10);
+  copy(9*3, A33, 1, B10, 1);
+
   double *Av[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
   double *Bv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
   double *Sigv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
@@ -195,12 +206,15 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   Bv[1]=B2; Bv[2]=B3; Bv[4]=B5; Bv[5]=B6; Bv[6]=B7; Bv[8]=B9; Bv[9]=B10; Bv[10]=B11;
   Sigv[0]=Sigv[1]=Sigv[2]=S1; Sigv[3]=S2; Sigv[4]=Sigv[5]=Sigv[6]=S3;
   Sigv[7]=Sigv[8]=Sigv[9]=Sigv[10]=S4; Sigv[11]=S6;
-  flipud(9, 3, A9, B9);
-  flipud(9, 3, A9, A10);
-  copy(9*3, A9, 1, B10, 1);
-  simplerand(A12, 7*7*5, 366); // 366 is seed
-  scal(7*7*5, 1.8/5/7, A12, 1);
-  hilb(S6, 7);
+  //
+  randompack_rng *rng12 = randompack_create("Park-Miller", seed12);
+  randompack_u01(A12, n12, rng12);
+  randompack_free(rng12);
+  printM("A12", A12, r12, r12*p12);
+  printD("c12", c12);
+  scal(n12, c12, A12, 1);
+  printM("A12", A12, r12, r12*p12);
+  hilb(S6, r12);
   if (*icase <= 0) {
     p = *pp;
     q = *qp;
@@ -249,9 +263,14 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     }
   }
   else if (1 <= *icase && *icase <= Ncase) {
-    for (i=0; i<7; i++) S6[i + i*r] += 0.2; // add 0.2 to diagonal
-    if (A && Av[*icase-1]) copytranspose(p*r, r, Av[*icase-1], p*r, A, r);
-    if (B && Bv[*icase-1]) copytranspose(q*r, r, Bv[*icase-1], q*r, B, r);
+    if (*icase == 12) {
+      for (i=0; i<r12; i++) S6[i + i*r] += 1; // add I to diagonal
+      lacpy("All", r, p*r, Av[*icase - 1], r, A, r);
+    }
+    else {
+      if (A && Av[*icase-1]) copytranspose(p*r, r, Av[*icase-1], p*r, A, r);
+      if (B && Bv[*icase-1]) copytranspose(q*r, r, Bv[*icase-1], q*r, B, r);
+    }
     if (Sig && Sigv[*icase-1]) copy(r*r, Sigv[*icase-1], 1, Sig, 1);
     if (name && !NAMED) strcpy(name, namev[*icase-1]); // name <---namev
   }
@@ -290,16 +309,6 @@ static int find_named_case(const char *namev[], const char *name, int Ncase) {
     if (strcmp(namev[i], name) == 0) return i + 1;
   }
   return 0; // not found
-}
-
-static void simplerand(double A[], int n, int seed) {
-// (procedure from Posix.1, 2001)
-  int i, next = seed, irand;
-  for (i=0; i<n; i++) {
-    next = next * 1103515245 + 12345;
-    irand = (next/65536) % 32768;
-    A[i] = irand/32768.0;
-  }
 }
 
 static bool error(FILE *errfp, const char *msg) {
