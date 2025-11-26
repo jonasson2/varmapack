@@ -75,25 +75,3 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   copylowertoupper(n, C, n);
   freem(Xm); freem(mu);
 }
-
-double condnum(double *A, int n) {
-  // Compute norm-2 condition number of symmetric positive definite matrix
-  // Returns max(eig(A))/min(eig(A))
-  double *Acopy, *w, *work;
-  int lwork, info;
-  double cond;
-  allocate(Acopy, n*n);
-  allocate(w, n);
-  lwork = 3*n;
-  allocate(work, lwork);
-  copy(n*n, A, 1, Acopy, 1);
-  syev("N", "U", n, Acopy, n, w, work, lwork, &info);
-  if (info != 0) {
-    xErrorExit("condnum: syev failed");
-  }
-  cond = w[n-1]/w[0];
-  freem(work);
-  freem(w);
-  freem(Acopy);
-  return cond;
-}

@@ -1,34 +1,36 @@
+#include <math.h>
 #include <stdbool.h>
-#include "randompack.h"
 #include <stdio.h>
-#include "printX.h"
-#include "BlasGateway.h"
+#include <string.h>
 
-int main(void) {
-  // Test dsyev_ interface with a simple 2x2 symmetric matrix
-  // Matrix: [2 1]
-  //         [1 2]
-  // Expected eigenvalues: 1 and 3
-  int n = 2;
-  double a[4] = {2.0, 1.0, 1.0, 2.0};
-  double w[2];
-  double work[20];
-  int lwork = 20;
-  int info;
+double ScalarFromMatlab(char *filename, char *var);
 
-  printf("Testing syev interface\n");
-  printf("Matrix (column-major):\n");
-  printf("  %6.3f %6.3f\n", a[0], a[2]);
-  printf("  %6.3f %6.3f\n", a[1], a[3]);
-
-  syev("N", "U", n, a, n, w, work, lwork, &info);
-
-  if (info == 0) {
-    printf("Eigenvalues: %6.3f %6.3f\n", w[0], w[1]);
+static bool print_scalar(char *filename, char *name)
+{
+  double value = ScalarFromMatlab(filename, name);
+  if (isnan(value)) {
+    printf("Could not read %s from %s\n", name, filename);
+    return false;
   }
-  else {
-    printf("Error: info = %d\n", info);
+  printf("%s = %.6f\n", name, value);
+  return true;
+}
+
+int main(int argc, char *argv[])
+{
+  const char default_file[] = "examples/prufa_data.txt";
+  char filename[256];
+  bool ok = true;
+
+  snprintf(filename, sizeof filename, "%s", default_file);
+  if (argc > 1) {
+    snprintf(filename, sizeof filename, "%s", argv[1]);
   }
 
-  return 0;
+  printf("Reading scalars from %s\n", filename);
+
+  ok = print_scalar(filename, "alpha") && ok;
+  ok = print_scalar(filename, "gamma") && ok;
+
+  return ok ? 0 : 1;
 }

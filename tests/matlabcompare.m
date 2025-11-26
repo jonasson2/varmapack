@@ -1,4 +1,5 @@
 function matlabcompare(cases)
+  M = 2;
   if nargin < 1, cases = [1:3,6:10,12]; end
   fid = fopen("matlabcompare.inc", "w");
   folder = """" + pwd() + filesep + """";
@@ -11,13 +12,13 @@ function matlabcompare(cases)
   for k=cases
     fprintf("Case %d\n", k)
     if k < 12, ndec = 4; else, ndec = 15; end
-    if k < 12, n = 5; else, n = 7; end
+    if k < 12, n = 3; else, n = 7; end
     [A, B, Sig, p, q, r] = testcase(k);
     rand_init('ParkMillerPolar', 42);
     x0 = startmat(r, max(p,q));
-    [X, E, condR] = new_varma_sim(A, B, Sig, n, 0, 1);
-    [XX, EE] = new_varma_sim(A, B, Sig, n, 0, 2);
-    [X0, E0] = new_varma_sim(A, B, Sig, n, 0, 2, x0);
+    [X, E, condR] = new_varma_sim(A, B, Sig, n, 0, M);
+    [XX, EE]      = new_varma_sim(A, B, Sig, n, 0, M);
+    [X0, E0]      = new_varma_sim(A, B, Sig, n, 0, M, x0);
     printdims(fid, k, p, q, r, n)
     fprintf(fid, "  double\n");
     printdbl(fid, "condR", condR, k, ",")
@@ -47,6 +48,8 @@ function matlabcompare(cases)
   printcomb(fid, "double", "condR", cases);
   fclose(fid);
 end
+
+function declareD(A)
 
 function printdims(fid, icase, p, q, r, n)
   fmt = "  int p%d = %d, q%d = %d, r%d = %d, n%d = %d;\n";

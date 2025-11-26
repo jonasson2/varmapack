@@ -210,10 +210,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   randompack_rng *rng12 = randompack_create("Park-Miller", seed12);
   randompack_u01(A12, n12, rng12);
   randompack_free(rng12);
-  printM("A12", A12, r12, r12*p12);
-  printD("c12", c12);
   scal(n12, c12, A12, 1);
-  printM("A12", A12, r12, r12*p12);
   hilb(S6, r12);
   if (*icase <= 0) {
     p = *pp;

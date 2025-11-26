@@ -54,14 +54,6 @@ static void checkdiff(void) {
   xCheck(almostAllSame(d, 3));
 }
 
-static void checkcondnum(void) {
-  // Test condition number with simple 2x2 symmetric matrix
-  // Matrix: [2 1; 1 2] has eigenvalues 3 and 1, so cond = 3
-  double A[] = {2.0, 1.0, 1.0, 2.0};
-  double cond = condnum(A, 2);
-  xCheck(almostSame(cond, 3.0));
-}
-
 void TestExtraUtil(void) {
   double a[] = {1.0, 2.0, 3.0}, b[] = {2.0, 2.0, 2.0 + 1e-15};
   xCheck(almostEqual(a, a, 3));
@@ -75,5 +67,4 @@ void TestExtraUtil(void) {
   checkdiff(); // more checks of the above
   checkmeancov();
   checkvar();
-  checkcondnum();
 }

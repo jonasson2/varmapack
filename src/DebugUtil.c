@@ -17,7 +17,8 @@ bool TestMatlabMatrix(char *filename, double *A, int m, int n) {
   int file_m, file_n;
   int nread = fscanf(fp, "%255[^,],%d,%d\n", name, &file_m, &file_n);
   ASSERT(nread == 3, "TestMatlabMatrix error: invalid file format in %s", filename);
-  ASSERT(file_m == m && file_n == n, "dimension mismatch");
+  ASSERT(file_m == m && file_n == n, "%s: dimension mismatch, file (%d,%d) ≠ C (%d,%d)",
+	 basename_only(filepath), file_m, file_n, m, n);
   ALLOC(B, m*n);
   for (int i = 0; i < m*n; i++) {
     nread = fscanf(fp, "%lf,", &B[i]);

@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define STRSET(dst, src) \
+    snprintf(dst, sizeof(dst), "%s", (src) ? (src) : "")
+
 #define xAssert(e)  ((e) ? (void)0 : xPrintAssertion(#e, __FILE__, __LINE__))
 
 #define ASSERT(cond, ...)				\
@@ -36,6 +39,7 @@
 #define FREE(p) free(p)
 
 void varmapack_set_errstream(FILE *stream);
+void varmapack_set_errprefix(char *prefix);
 void error_report(const char *file, int line, const char *fmt, ...);
 
 #ifdef MEX
@@ -69,6 +73,16 @@ static inline void xPrintAssertion(char *assertion, char *file, int line) {
 
 static inline void xAssertMessage(int expression, char *message) {
   if (!expression) xErrorExit(message);
+}
+
+static inline const char *basename_only(const char *path) {
+  if (!path) return "";
+  const char *slash = strrchr(path, '/');
+#ifdef _WIN32
+  const char *bslash = strrchr(path, '\\');
+  if (!slash || (bslash && bslash > slash)) slash = bslash;
+#endif
+  return slash ? slash + 1 : path;
 }
 
 #endif

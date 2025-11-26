@@ -2,6 +2,12 @@ example_util = files(
   'getopt.c',
 )
 
+configure_file(
+  input : 'prufa_data.txt',
+  output : 'prufa_data.txt',
+  copy : true,
+)
+
 run_varmasim = executable(
   'RunVarmaSim',
   ['RunVarmaSim.c'] + example_util,
@@ -10,9 +16,10 @@ run_varmasim = executable(
 
 prufa = executable(
   'prufa',
-  ['prufa.c'] + example_util,
+  ['prufa.c', '../tests/FromMatlab.c'] + example_util,
   dependencies : [varmapack_dep],
 )
+alias_target('prufa', prufa)
 
 debugprint_demo = executable(
   'debugprint-demo',
