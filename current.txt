@@ -1,0 +1,7 @@
+Now write me a function in the style of ScalarFromMatlab with signature bool
+  CompareWithMatlab(char *filename, char *Bname, double *A, int m, int n,
+  double tol). Put it inside FromMatlab.c. It shall find the matrix Bname in
+  the file, allocate B with ALLOC(B, m*n), read the matrix, and compare A and B
+  with relabsdiff. If all is ok and A and B match return true, otherwise return
+  false. Use the ASSERT macro for checks and error detection. Use "set_ Note
+  that both ALLOC and ASSERT
