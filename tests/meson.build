@@ -1,5 +1,19 @@
+fs = import('fs')
+
+matlab_compare = '../matlab/matlabcompare.txt'
+if fs.exists(matlab_compare)
+  configure_file(
+    input : matlab_compare,
+    output : 'matlabcompare.txt',
+    copy : true,
+  )
+else
+  message('matlabcompare.txt not found; skipping copy')
+endif
+
 test_sources = files(
   'RunTests.c',
+  'FromMatlab.c',
   'TestRandom.c',
   'TestRandomMvn.c',
   'TestError.c',
@@ -8,6 +22,7 @@ test_sources = files(
   'TestTestcase.c',
   'TestVarSpecRad.c',
   'TestAgainstMatlab.c',
+  'TestFromMatlab.c',
   'TestFindCG.c',
   'TestPsi.c',
 )

@@ -69,6 +69,7 @@ int main(int argc, char **argv) {
   if (TESTVERBOSITY <= 1) printOff();
   vprint("\n");
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
+  run_test("FromMatlab helpers", TestFromMatlab);
   run_test("AgainstMatlab",      TestAgainstMatlab);
   // run_test("TestFindCG",         TestFindCG);
   // run_test("ExtraUtil",          TestExtraUtil);

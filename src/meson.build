@@ -10,7 +10,8 @@ src_files = files(
   'lapack_dpstf2.f',
   'lapack_dpstrf.f',
   'printX.c',
-  'DebugUtil.c'
+  'DebugUtil.c',
+  'crypto_random.c'
 )
 
 libvarmapack = library(

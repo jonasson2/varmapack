@@ -13,4 +13,5 @@ void TestAgainstMatlab(void);
 void TestFindCG(void);
 void TestPsi(void);
 void TestCovar(void);
+void TestFromMatlab(void);
 #endif /* TESTS_H */

@@ -14,6 +14,12 @@ run_varmasim = executable(
   dependencies : [varmapack_dep],
 )
 
+run_cryptorandom = executable(
+  'RunCryptoRandom',
+  ['RunCryptoRandom.c'] + example_util,
+  dependencies : [varmapack_dep],
+)
+
 prufa = executable(
   'prufa',
   ['prufa.c', '../tests/FromMatlab.c'] + example_util,

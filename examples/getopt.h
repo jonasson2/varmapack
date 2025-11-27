@@ -24,10 +24,6 @@
 #ifndef GETOPT_H_
 #define GETOPT_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // POSIX-style short-option API (no long options)
 
 extern int optind;   // index of first non-option in argv
@@ -36,9 +32,5 @@ extern int opterr;   // nonzero enables built-in diagnostics
 extern char *optarg; // argument associated with current option
 
 int getopt(int argc, char * const argv[], const char *optstring);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // GETOPT_H_

@@ -18,7 +18,7 @@ static bool print_scalar(char *filename, char *name)
 
 int main(int argc, char *argv[])
 {
-  const char default_file[] = "examples/prufa_data.txt";
+  const char default_file[] = "prufa_data.txt";
   char filename[256];
   bool ok = true;
 
