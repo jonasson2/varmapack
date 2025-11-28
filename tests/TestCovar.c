@@ -4,12 +4,13 @@
 #include "xCheck.h"
 
 static void check_autocov_example(void) {
-  const int r = 2;
-  const int n = 5;
+#define R 2
+#define N 5
+  int r = R, n = N; 
   const int maxlag = 2;
   const double tol = 1e-12;
   // Columns are observations at times t = 1..n
-  double X[r*n] = {
+  double X[R*N] = {
     1.0, 0.0,
     2.0, 2.0,
     3.0, 1.0,

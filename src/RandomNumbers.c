@@ -13,6 +13,13 @@
 #include "error.h"
 #include "DebugUtil.h"
 #include "VarmaUtilities.h"
+// At top of file
+#ifdef __unix__
+  #include <unistd.h>
+  #include <fcntl.h>
+#elif defined(_WIN32)
+  #include <windows.h>
+#endif
 //#include "ExtraUtil.h"
 
 // These typedef-s from random.h can't be forward declared for C-technical reasons
@@ -509,11 +516,14 @@ static uint64_t rand_splitmix64(uint64_t *x) {
 
 static inline uint64_t rand_os_pid(void) {
 #ifdef __unix__
+  #include <unistd.h>
   return (uint64_t)getpid();
 #elif defined(_WIN32)
+  #include <windows.h>
   return (uint64_t)GetCurrentProcessId();
 #else
-  return 0;
+  #warning "No PID support on this platform - using constant"
+  return 1;
 #endif
 }
 
