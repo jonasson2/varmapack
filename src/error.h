@@ -8,7 +8,10 @@
 #include <stdlib.h>
 
 #define STRSET(dst, src) \
-    snprintf(dst, sizeof(dst), "%s", (src) ? (src) : "")
+ snprintf((dst), sizeof(dst), "%s", (src) ? (src) : "")
+
+#define STRSETF(dst, fmt, ...) \
+ snprintf((dst), sizeof(dst), (fmt), __VA_ARGS__)
 
 #define xAssert(e)  ((e) ? (void)0 : xPrintAssertion(#e, __FILE__, __LINE__))
 

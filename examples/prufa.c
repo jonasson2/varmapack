@@ -2,13 +2,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "../tests/FromMatlab.h"
 
-double ScalarFromMatlab(char *filename, char *var);
-
-static bool print_scalar(char *filename, char *name)
-{
-  double value = ScalarFromMatlab(filename, name);
-  if (isnan(value)) {
+static bool print_scalar(FILE *f, const char *filename, char *name) {
+  double value = 0.0;
+  bool ok = DoubleFromMatlab(f, name, &value);
+  if (!ok) {
     printf("Could not read %s from %s\n", name, filename);
     return false;
   }
@@ -16,8 +15,7 @@ static bool print_scalar(char *filename, char *name)
   return true;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   const char default_file[] = "prufa_data.txt";
   char filename[256];
   bool ok = true;
@@ -29,8 +27,16 @@ int main(int argc, char *argv[])
 
   printf("Reading scalars from %s\n", filename);
 
-  ok = print_scalar(filename, "alpha") && ok;
-  ok = print_scalar(filename, "gamma") && ok;
+  FILE *f = fopen(filename, "r");
+  if (!f) {
+    printf("Could not open %s\n", filename);
+    return 1;
+  }
+
+  ok = print_scalar(f, filename, "alpha") && ok;
+  ok = print_scalar(f, filename, "gamma") && ok;
+
+  fclose(f);
 
   return ok ? 0 : 1;
 }

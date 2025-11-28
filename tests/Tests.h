@@ -9,7 +9,7 @@ void TestRandomMvn(void);
 void TestError(void);
 void TestTestcase(void);
 void Testvarmapack_specrad(void);
-void TestAgainstMatlab(void);
+bool TestAgainstMatlab(void);
 void TestFindCG(void);
 void TestPsi(void);
 void TestCovar(void);
