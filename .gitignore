@@ -1,0 +1,51 @@
+# Build products
+build/
+release/
+debug/
+compile_commands.json
+.ninja_*
+
+# Compiled objects and libraries
+*.o
+*.obj
+*.d
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Matlab generated files
+*.mex*
+*.asv
+*.tmp
+
+# LaTeX generated files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.pdf
+*.synctex.gz
+
+# R generated files
+.RData
+.Rhistory
+.Rprofile
+.Rproj.user/
+*.Rproj
+*.tar.gz
+*.tgz
+
+# Local/editor files
+.DS_Store
+*~
+\#*\#
+.\#*
+
+# Local reference material
+nogit/

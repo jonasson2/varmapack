@@ -1,0 +1,58 @@
+% mystyle.sty — Personal LaTeX style (Icelandic + author–year + minted)
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{snidmat}[2025/10/29 Personal report style]
+
+% --- Blaðsíðu- og leturstærð, spássíur, málsgreinar ---
+\RequirePackage[margin=2.2cm]{geometry}     % spássíur
+\RequirePackage[skip=.8em]{parskip}         % bil milli málsgreina, engar inndráttir
+
+% --- Fontar og íslenska ---
+\RequirePackage{fourier}                    % fallegri fontar (sér í lagi í formúlum)
+\RequirePackage[utf8]{inputenc}             % inntak: UTF-8
+\RequirePackage[T1]{fontenc}                % úttak: T1 (rétt prentun ísl.)
+%% \RequirePackage[icelandic]{babel}           % íslensk blaðsíðumerking o.fl.
+\RequirePackage[english]{babel}
+
+% --- Fleiri litir ---
+\usepackage[dvipsnames]{xcolor}
+
+% --- Myndir og forrit ---
+\RequirePackage{graphicx}                   % myndir
+%\RequirePackage{minted}                     % kóðalisti (krefst -shell-escape)
+%\usemintedstyle{vs}                         % t.d. friendly, tango, trac, ...
+
+% --- Stærðfræðiformúlur ---
+\RequirePackage[leqno]{amsmath}             % jöfnunúmer vinstra megin
+\RequirePackage{xfrac}                      % \sfrac
+\RequirePackage{nicefrac}                   % \nicefrac
+
+% --- Betri töflur og listar ---
+\RequirePackage{booktabs}                   % töflur
+\RequirePackage{caption}                    % uppsetning mynda-/töflutexta
+\captionsetup{
+  font=small,
+  labelfont=bf,                             % „Mynd 1“, „Tafla 2“ feitletrað
+  margin=2cm
+}
+\RequirePackage{siunitx}                    % S-jöfnun o.fl.
+\sisetup{output-decimal-marker={,}}         % tugabrot með kommu (5,37)
+\RequirePackage[shortlabels]{enumitem}      % betri listar
+\setlist{nosep, topsep=-.5\parskip}         % samræming við parskip
+
+% --- Heimildir (natbib fyrst), síðan tenglar ---
+\RequirePackage[round,authoryear]{natbib}   % \citet / \citep
+
+% --- Tenglar (hleðst seint) ---
+\RequirePackage{hyperref}
+\hypersetup{
+  colorlinks,
+  linkcolor=MidnightBlue,
+  citecolor=MidnightBlue,
+  urlcolor=MidnightBlue
+}
+
+% -- convenience commands
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Var}{Var}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\N}{\mathcal{N}}
