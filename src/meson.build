@@ -7,8 +7,7 @@ src_files = files(
   'varmapack_autocov.c',
   'varmapack_specrad.c',
   'varmapack_testcase.c',
-  'lapack_dpstf2.f',
-  'lapack_dpstrf.f',
+  'rp_dpstrf.c',
   'printX.c',
   'DebugUtil.c',
 )
@@ -18,6 +17,7 @@ libvarmapack = library(
   src_files,
   include_directories : inc,
   dependencies : [blas_dep, randompack_dep],
+  c_args : local_dpstrf_args,
 )
 
 varmapack_dep = declare_dependency(

@@ -1,4 +1,4 @@
-project('varmapack', 'c', 'fortran',
+project('varmapack', 'c',
   version : '1.0',
   default_options : [
     'c_std=c11',
@@ -6,8 +6,6 @@ project('varmapack', 'c', 'fortran',
     'buildtype=debug',
   ]
 )
-
-add_project_arguments('-Wno-do-subscript', language : 'fortran')
 
 buildtype = get_option('buildtype')
 host_system = host_machine.system()
@@ -77,6 +75,9 @@ if blas_dep.found()
 else
   error('No optimized BLAS found, reference implementation not yet available')
 endif
+
+using_accelerate = (host_system == 'darwin') and (blas_found == 'Accelerate')
+local_dpstrf_args = using_accelerate ? ['-DLOCAL_DPSTRF'] : []
 
 # if blas_option == 'none'
 #   blas_dep = declare_dependency()  # no BLAS, for symbol inspection

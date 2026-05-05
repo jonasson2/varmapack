@@ -1,12 +1,7 @@
 #ifndef BLASGATEWAY_H
 #define BLASGATEWAY_H
-// Gateway to Fortran Blas functions used by the VarmaLoglik / VarLoglik package
 #include "blasref.h"
-//#include "printX.h"
-
-// Note that vpack_dpstrf_ is used instead of dpstrf_ because the latter routine is
-// faulty in Accelerate; lapack_dpstrf.f with Netlib's official code must be compiled and
-// linked against.
+#include <string.h>
 
 static inline void axpy(int n, double alpha, double x[], int incx, double y[], int incy) {
   daxpy_(&n, &alpha, x, &incx, y, &incy);
@@ -77,13 +72,30 @@ static inline void posv(char *uplo, int n, int nrhs, double a[], int lda, double
 }
 
 static inline void pstrf(char *uplo, int n, double a[], int lda, int piv[], int *rank,
-	   double tol, double work[], int *info) {
-  vpack_dpstrf_(uplo, &n, a, &lda, piv, rank, &tol, work, info, 1);
+		   double tol, double work[], int *info) {
+#if defined(LOCAL_DPSTRF)
+  rp_dpstrf(uplo, n, a, lda, piv, rank, tol, work, info);
+#else
+  dpstrf_(uplo, &n, a, &lda, piv, rank, &tol, work, info, 1);
+#endif
   for (int i=0; i<n; i++) piv[i]--;
+}
+
+static inline int ilaenv(int ispec, char *name, char *opts, int n1, int n2, int n3,
+                         int n4) {
+  return ilaenv_(&ispec, name, opts, &n1, &n2, &n3, &n4, (fstrlen)strlen(name), 1);
+}
+
+static inline double lamch(char *cmach) {
+  return dlamch_(cmach, 1);
 }
 
 static inline void scal(int m, double alpha, double *x, int incx) {
   dscal_(&m, &alpha, x, &incx);
+}
+
+static inline void swap(int n, double *x, int incx, double *y, int incy) {
+  dswap_(&n, x, &incx, y, &incy);
 }
 
 static inline void syev(char *jobz, char *uplo, int n, double a[], int lda, double w[],

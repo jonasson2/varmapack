@@ -1,11 +1,11 @@
-// Include file declaring the reference blas functions
-//
-// Note that vpack_dpstrf_ is used instead of dpstrf_ because the latter routine is
-// faulty in Accelerate; lapack_dpstrf.f with Netlib's official code must be compiled and
-// linked against.
-
 #ifndef BLASREF_H
 #define BLASREF_H
+
+#if defined(__GNUC__) && !defined(__clang__)
+typedef long int fstrlen;
+#else
+typedef int fstrlen;
+#endif
 
 void daxpy_(int *n, double *alpha, double x[], int *incx, double y[], int *incy);
 
@@ -42,13 +42,17 @@ double dnrm2_(int *n, double x[], int *incx);
 
 void dpotrf_(char *uplo, int *n, double a[], int *lda, int *info, int lenuplo);
 
-void vpack_dpstrf_(char *uplo, int *n, double a[], int *lda, int piv[], int *rank,
-	     double *tol, double work[], int *info, int lenuplo);
+double dlamch_(char *cmach, fstrlen lencmach);
+
+void dpstrf_(char *uplo, int *n, double a[], int *lda, int piv[], int *rank,
+		     double *tol, double work[], int *info, int lenuplo);
 
 void dposv_(char *uplo, int *n, int *nrhs, double a[], int *lda, double b[], int *ldb,
             int *info, int lenuplo);
 
 void dscal_(int *m, double *alpha, double *x, int *incx);
+
+void dswap_(int *n, double *x, int *incx, double *y, int *incy);
 
 void dspr_(char *uplo, int *n, double *alpha, double x[], int *incx, double ap[],
            int lenuplo);
@@ -89,5 +93,11 @@ void dtrsv_(char *uplo, char *transa, char *diag, int *n, double a[], int *lda,
             double x[], int *incx, int lenuplo, int lentransa, int lendiag);
 
 int idamax_(int *n, double dx[], int *incx);
+
+int ilaenv_(int *ispec, char *name, char *opts, int *n1, int *n2, int *n3, int *n4,
+            fstrlen lenname, fstrlen lenopts);
+
+void rp_dpstrf(char *uplo, int n, double a[], int lda, int piv[], int *rank, double tol,
+               double work[], int *info);
 
 #endif // BLASREF_H
