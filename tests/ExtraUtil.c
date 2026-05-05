@@ -1,10 +1,9 @@
 // Utilities used by example programs and tests for varmapack_sim
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "allocate.h"
+#include "error.h"
 #include "ExtraUtil.h"
 #include "BlasGateway.h"
-#include "error.h"
 #include "Tests.h"
 #include "varmapack.h"
 #include <math.h>
@@ -63,8 +62,8 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   if (transp[0] == 'T') { tmp = n; n = m; m = tmp; }
   setzero(n*n, C);
   if (m <= 1) return;
-  allocate(mu, n);
-  allocate(Xm, m*n);
+  xAssert(ALLOC(mu, n));
+  xAssert(ALLOC(Xm, m*n));
   setzero(n, mu);
   if (transp[0] == 'T') copytranspose(n, m, X, n, Xm, m);
   else copy(m*n, X, 1, Xm, 1);
@@ -73,5 +72,5 @@ void cov(char *transp, int m, int n, double X[], double C[]) {
   for (i=0; i<m; i++) axpy(n, -1.0, mu, 1, Xm + i, m); // subtract mu from rows
   syrk("Low", "T", n, m, 1.0/(m-1), Xm, m, 0.0, C, n);
   copylowertoupper(n, C, n);
-  freem(Xm); freem(mu);
+  FREE(Xm); FREE(mu);
 }

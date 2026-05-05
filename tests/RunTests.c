@@ -88,7 +88,10 @@ int main(int argc, char **argv) {
   run_test("Error helpers",      TestError);
   run_test("varmapack_testcase", TestTestcase);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
-  run_test("varmapack_covar",    TestCovar);
+  run_test("varmapack_acvf",     TestAcvf);
+  run_test("varmapack_autocov",  TestAutocov);
+  run_test("autocov edge cases", TestAutocovEdgeCases);
+  run_test("PSD cond covariance", TestPsdCondCov);
   run_test("Psi functions",      TestPsi);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);

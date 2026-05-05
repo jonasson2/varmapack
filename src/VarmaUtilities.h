@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include "BlasGateway.h"
 #include "error.h"
-#include "allocate.h"
 
 static inline void copytranspose(int m, int n, double A[], int ldA, double B[], int ldB){
   // Set B to the transpose of the m×n matrix A. Leading dimensions are in ldA
@@ -28,7 +27,7 @@ static inline double relabsdiff(double a[], double b[], int n) {
   int ia, ib, ic;
   double *c, rmx, r;
   if (n == 0) return 0.0;
-  allocate(c, n);
+  xAssert(ALLOC(c, n));
   copy(n, a, 1, c, 1);
   axpy(n, -1.0, b, 1, c, 1);
   ia = iamax(n, a, 1);
@@ -37,7 +36,7 @@ static inline double relabsdiff(double a[], double b[], int n) {
   rmx = fmax(fabs(a[ia]), fabs(b[ib]));
   rmx = fmax(1.0, rmx);
   r = fabs(c[ic])/rmx;
-  freem(c);
+  FREE(c);
   return r;
 }
 

@@ -1,5 +1,5 @@
 #include "BlasGateway.h"
-#include "allocate.h"
+#include "error.h"
 #include "printX.h"
 #include "VarmaUtilities.h"
 
@@ -49,9 +49,9 @@ void vpack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
 void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   // Prepare
   int h = imax(p, q), rr = r*r, hr = h*r, i, j, k, l;
-  double *Aflp, *Psi_jj;
+  double *Aflp = 0, *Psi_jj;
   if (h == 0) return;
-  allocate(Aflp, p*rr);
+  if (p > 0) xAssert(ALLOC(Aflp, p*rr));
   flipmat(A, Aflp, r, p);
   laset("All", hr, hr, 0.0, 0.0, Psi, hr);
   
@@ -78,7 +78,7 @@ void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
 void vpack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
   double *LSig, *Psi_hat_kk;
   int info, hr = h*r, rr = r*r, k, nrow;
-  allocate(LSig, rr);
+  xAssert(ALLOC(LSig, rr));
   lacpy("Low", r, r, Sig, r, LSig, r);
   potrf("Low", r, LSig, r, &info);
   xAssert(info == 0);

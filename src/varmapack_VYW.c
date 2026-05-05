@@ -3,11 +3,10 @@
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
-#include "allocate.h"
 #include "error.h"
 
-static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info);
-static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
+static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info);
+static bool vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
                       int piv[], int p, int r);
 static void kronecker(int n, double alpha, double A[], double B[], double C[]);
 static void kronI(int n, double alpha, double A[], double C[]);
@@ -16,21 +15,23 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
                         int p, int q, int r,
                         double S[], double C[], double G[])
 {
-  xAssert(A != 0 && Sig != 0 && S != 0);
+  xAssert((A != 0 || p == 0) && Sig != 0 && S != 0);
   xAssert(p >= 0 && q >= 0 && r > 0);
   xAssert(B != 0 || q == 0);
 
   int rr = r*r;
   double *Cbuf = C;
   double *Gbuf = G;
+  double *vywFactors = 0;
+  int *piv = 0;
   bool ownC = false;
   bool ownG = false;
   if (Cbuf == 0) {
-    allocate(Cbuf, rr*(q+1));
+    if (!ALLOC(Cbuf, rr*(q+1))) goto fail;
     ownC = true;
   }
   if (Gbuf == 0) {
-    allocate(Gbuf, rr*(q+1));
+    if (!ALLOC(Gbuf, rr*(q+1))) goto fail;
     ownG = true;
   }
 
@@ -44,15 +45,13 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
   }
 
   int nVYW = rr*p - r*(r-1)/2;
-  double *vywFactors;
-  int *piv;
-  allocate(vywFactors, nVYW*nVYW);
-  allocate(piv, nVYW);
+  if (!ALLOC(vywFactors, nVYW*nVYW)) goto fail;
+  if (!ALLOC(piv, nVYW)) goto fail;
 
   int info;
-  vyw_factorize(A, vywFactors, piv, p, r, &info);
+  if (!vyw_factorize(A, vywFactors, piv, p, r, &info)) goto fail;
   if (info == 0) {
-    vyw_solve(A, vywFactors, S, Gbuf, 1, q+1, piv, p, r);
+    if (!vyw_solve(A, vywFactors, S, Gbuf, 1, q+1, piv, p, r)) goto fail;
   }
 
   FREE(piv);
@@ -60,9 +59,15 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
   if (ownG) FREE(Gbuf);
   if (ownC) FREE(Cbuf);
   return info == 0;
+fail:
+  FREE(piv);
+  FREE(vywFactors);
+  if (ownG) FREE(Gbuf);
+  if (ownC) FREE(Cbuf);
+  return false;
 }
 
-static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info)
+static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info)
 {
   int rr = r*r;
   int N = rr*p - r*(r-1)/2;
@@ -73,11 +78,12 @@ static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
   double *FKJ, *Ai, *Aj, *FiimjKK, *FijmiKJ, *F0ciKK, *F0ciKJ, *F00KK1;
   int i, j, k, i1, j1, I, J;
   *info = 0;
-  if (p == 0) return;
+  if (p == 0) return true;
   F = LU;
-  allocate(F0r, Nr*Nc);
-  allocate(F0c, Nc*Nr);
-  allocate(F00, Nr*Nr);
+  F0r = F0c = F00 = 0;
+  if (Nc > 0 && !ALLOC(F0r, Nr*Nc)) goto fail;
+  if (Nc > 0 && !ALLOC(F0c, Nc*Nr)) goto fail;
+  if (!ALLOC(F00, Nr*Nr)) goto fail;
   F11 = F + N0*(1 + N);
   setzero(N*N, F);
   Ap = A + rr*(p-1);
@@ -141,9 +147,16 @@ static void vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
   FREE(F0r);
   FREE(F0c);
   FREE(F00);
+  return true;
+fail:
+  FREE(F0r);
+  FREE(F0c);
+  FREE(F00);
+  *info = -1;
+  return false;
 }
 
-static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
+static bool vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
                       int piv[], int p, int r)
 {
   xAssert(nrhs == 1);
@@ -151,7 +164,7 @@ static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs,
   double *g, *g1, *Yp;
   int mg = r*r*(p+1);
   int N = r*r*p - r*(r-1)/2;
-  allocate(g, mg*nrhs);
+  if (!ALLOC(g, mg*nrhs)) return false;
   g1 = g + r*(r+1)/2;
   Yp = Y + rr*nrhs*p;
   for (int k = 0; k < nrhs; k++) {
@@ -208,6 +221,7 @@ static void vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs,
     }
   }
   FREE(g);
+  return true;
 }
 
 static void kronecker(int n, double alpha, double A[], double B[], double C[])

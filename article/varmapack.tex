@@ -20,8 +20,8 @@
 \section{Introduction}
 \section{Covariance structure of VARMA time series}
 This section builds on the articles by \citet{jonasson2008method} and
-\citet{jonasson2008algorithm} referred to below as the \emph{method paper} and the
-\emph{algorithm paper} below (this is TOMS terminology). The notation of these
+\citet{jonasson2008algorithm}, referred to below as the \emph{method paper} and the
+\emph{algorithm paper} (this is TOMS terminology). The notation of these
 articles is largely followed, with minor adjustments. Let $x_t \in
 \mathbb{R}^r$ follow a zero-mean, stationary $\mathrm{VARMA}(p,q)$ process:
 %
@@ -120,7 +120,7 @@ first. Then \texttt{dsyrk} from the level-3 BLAS can be used to form $R =
 S - \hat{\Psi} \hat{\Psi}^\top$.
 
 Assume $M$ replicates are desired, consisting of an $hr \times M$ matrix $X$
-with the first $h$ terms of the simulated series, and an $(n-h) \times M$ matrix
+with the first $h$ terms of the simulated series, and an $r(n-h) \times M$ matrix
 $Y$ with the remaining terms. The following algorithm contains some details of
 the computation:
 %
@@ -128,7 +128,8 @@ the computation:
   \caption*{VARMA simulation}
   \begin{algorithmic}[1]
     \item Compute $\Psi$ using \eqref{eq:psi-j}.
-    \item Find the vector-Yule-Walker right-hand sides $G_j$ with \eqref{eq:Gj}.
+    \item Find the vector-Yule-Walker right-hand sides $G_j$ as in
+      \citet[Appendix B]{jonasson2006efficient}.
     \item Solve for $S$.
     \item Compute $R$ with \eqref{eq:eR2}.
     \item Fill $E$ with $\varepsilon_t \!\sim\! \mathcal N(0,\Sigma)$.
@@ -157,7 +158,7 @@ than the current one.
 \citet{oneill2021tsextend} implements burn-in-free simulation of scalar ARMA
 processes via conditional distributions, closely related to the method used
 here. The package was formerly available in the CRAN repository but is now
-accessible on Github and in the CRAN archive.
+accessible on GitHub and in the CRAN archive.
 
 \citet{giurcanu2015noncausal} discusses the simulation of non-causal VARMA processes,
 where $x_t$ depends on both past and future innovations. His method requires a
@@ -191,8 +192,8 @@ all $i,j$. In fact in an unguarded Matlab program its \texttt{chol} function
 fails for this particular model. When using BLAS the solution is to use
 \texttt{dpstrf} (positive semidefinite triangular factorization) to obtain
 a pivoted Cholesky factorization of $R$ and use that to draw $x_{1:h}$ from
-the conditional distribution. When using Matlab, such factorization may be
-determined via eigenvalue computation for $R$.
+the conditional distribution. When using Matlab, such a factorization may be
+obtained via eigenvalue computation for $R$.
 
 \paragraph{VARMAX}
 The inclusion of deterministic or fixed exogenous variables $u_t$ leads to the
@@ -216,9 +217,9 @@ $\mathrm{VARMA}$ case remain valid.
 5     multiwave  17409
 
 
-Recent work (e.g. Wilms et al., 2021) shows that parsimonious or sparsely
+Recent work (e.g. \citet{wilms2021bigtime}) shows that parsimonious or sparsely
 estimated VARMA models can outperform higher-order VAR alternatives in
-predictive accuracy, especially when moving-average effects are present.Use
+predictive accuracy, especially when moving-average effects are present. Use
 r=16, 17, and 168 in their examples.
 
 \bibliographystyle{plainnat}   % or "apalike" if you prefer

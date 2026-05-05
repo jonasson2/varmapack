@@ -23,23 +23,8 @@
    }							\
  } while (0)
 
-#define ALLOC(ptr, count)					\
- do {								\
-   if ((count) < 0) {						\
-     error_report(__FILE__, __LINE__,				\
-		  "negative allocation request for %s", #ptr);	\
-     return false;						\
-   }								\
-   (ptr) = calloc((size_t)(count), sizeof(*(ptr)));		\
-   if ((count) > 0 && !(ptr)) {					\
-     error_report(__FILE__, __LINE__,				\
-		  "allocation failed for %s (len=%zu)",		\
-		  #ptr, (size_t)(count));			\
-     return false;						\
-   }								\
- } while (0)
-
-#define FREE(p) free(p)
+#define ALLOC(ptr, count) (((ptr) = calloc((count), sizeof *(ptr))) != 0)
+#define FREE(p)  do { free(p); (p) = 0; } while (0)
 
 void varmapack_set_errstream(FILE *stream);
 void varmapack_set_errprefix(char *prefix);

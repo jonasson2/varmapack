@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "Tests.h"
-#include "allocate.h"
 #include "error.h"
 #include "xCheck.h"
 #include "varmapack.h"
@@ -14,8 +13,8 @@ void TestFindCG(void) {
   double *A, *B, *Sig, *C, *G;
   bool ok;
 
-  // First call: query dimensions for testcase 6
-  icase = 6;
+  // First call: query dimensions for smallARMA1
+  icase = 8;
   ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(p == 1);
@@ -23,17 +22,17 @@ void TestFindCG(void) {
   xCheck(r == 2);
 
   // Allocate and fetch testcase data
-  allocate(A, r*r*p);
-  allocate(B, r*r*q);
-  allocate(Sig, r*r);
-  allocate(C, r*r*(q + 1));
-  allocate(G, r*r*(q + 1));
+  xCheck(ALLOC(A, r*r*p));
+  xCheck(ALLOC(B, r*r*q));
+  xCheck(ALLOC(Sig, r*r));
+  xCheck(ALLOC(C, r*r*(q + 1)));
+  xCheck(ALLOC(G, r*r*(q + 1)));
 
   ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   vpack_FindCG(A, B, Sig, p, q, r, C, G);
 
-  // Expected values from MATLAB for testcase 6.
+  // Expected values from MATLAB for smallARMA1.
   // [ 2.0  1.0  1.4  1.3
   //   1.0  2.0  1.7  1.6 ]
   double Cexp[] = {2.0, 1.0, 1.0, 2.0, 1.4, 1.7, 1.3, 1.6};
@@ -45,9 +44,9 @@ void TestFindCG(void) {
   xCheck(almostEqual(C, Cexp, r*r*(q + 1)));
   xCheck(almostEqual(G, Gexp, r*r*(q + 1)));
 
-  freem(A);
-  freem(B);
-  freem(Sig);
-  freem(C);
-  freem(G);
+  FREE(A);
+  FREE(B);
+  FREE(Sig);
+  FREE(C);
+  FREE(G);
 }

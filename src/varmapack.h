@@ -21,7 +21,7 @@ void varmapack_sim ( // Simulate VARMA time series
   int n,        // in      length of each generated series
   int M,        // in      number of replicates to generate
   double X0[],  // in      r×nX0 with nX0 ≥ max(p,q); optional starter or NULL
-  int nX0,      // in      length of x0
+  int nX0,      // in      number of starting values
   randompack_rng *rng, // in/out  random number generator
   double X[],   // out     r×n×M generated series
   double E[],   // out     r×n×M shock series (or NULL to skip)
@@ -31,11 +31,6 @@ void varmapack_sim ( // Simulate VARMA time series
 double varmapack_specrad( // Spectral radius of companion matrix of a VAR process
   double A[],   // in   r×r×p, autoregressive parameter matrices
   int r,        // in   dimension of each x(t), row count of A
-  int p);       // in   number of autoregressive terms
-
-bool varmapack_is_stationary(
-  double A[],   // in   r×r×p, autoregressive parameter matrices
-  int r,        // in   dimension of each x(t)
   int p);       // in   number of autoregressive terms
 
 bool varmapack_acvf( // Theoretical autocovariance function of VARMA model

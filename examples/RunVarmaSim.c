@@ -5,16 +5,13 @@
 #include <ctype.h>
 #include <assert.h>
 
-#include "allocate.h"
+#include "error.h"
 #include "randompack.h"
 #include "printX.h"
-#include "varmapack.h"
 #include "varmapack.h"
 #include "getopt.h"
 //#include "ExtraUtil.h"
 #include "VarmaUtilities.h"
-#include "varmapack.h"
-#include "error.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 
 
@@ -41,11 +38,9 @@ static void print_help(void) {
   printf("Options:\n");
   printf("  -h         Show this help message\n");
   printf("  -n number  Number of terms to generate (default 20)\n");
-  printf("  -P         Use Park–Miller RNG (default: Xorshift128+)\n");
-  printf("  -e seed    RNG seed (default randomized, but 42 for Park-Miller)\n");
+  printf("  -e seed    RNG seed (default randomized)\n");
   printf("  -p         Print generated series (otherwise only a summary)\n\n");
-  printf("Default RNG: Xorshift128+.\n");
-  printf("To randomize with -P set seed to -1\n");
+  printf("Default RNG: Randompack default engine.\n");
   printf("Summary fields: length of series, n\n");
   printf("                one-step correlation matrix Corr(x(t), x(t-1))\n");
   printf("                run-time (N/A in this build).\n\n");
@@ -72,16 +67,16 @@ static bool parse_dims_token(const char *s, int *p, int *q, int *r) {
   return true;
 }
 
-static bool get_options(int argc, char **argv, char *testcase, bool *print, bool
-                        *ParkMiller, bool *help, int *n, int *seed) {
+static bool get_options(int argc, char **argv, char *testcase, bool *print,
+                        bool *help, int *n, int *seed) {
   opterr = 0;
   optind = 1;
   int opt;
-  *print = *ParkMiller = *help = false;
+  *print = *help = false;
   *seed = -1; // to indicate no seed
   *n = 20;
 
-  while ((opt = getopt(argc, argv, "hn:Pe:p")) != -1) {
+  while ((opt = getopt(argc, argv, "hn:e:p")) != -1) {
     switch (opt) {
       case 'h':
         *help = true;
@@ -90,9 +85,6 @@ static bool get_options(int argc, char **argv, char *testcase, bool *print, bool
         *n = atoi(optarg);
         if (*n <= 0)
           FAIL("Number of terms must be positive");
-        break;
-      case 'P':
-        *ParkMiller = true;
         break;
       case 'e':
         *seed = atoi(optarg);
@@ -105,7 +97,6 @@ static bool get_options(int argc, char **argv, char *testcase, bool *print, bool
         FAIL("Illegal option: %c", optopt);
     }
   }
-  if (*ParkMiller && *seed==-1) *seed = 42;
   // Copy testcase
   if (optind >= argc)
     FAIL("Missing testcase");
@@ -148,33 +139,34 @@ int main(int argc, char **argv) {
   bool ok, vsok;
   int n = 0, p, q, r, icase, seed;
   char testcase[TCN + 1];
-  double *A, *B, *Sig, *X;
-  bool print, ParkMiller, help;
-  ok = get_options(argc, argv, testcase, &print, &ParkMiller, &help, &n, &seed);
+  double *A = 0, *B = 0, *Sig = 0, *X = 0, *mu = 0, *Gamma = 0;
+  randompack_rng *rng = 0;
+  bool print, help;
+  ok = get_options(argc, argv, testcase, &print, &help, &n, &seed);
   if (help || !ok) {
     print_help();
     return ok ? 0 : 1;
   }
   if (!testcase_dims(testcase, &p, &q, &r, &icase)) return 1;
-  allocate(A, p*r*r);
-  allocate(B, q*r*r);
-  allocate(Sig, r*r);
-  allocate(X, r*n);
-  const char *rngtype = ParkMiller ? "x128+" : 0;
-  randompack_rng *rng = randompack_create(rngtype);
+  if (!ALLOC(A, (p > 0 ? p : 1)*r*r)) goto fail;
+  if (!ALLOC(B, (q > 0 ? q : 1)*r*r)) goto fail;
+  if (!ALLOC(Sig, r*r)) goto fail;
+  if (!ALLOC(X, r*n)) goto fail;
+  rng = randompack_create(0);
+  if (!rng) goto fail;
   if (seed < 0)
     randompack_randomize(rng);
   else
     randompack_seed(seed, 0, 0, rng);
   char name[16] = "";
-  if (!varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) return 1;
+  if (!varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) goto fail;
   //
   varmapack_sim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0, &vsok);
+  if (!vsok) goto fail;
   //
   printM("X", X, r, n);
-  double *mu, *Gamma;
-  allocate(mu, r);
-  allocate(Gamma, r*r);
+  if (!ALLOC(mu, r)) goto fail;
+  if (!ALLOC(Gamma, 2*r*r)) goto fail;
   meanmat("T", r, n, X, r,  mu);
   varmapack_acvf(A, B, Sig, p, q, r, Gamma, 1);
   if (print) {
@@ -189,11 +181,21 @@ int main(int argc, char **argv) {
   }
   else
     printf("This will later print a summary\n");
-  freem(A);
-  freem(B);
-  freem(Sig);
-  freem(X);
-  freem(mu);
+  FREE(A);
+  FREE(B);
+  FREE(Sig);
+  FREE(X);
+  FREE(mu);
+  FREE(Gamma);
   randompack_free(rng);
   return 0;
+fail:
+  FREE(A);
+  FREE(B);
+  FREE(Sig);
+  FREE(X);
+  FREE(mu);
+  FREE(Gamma);
+  randompack_free(rng);
+  return 1;
 }

@@ -9,9 +9,10 @@ static bool assert_demo(void) {
 }
 
 static bool alloc_demo(void) {
-  double *x;
-  ALLOC(x, INT64_MAX);
+  double *x = 0;
+  if (!ALLOC(x, INT64_MAX)) return false;
   ASSERT(2 + 2 == 5, "math is hard: %d", 42);
+  FREE(x);
   return true;
 }
 

@@ -2,6 +2,7 @@
 #define PRINTX_H
 
 #ifdef DEBUG_PRINT
+#include <stdint.h>
 
 void printOff(void);
 void printOn(void);
@@ -20,9 +21,12 @@ void printMsgUnderl(const char *s);                    // print underlined messa
 
 void printI(const char *name, int i);                  // print named int
 void printP(const char *name, const void *p);          // print named pointer
+void print64(const char *name, uint64_t x);            // print named uint64
+void print32(const char *name, uint32_t x);            // print named uint32
 void printD(const char *name, double d);               // print named double
 void printV(const char *name, const double x[], int n);// print named vector
 void printIV(const char *name, const int iv[], int n); // print named int vector
+void printIVS(const char *name, const int iv[], int n); // summarized int vector
 void printS(const char *name, const char *s);          // print named string
 
 void printM(const char *name, const double A[], int nr, int nc);  // print matrix
@@ -56,9 +60,12 @@ void print6I(const char *s, int i1, int i2, int i3, int i4, int i5,
 
 #define printI(name, i)                         ((void)0)
 #define printP(name, p)                         ((void)0)
+#define print64(name, x)                        ((void)0)
+#define print32(name, x)                        ((void)0)
 #define printD(name, d)                         ((void)0)
 #define printV(name, x, n)                      ((void)0)
 #define printIV(name, iv, n)                    ((void)0)
+#define printIVS(name, iv, n)                   ((void)0)
 #define printS(name, s)                         ((void)0)
 
 #define printM(name, A, nr, nc)                 ((void)0)

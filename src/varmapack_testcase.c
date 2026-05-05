@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "BlasGateway.h"
-#include "allocate.h"
+#include "error.h"
 #include "VarmaUtilities.h"
 #include "randompack.h"
 #include "varmapack.h"
@@ -52,7 +52,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   //    null and either name or icase may be specified. The dimensions of the
   //    corresponding case are put in p, q and r. If name is specified icase is assigned
   //    to, and if icase is specified and name is not null, it is assigned to. varmapack_testcase(0,
-  //    0, 0, "smallAR", &p, &q, &r, &icase, 0) will thus set p, q, r, icase to 1, 0, 2,
+  //    0, 0, "smallAR1", &p, &q, &r, &icase, 0) will thus set p, q, r, icase to 1, 0, 2,
   //    4.
   //
   // 2. Count + max dimensions. varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &icase, 0) sets p, q,
@@ -60,38 +60,41 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   //    testcases.
   //
   // SUMMARY: When icase is 0 or -1 a model with dimensions p, q, r is created; when -1
-  // deterministic, and when 0 random. When 1 <= icase <= 12 and A, B and Sig are null, p,
-  // q and r return dimensions of one of 12 predefined testcases, and when they are
+  // deterministic, and when 0 random. When 1 <= icase <= 15 and A, B and Sig are null, p,
+  // q and r return dimensions of one of 15 predefined testcases, and when they are
   // non-null they return the data for these cases. See more detailes in varmapack.h.
 
 #define p12 4
 #define r12 5
 #define seed12 42
-#define c12 0.1
+#define c12 0.05
 #define n12 (r12*r12*p12)
   
   const char *namev[] = {// nr   p  q  r
     "tinyAR",      // 1    1  0  1
     "tinyMA",      // 2    0  1  1
     "tinyARMA",    // 3    1  1  1
-    "smallAR",     // 4    1  0  2
-    "smallMA",     // 5    0  2  2
-    "smallARMA1",  // 6    1  1  2
-    "smallARMA2",  // 7    1  2  2
-    "mediumAR",    // 8    1  0  3
-    "mediumARMA1", // 9    3  3  3
-    "mediumARMA2", // 10   3  3  3
-    "mediumMA",    // 11   0  2  3
-    "largeAR"      // 12   5  0  4
+    "smallAR1",    // 4    1  0  2
+    "smallAR2",    // 5    2  0  2
+    "smallMA1",    // 6    0  1  2
+    "smallMA2",    // 7    0  2  2
+    "smallARMA1",  // 8    1  1  2
+    "smallARMA2",  // 9    1  2  2
+    "mediumAR",    // 10   1  0  3
+    "mediumMA1",   // 11   0  1  3
+    "mediumARMA1", // 12   3  3  3
+    "mediumARMA2", // 13   3  3  3
+    "mediumMA2",   // 14   0  2  3
+    "largeAR"      // 15   4  0  5
   };
-  int    pv[]      = { 1,  0,  1,  1,  0,  1,  1,  1,  3,   3,   0,   p12};
-  int    qv[]      = { 0,  1,  1,  0,  2,  1,  2,  0,  3,   3,   2,   0};
-  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  3,  3,   3,   3,   r12};
+  int    pv[]      = { 1,  0,  1,  1,  2,  0,  0,  1,  1,  1,  0,  3,  3,  0, p12};
+  int    qv[]      = { 0,  1,  1,  0,  0,  1,  2,  1,  2,  0,  1,  3,  3,  2, 0};
+  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3, r12};
   //  Following would be used except that cl complains it is nonstandard
-  //                   0   1   2   3   4   5   6   7   8    9   10   11
-  //double *Av[]   = {A1,  0, A3, A4,  0, A6, A7, A8, A9, A10,   0, A12};
-  //double *Bv[]   = { 0, B2, B3,  0, B5, B6, B7,  0, B9, B10, B11,   0};
-  //double *Sigv[] = {S1, S1, S1, S2, S3, S3, S3, S4, S4,  S4,  S4,  S6};
+  //                   0   1   2   3    4   5   6   7   8   9  10   11   12   13   14
+  //double *Av[]   = {A1,  0, A3, A4, A5,  0,  0, A8, A9,A10,  0, A12, A13,   0, A15};
+  //double *Bv[]   = { 0, B2, B3,  0,   0, B6, B7, B8, B9,  0,B11, B12, B13, B14,   0};
+  //double *Sigv[] = {S1, S1, S1, S2,  S2, S3, S3, S3, S3, S4, S4,  S4,  S4,  S4,  S6};
   int p, q, r, Ncase = sizeof(namev)/sizeof(char*);
   // SANITY CHECKS:
   if (icase == 0) return error(fp, "icase must not be a null pointer");
@@ -156,30 +159,37 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   double
     A1[] = {0.5},
     A3[] = {0.4},
-    A4[] = {0.1, 0.1,   0.1, 0.1},
-    A6[] = {0.3, 0.1,   0.4, 0.2},
-    A7[] = {0.2, 0.3,   0.2, 0.3},
-    A8[] = {
+    A4[] = {0.1, 0.1,   0.1, 0.100000001},
+    A5[] = {0.60, 0.05, 0.30, 0.02,   0.04, 0.60, 0.02, 0.30},
+    A8[] = {0.3, 0.1,   0.4, 0.2},
+    A9[] = {0.2, 0.3,   0.2, 0.3},
+    A10[] = {
       0.35, 0.15, 0.15,//  0.11, 0.14, 0.07,
       0.25, 0.15, 0.05,//  0.12, 0.15, 0.08,
       0.15, 0.05, 0.01,//  0.13, 0.16, 0.09
     },
-    A9[9*3],
-    A10[9*3],
+    A12[9*3],
+    A13[9*3],
     A33[] = {
       0.15, 0.10, 0.05,  0.11, 0.14, 0.17,  0.01, 0.04, 0.06,
       0.16, 0.11, 0.06,  0.12, 0.15, 0.18,  0.02, 0.05, 0.08,
       0.17, 0.12, 0.07,  0.13, 0.16, 0.19,  0.03, 0.06, 0.09
     },
-    A12[n12],
+    A15[n12],
     B2[] = {0.5},
     B3[] = {0.4},
-    B5[] = {0.3, 0.1, 0.1, 0.1,   0.3, 0.1, 0.1, 0.1},
-    B6[] = {0.2, 0.3,   0.2, 0.3},
-    B7[] = {0.4, 0.1, 0.2, 0.1,   0.2, 0.1, 0.3, 0.1},
-    B9[9*3],
-    B10[9*3],
-    B11[] =  {
+    B6[] = {0.3, 0.1,   0.1, 0.2},
+    B7[] = {0.3, 0.1, 0.1, 0.1,   0.3, 0.1, 0.1, 0.1},
+    B8[] = {0.2, 0.3,   0.2, 0.3},
+    B9[] = {0.4, 0.1, 0.2, 0.1,   0.2, 0.1, 0.3, 0.1},
+    B11[] = {
+      0.35, 0.25, 0.15,
+      0.25, 0.15, 0.05,
+      0.15, 0.05, 0.01
+    },
+    B12[9*3],
+    B13[9*3],
+    B14[] =  {
       0.35, 0.25, 0.15,  0.11, 0.14, 0.17,
       0.25, 0.15, 0.05,  0.12, 0.15, 0.18,
       0.15, 0.05, 0.01,  0.13, 0.16, 0.19
@@ -190,28 +200,33 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     S4[] = {2.0, 0.5, 0.0,   0.5, 2.0, 0.5,   0.0, 0.5, 1.0},
     //S5[] = {1.0, 0.0, 0.0,   0.0, 1.0, 0.0,   0.0, 0.0, 1.0},
     S6[r12*r12];
-  copy(9*3, A33, 1, A9, 1);
-  flipud(9, 3, A33, B9);
-  flipud(9, 3, A33, A10);
-  copy(9*3, A33, 1, B10, 1);
+  copy(9*3, A33, 1, A12, 1);
+  flipud(9, 3, A33, B12);
+  flipud(9, 3, A33, A13);
+  for (int j=0; j<3; j++)
+    for (int i=3; i<9; i++) A13[i + j*9] += 0.01;
+  copy(9*3, A33, 1, B13, 1);
 
-  double *Av[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
-  double *Bv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
-  double *Sigv[]   = {0,0,0,0,0,0,0,0,0,0,0,0};
+  double *Av[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  double *Bv[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  double *Sigv[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
   int i, j;
   bool ok;
   // Finish defining the starting matrices:
-  Av[0]=A1; Av[2]=A3; Av[3]=A4; Av[5]=A6; Av[6]=A7; Av[7]=A8; Av[8]=A9; Av[9]=A10; Av[11]=A12;
-  Bv[1]=B2; Bv[2]=B3; Bv[4]=B5; Bv[5]=B6; Bv[6]=B7; Bv[8]=B9; Bv[9]=B10; Bv[10]=B11;
-  Sigv[0]=Sigv[1]=Sigv[2]=S1; Sigv[3]=S2; Sigv[4]=Sigv[5]=Sigv[6]=S3;
-  Sigv[7]=Sigv[8]=Sigv[9]=Sigv[10]=S4; Sigv[11]=S6;
+  Av[0]=A1; Av[2]=A3; Av[3]=A4; Av[4]=A5; Av[7]=A8; Av[8]=A9;
+  Av[9]=A10; Av[11]=A12; Av[12]=A13; Av[14]=A15;
+  Bv[1]=B2; Bv[2]=B3; Bv[5]=B6; Bv[6]=B7; Bv[7]=B8; Bv[8]=B9;
+  Bv[10]=B11; Bv[11]=B12; Bv[12]=B13; Bv[13]=B14;
+  Sigv[0]=Sigv[1]=Sigv[2]=S1; Sigv[3]=Sigv[4]=S2;
+  Sigv[5]=Sigv[6]=Sigv[7]=Sigv[8]=S3;
+  Sigv[9]=Sigv[10]=Sigv[11]=Sigv[12]=Sigv[13]=S4; Sigv[14]=S6;
   //
-  randompack_rng *rng12 = randompack_create("x128+");
+  randompack_rng *rng12 = randompack_create(0);
   xAssert(randompack_seed(seed12, 0, 0, rng12));
-  randompack_u01(A12, n12, rng12);
+  randompack_u01(A15, n12, rng12);
   randompack_free(rng12);
-  scal(n12, c12, A12, 1);
+  scal(n12, c12, A15, 1);
   hilb(S6, r12);
   if (*icase <= 0) {
     p = *pp;
@@ -237,11 +252,14 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     if (A && p>0) {
       randompack_u01(A, r*r*p, rng);
       scal(r*r*p, 0.5/(p*r), A, 1); 
-      double *tmpS;
-      allocate(tmpS, r*r*(p+1));
+      double *tmpS = 0;
+      if (!ALLOC(tmpS, r*r*(p+1))) return error(fp, "allocation failed");
       double *tmpB = 0;
       if (q > 0) {
-        allocate(tmpB, r*r*q);
+        if (!ALLOC(tmpB, r*r*q)) {
+          FREE(tmpS);
+          return error(fp, "allocation failed");
+        }
         setzero(r*r*q, tmpB);
       }
       j = 0;
@@ -261,7 +279,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     }
   }
   else if (1 <= *icase && *icase <= Ncase) {
-    if (*icase == 12) {
+    if (*icase == 15) {
       for (i=0; i<r12; i++) S6[i + i*r] += 1; // add I to diagonal
       lacpy("All", r, p*r, Av[*icase - 1], r, A, r);
     }

@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "Tests.h"
-#include "allocate.h"
 #include "error.h"
 #include "varmapack.h"
 #include "xCheck.h"
@@ -15,25 +14,25 @@ static void TestFindPsi(void) {
   bool ok;
   double *A, *B, *Sig, *Psi;
 
-  // Query dimensions for testcase 9
-  icase = 9;
+  // Query dimensions for mediumARMA1
+  icase = 12;
   ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(r == 3 && p == 3 && q == 3);
   h = imax(p, q);
 
   // Allocate and load testcase data
-  allocate(A, r*r*p);
-  allocate(B, r*r*q);
-  allocate(Sig, r*r);
-  allocate(Psi, r*h*r*h);
+  xCheck(ALLOC(A, r*r*p));
+  xCheck(ALLOC(B, r*r*q));
+  xCheck(ALLOC(Sig, r*r));
+  xCheck(ALLOC(Psi, r*h*r*h));
 
   ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
 
   vpack_FindPsi(A, B, Psi, p, q, r);
 
-  // Expected Psi from Matlab find_Psi(A,B) for testcase 9 (3x9x3 flattened)
+  // Expected Psi from Matlab find_Psi(A,B) for mediumARMA1 (3x9x3 flattened)
   double Psi_exp[] = {
     1.0000, 0.0000, 0.0000, 0.2100, 0.2400, 0.2600, 0.3485, 0.3756, 0.4027,
     0.0000, 1.0000, 0.0000, 0.1400, 0.1600, 0.1800, 0.3260, 0.3508, 0.3756,
@@ -49,7 +48,7 @@ static void TestFindPsi(void) {
   n = r*r*h;
   xCheck(almostEqual(Psi, Psi_exp, n));
 
-  freem(A); freem(B); freem(Sig); freem(Psi);
+  FREE(A); FREE(B); FREE(Sig); FREE(Psi);
 }
 
 static void TestFindPsiHat(void) {
@@ -57,15 +56,15 @@ static void TestFindPsiHat(void) {
   char name[16] = "";
   double *A, *B, *Sig, *Psi, *Psi_hat;
   
-  icase = 9;
+  icase = 12;
   varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   h = imax(p, q);
   
-  allocate(A, r*r*p);
-  allocate(B, r*r*q);
-  allocate(Sig, r*r);
-  allocate(Psi, r*h*r*h);
-  allocate(Psi_hat, r*h*r*h);
+  xCheck(ALLOC(A, r*r*p));
+  xCheck(ALLOC(B, r*r*q));
+  xCheck(ALLOC(Sig, r*r));
+  xCheck(ALLOC(Psi, r*h*r*h));
+  xCheck(ALLOC(Psi_hat, r*h*r*h));
 
   varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   vpack_FindPsi(A, B, Psi, p, q, r);
@@ -76,7 +75,7 @@ static void TestFindPsiHat(void) {
   };
   vpack_FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
 
-  // Expected Psi_hat from Matlab find_Psi_hat for testcase 9 with modified Sig:
+  // Expected Psi_hat from Matlab find_Psi_hat for mediumARMA1 with modified Sig:
   double Psi_hat_exp[] = {
     1.0000, 1.0000, 1.0000, 0.4100, 0.4800, 0.5400, 0.9765, 1.0508, 1.1251,
     0.0000, 1.0000, 0.0000, 0.1400, 0.1600, 0.1800, 0.3260, 0.3508, 0.3756,
@@ -90,7 +89,7 @@ static void TestFindPsiHat(void) {
   };
   xCheck(almostEqual(Psi_hat, Psi_hat_exp, r*h*r*h));
 
-  freem(A); freem(B); freem(Sig); freem(Psi); freem(Psi_hat);
+  FREE(A); FREE(B); FREE(Sig); FREE(Psi); FREE(Psi_hat);
 }
 
 static void TestPsiTinyAR(void) {
@@ -114,17 +113,17 @@ static void TestPsiSimple(void) {
   double *A, *B, *Sig, *Psi, *Psi_hat;
   double A2[] = {0.1, 0.3, 0.2, 0.4};
 
-  icase = 7;
+  icase = 9;
   ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
   xCheck(r == 2);
   h = imax(p, q);
 
-  allocate(A, r*r*(p+1));
-  allocate(B, r*r*q);
-  allocate(Sig, r*r);
-  allocate(Psi, r*h*r*h);
-  allocate(Psi_hat, r*h*r*h);
+  xCheck(ALLOC(A, r*r*(p+1)));
+  xCheck(ALLOC(B, r*r*q));
+  xCheck(ALLOC(Sig, r*r));
+  xCheck(ALLOC(Psi, r*h*r*h));
+  xCheck(ALLOC(Psi_hat, r*h*r*h));
 
   ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
   xCheck(ok);
@@ -150,7 +149,7 @@ static void TestPsiSimple(void) {
 
   xCheck(almostEqual(Psi, Psi_exp, r*h*r*h));
   xCheck(almostEqual(Psi_hat, Psi_hat_exp, r*h*r*h));
-  freem(B); freem(Sig); freem(A); freem(Psi); freem(Psi_hat);
+  FREE(B); FREE(Sig); FREE(A); FREE(Psi); FREE(Psi_hat);
 }
 
 // -----------------------------------------------------------------------------

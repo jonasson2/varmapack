@@ -20,8 +20,9 @@ static bool pass_helper(FILE *stream) {
 
 static bool alloc_helper(int len) {
   double *buf = 0;
-  ALLOC(buf, len);
-  free(buf);
+  if (len == 0) return true;
+  if (!ALLOC(buf, len)) return false;
+  FREE(buf);
   return true;
 }
 

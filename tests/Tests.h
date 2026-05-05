@@ -10,6 +10,9 @@ void Testvarmapack_specrad(void);
 bool TestAgainstMatlab(void);
 void TestFindCG(void);
 void TestPsi(void);
-void TestCovar(void);
+void TestAcvf(void);
+void TestAutocov(void);
+void TestAutocovEdgeCases(void);
 void TestFromMatlab(void);
+void TestPsdCondCov(void);
 #endif /* TESTS_H */

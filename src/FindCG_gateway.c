@@ -2,7 +2,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "BlasGateway.h"
-#include "allocate.h"
+#include "error.h"
 #include "VarmaMisc.h"
 
 // void vpack_FindCG(double A[], double B[], double Sig[], int p, int q, int r,

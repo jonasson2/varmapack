@@ -3,13 +3,15 @@
 #include <stdbool.h>
 #include "xCheck.h"
 #include "Tests.h"
+#include "error.h"
 #include "FromMatlab.h"
 
 static void write_matlab_file(const char *path) {
   FILE *f = fopen(path, "w");
   xCheck(f != 0);
-  fprintf(f, "skip,1,1\n7,\n");
-  fprintf(f, "B,2,3\n1,2,3,4,5,6,\n");
+  fprintf(f, "# FromMatlab test fixture\n");
+  fprintf(f, "var skip 0\n7\n");
+  fprintf(f, "var B 2 2 3\n1 2 3 4 5 6\n");
   fclose(f);
 }
 
@@ -29,10 +31,12 @@ void TestFromMatlab(void) {
   double diff = 0.0;
   ok = CompareWithMatlab(f, "B", A, 2, 3, &diff);
   xCheck(ok && diff < 1e-15);
+  varmapack_set_errstream(0);
   ok = CompareWithMatlab(f, "ZZ", A, 2, 3, &diff);
   xCheck(!ok);
   ok = CompareWithMatlab(f, "B", A, 2, 2, &diff);
   xCheck(!ok);
+  varmapack_set_errstream(stderr);
   fclose(f);
   remove(fname);
 }

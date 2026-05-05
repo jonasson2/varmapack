@@ -1,6 +1,5 @@
 // Testvarmapack_specrad.c
 #include "ExtraUtil.h"
-#include "allocate.h"
 #include "error.h"
 #include "xCheck.h"
 #include "Tests.h"
@@ -62,7 +61,7 @@ static void checkZero(void) {
 
 // ---------------------------------------------------------------------------
 //  checkAllNamedStationary
-//  For each icase=1..12:
+//  For each named case:
 //   1) query dimensions with A=B=Sig=0 (OK by API)
 //   2) allocate A (r*r*p), B (r*r*q), Sig (r*r) — ALL nonzero
 //   3) fetch the testcase
@@ -70,13 +69,16 @@ static void checkZero(void) {
 // ---------------------------------------------------------------------------
 static void checkAllNamedStationary(void) {
   const double strict_tol = 1e-12;
-
-  for (int icase = 1; icase <= 12; ++icase) {
+  int pmax = 0, qmax = 0, rmax = 0, maxcase = 0;
+  bool ok = varmapack_testcase(0, 0, 0, "max", &pmax, &qmax, &rmax, &maxcase, 0,
+                               stderr);
+  xCheck(ok);
+  for (int icase = 1; icase <= maxcase; ++icase) {
     int p = 0, q = 0, r = 0;
     char name[32] = {0};
 
     // Step 1: query dims (A=B=Sig=0 is required when any is 0)
-    bool ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stderr);
+    ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stderr);
     xCheck(ok);
 
     // Some named cases might be ARMA(p,q) with p >= 0. We can handle p==0.
@@ -90,9 +92,9 @@ static void checkAllNamedStationary(void) {
     size_t nS = (size_t)r * (size_t)r;
 
     double *A = 0, *B = 0, *Sig = 0;
-    allocate(A, nA);
-    allocate(B, nB);
-    allocate(Sig, nS);
+    xCheck(ALLOC(A, nA));
+    xCheck(ALLOC(B, nB));
+    xCheck(ALLOC(Sig, nS));
 
     // Step 3: fetch the data (A,B,Sig all nonzero per API)
     ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stderr);
@@ -109,9 +111,9 @@ static void checkAllNamedStationary(void) {
     }
     xCheck(rho < 1.0 - strict_tol);
 
-    freem(A);
-    freem(B);
-    freem(Sig);
+    FREE(A);
+    FREE(B);
+    FREE(Sig);
   }
 }
 
@@ -122,5 +124,5 @@ void Testvarmapack_specrad(void) {
   check2x2();                // boundary (rho == 1)
   checkScaling();            // scaling sanity
   checkZero();               // degenerate
-  checkAllNamedStationary(); // the 12 named varmapack_testcase models
+  checkAllNamedStationary(); // the named varmapack_testcase models
 }

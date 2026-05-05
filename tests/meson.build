@@ -1,14 +1,14 @@
 fs = import('fs')
 
-matlab_compare = '../matlab/matlabcompare.tmp'
+matlab_compare = '../matlabcompare.txt'
 if fs.exists(matlab_compare)
   configure_file(
     input : matlab_compare,
-    output : 'matlabcompare.tmp',
+    output : 'matlabcompare.txt',
     copy : true,
   )
 else
-  message('matlabcompare.tmp not found; skipping copy')
+  message('matlabcompare.txt not found; skipping copy')
 endif
 
 test_sources = files(
@@ -16,12 +16,15 @@ test_sources = files(
   'FromMatlab.c',
   'TestError.c',
   'TestExtraUtil.c',
-  'TestCovar.c',
+  'TestAcvf.c',
+  'TestAutocov.c',
+  'TestAutocovEdgeCases.c',
   'TestTestcase.c',
   'TestVarSpecRad.c',
   'TestAgainstMatlab.c',
   'TestFromMatlab.c',
   'TestFindCG.c',
+  'TestPsdCondCov.c',
   'TestPsi.c',
 )
 
@@ -36,4 +39,4 @@ run_tests = executable(
   dependencies : [varmapack_dep],
 )
 
-test('RunTests', run_tests, args : ['-v'])
+test('RunTests', run_tests, args : ['-v'], workdir : meson.current_build_dir())

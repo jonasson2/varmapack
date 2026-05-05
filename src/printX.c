@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include "printX.h"
 #ifdef DEBUG_PRINT
 
@@ -10,11 +11,6 @@
 #define printf mexPrintf
 extern int mexPrintf(const char *fmt, ...);
 #define fflush(x)
-
-#elif defined(USING_R)
-#include <R.h>  // For Rprintf
-#define printf Rprintf
-#define fflush(x)  // No-op, as Rprintf automatically flushes
 
 #else
 #include <stdio.h>
@@ -68,6 +64,18 @@ void printI(const char *name, int i) { // print named int
   fflush(0);
 }
 
+void print64(const char *name, uint64_t x) {
+  if (noprint) return;
+  printf("%s = %" PRIu64 "\n", name, x);
+  fflush(0);
+}
+
+void print32(const char *name, uint32_t x) {
+  if (noprint) return;
+  printf("%s = %u\n", name, x);
+  fflush(0);
+}
+
 void printP(const char *name, const void *p) {
   if (noprint) return;
   printf("%s = %p\n",name, p);
@@ -101,6 +109,26 @@ void printIV(const char *name, const int iv[], int n) { // print named integer v
   if (noprint) return;
   printf("%s = ",name);
   for (j=0; j<n; j++) printf("%d ", iv[j]);
+  printf("\n");
+  fflush(0);
+}
+
+void printIVS(const char *name, const int iv[], int n) { // summarized integer vector
+  if (noprint) return;
+  printf("%s = ", name);
+  if (!iv) {
+    printf("NULL\n");
+    fflush(0);
+    return;
+  }
+  if (n <= 6) {
+    for (int i = 0; i < n; i++) printf("%d ", iv[i]);
+  }
+  else {
+    for (int i = 0; i < 4; i++) printf("%d ", iv[i]);
+    printf("... ");
+    for (int i = n - 2; i < n; i++) printf("%d ", iv[i]);
+  }
   printf("\n");
   fflush(0);
 }
@@ -160,8 +188,8 @@ void printMP(const char *name, const double *ap, int nr, int nc,
              const double A[], int ldA) {
   // print submatrix
   char s[100];
-  int r = (int)((ap-A) % ldA);
-  int c = (int)((ap-A) / ldA);
+  int r = (ap-A) % ldA;
+  int c = (ap-A) / ldA;
   sprintf(s, "%s[%d:%d,%d:%d]", name, r, r+nr-1, c, c+nc-1);
   printMat("N", s, ap, ldA, nr, nc);
 }

@@ -1,5 +1,5 @@
 function SmokeTest
-  rng = randompack_create('x128+');
+  rng = randompack_create();
   cleanup = onCleanup(@() randompack_free(rng));
   randompack_seed(rng, 42);
   u = randompack_u01(rng, 3);

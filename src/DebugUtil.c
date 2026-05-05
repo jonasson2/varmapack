@@ -8,7 +8,7 @@
 char matmatfolder[256] = "";
 
 bool TestMatlabMatrix(char *filename, double *A, int m, int n) {
-  double *B;
+  double *B = 0;
   char filepath[512], buf[256], name[256];
   snprintf(filepath, sizeof(filepath), "%s/%s", matmatfolder, filename);
   FILE *fp = fopen(filepath, "r");
@@ -19,7 +19,7 @@ bool TestMatlabMatrix(char *filename, double *A, int m, int n) {
   ASSERT(nread == 3, "TestMatlabMatrix error: invalid file format in %s", filename);
   ASSERT(file_m == m && file_n == n, "%s: dimension mismatch, file (%d,%d) ≠ C (%d,%d)",
 	 basename_only(filepath), file_m, file_n, m, n);
-  ALLOC(B, m*n);
+  ASSERT(ALLOC(B, m*n), "TestMatlabMatrix error: allocation failed");
   for (int i = 0; i < m*n; i++) {
     nread = fscanf(fp, "%lf,", &B[i]);
     ASSERT(nread == 1, "Error: failed to read value %d from '%s'\n", i, filename);
