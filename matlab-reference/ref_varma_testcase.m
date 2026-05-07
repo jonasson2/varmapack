@@ -10,17 +10,15 @@
 %   [A,B,Sig,name] = REF_VARMA_TESTCASE(i) returns the i-th named testcase. To
 %   get also dimensions use [A,B,Sig,p,q,r,name] = REF_VARMA_TESTCASE(i).
 %
-%   n = REF_VARMA_TESTCASE('NUMBER') returns the number of different named testcases.
+%   n = REF_VARMA_TESTCASE('COUNT') returns the number of named testcases.
 %
-%   [A,B,Sig,name] = REF_VARMA_TESTCASE('ALL') returns all the named testcases
-%   in three cell arrays; the i-th one is returned in A{i}, B{i} and Sig{i}. In
-%   addition name{i} returns the name of the i-th case.
+%   REF_VARMA_TESTCASE SUMMARY prints a list of the named testcases.
 %
-%   [A,B,Sig] = REF_VARMA_TESTCASE(p,q,r) returns an unnamed testcase with
-%   dimensions p,q,r using Randompack's default engine.
+%   [A,B,Sig] = REF_VARMA_TESTCASE(p,q,r) returns a deterministic unnamed
+%   testcase with dimensions p,q,r.
 %
-%   [A,B,Sig] = REF_VARMA_TESTCASE(p,q,r,seed) returns an unnamed testcase
-%   using Randompack's default engine and the specified seed.
+%   [A,B,Sig] = REF_VARMA_TESTCASE(p,q,r,rng) returns a random unnamed testcase
+%   using the supplied Randompack RNG.
 
 function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
   p12 = 4; r12 = 5; seed12 = 42; c12 = 0.05;
@@ -33,7 +31,10 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
     r = varargin{3};
     type = 'unnamed';
   end
+  inputWasIndex = isnumeric(type);
   testcases = {
+    %              p  q  r       
+    'tinyAR'     % 1  0  1
     'tinyAR'
     'tinyMA'
     'tinyARMA'
@@ -50,17 +51,19 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
     'mediumMA2'
     'largeAR'
     %'pivotfailure'
-    };
+  };
   N = length(testcases);
   if isstring(type), type = char(type); end
+  if ischar(type) && strcmpi(type, 'count'), type = 'count'; end
+  if ischar(type) && strcmpi(type, 'summary'), type = 'summary'; end
   if ~ischar(type), name = testcases{type}; 
-  elseif ~isequal(type,'all'), name=type; end
+  else, name=type; end
   A33 = [
     0.15 0.10 0.05  0.11 0.14 0.17  0.01 0.04 0.06;
     0.16 0.11 0.06  0.12 0.15 0.18  0.02 0.05 0.08;
     0.17 0.12 0.07  0.13 0.16 0.19  0.03 0.06 0.09];
   switch type
-    case 'number'
+    case 'count'
       A = N; % count of named cases
       return
     case 'summary'
@@ -74,26 +77,25 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
       end
       clear A B Sig name
       return
-    case 'all'
-      for i=1:N
-        name{i} = testcases{i};
-        [A{i}, B{i}, Sig{i}, p{i}, q{i}, r{i}] = ref_varma_testcase(name{i});
-      end
-      if any([4,7] == nargout), varargout{nargout-3} = name; end
-      if nargout > 4, [varargout{1:3}] = deal(p,q,r); end
-      return
     case 'unnamed'
-      rng = randompack_create();
-      cleanup = onCleanup(@() randompack_free(rng));
-      if nargin >= 4
-        seed = varargin{4};
-        randompack_seed(rng, seed);
-      end
-      A = reshape(randompack_u01(rng, r*r*p), r, r*p)/(2*p*r);
-      B = reshape(randompack_u01(rng, r*r*q), r, r*q)/(2*q*r);
       Sig = hilb(r) + 0.2*eye(r);
-      %Sig = randspd(r, 0.1);
-      while ref_varma_specrad(A) >= 1, A=A/2; end
+      if nargin >= 4 && ~isempty(varargin{4})
+        rng = varargin{4};
+        A = zeros(r, r*p);
+        B = zeros(r, r*q);
+        if p > 0
+          A = reshape(randompack_u01(rng, r*r*p), r, r*p)/(2*p*r);
+          while ref_varma_specrad(A) >= 1, A=A/2; end
+        end
+        if q > 0
+          B = reshape(randompack_u01(rng, r*r*q), r, r*q)/(q*r);
+        end
+      else
+        A = zeros(r, r*p);
+        B = zeros(r, r*q);
+        if p > 0, A(:) = 0.5/(p*r); end
+        if q > 0, B(:) = 1/(q*r); end
+      end
     case {1,'tinyAR'}
       A = 0.5;
       B = [];
@@ -194,12 +196,20 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
     otherwise
       error('no such testcase')
   end
-  if any([4,7] == nargout), varargout{nargout-3} = name; end
   if nargout > 4
     r = size(Sig,1);
     p = size(A,2)/r;
     q = size(B,2)/r;
     [varargout{1:3}] = deal(p, q, r);
+  end
+  if nargout == 4 || nargout >= 7
+    k = find(strcmp(testcases, name));
+    if inputWasIndex
+      extra = name;
+    else
+      extra = k;
+    end
+    varargout{nargout-3} = extra;
   end
   ascertain(isequal(Sig,Sig'));
   ascertain(min(eig(Sig))>0);

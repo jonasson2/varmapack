@@ -55,12 +55,8 @@
 //   non-stationary.
 //
 // FAILURES
-//   If the series is nonstationary or Sig is not positive semidefinite then the
-//   function returns (quietly) with ok = 0 (false). In exceptional cases,
-//   (which should only be possible when X0 is specified and the series is
-//   nonstationary) needed matrices may be singular, and then the function exits
-//   by calling one of the function defined in error.h, which are expected to
-//   print an error message and terminate the program.
+//   If the series is nonstationary without X0, or another recoverable error is
+//   detected, the function returns a nonzero varmapack_error code.
 //
 // REFERENCES:
 //   [1] K Jonasson and SE Ferrando 2008. Evaluating exact VARMA likelihood
@@ -80,63 +76,155 @@
 #include "VarmaPackUtil.h"
 #include "randompack.h"
 #include "varmapack.h"
-#include "varmapack_VYW.h"
+#include "VYW.h"
 #include "printX.h"
 
-static bool SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r, int n,
-		    double SS[]);
-static void CCBuild( double A[], double C[], int p, int q, int r, int n, double CC[]);
+static void CCBuild(double A[], double C[], int p, int q, int r, int n, double CC[]);
 
-void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int q,
-		   int r, int n, int M, double X0[], int nX0, randompack_rng *rng, double X[],
-		   double E[], bool *ok)
+varmapack_error varmapack_sim(double A[], double B[], double Sig[], double mu[],
+                              int p, int q, int r, int n, int M, double X0[],
+                              int nX0, randompack_rng *rng, double X[],
+                              double E[])
 {  
   int info;
+  varmapack_error error = VARMAPACK_OK;
   double *C = 0, *G = 0, *S = 0, *SS = 0, *R = 0;
   double *Wrk = 0, *Psi = 0, *PsiHat = 0;
   double *CC = 0, *x0bar = 0, *e = 0, *wrk = 0;
   double *Aflp = 0, *Bflp = 0;
   bool Ealloc = E==0;
-  xAssert(p>=0 && q>=0 && r>0 && M>0);
-  xAssertMessage(n >= imax(p,q),
-                 "Illegal parameter in varmapack_sim, n must be ≥ max(p,q)");
-  xAssertMessage(nX0 == 0 || (imax(p,q) <= nX0 && nX0 <= n),
-                 "Illegal parameter in varmapack_sim, max(p,q) ≤ nX0 ≤ n");
+  if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || X == 0 || rng == 0) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
+  if (p < 0 || q < 0 || r <= 0 || n <= 0 || M <= 0 || n < imax(p, q)) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
+  if ((X0 == 0 && nX0 != 0) || (X0 != 0 && (nX0 < imax(p, q) || nX0 > n))) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
   int h = imax(imax(p,q), nX0);
   int rn = r*n;  // Total number of observations
   int rh = r*h;  // Observation count in starting segment, order of SS, CC and EE
-  
-  *ok = false;
-  if (Ealloc && !ALLOC(E, rn*M)) goto fail;
-                 
+  bool stationary = p == 0 || varmapack_specrad(A, r, p) < 1;
+  if (X0 == 0 && !stationary) return VARMAPACK_NONSTATIONARY;
+  if (Ealloc && !ALLOC(E, rn*M)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (!randompack_mvn("T", 0, Sig, r, n*M, E, r, 0, rng)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (p == 0 && q == 0) {
+    lacpy("All", rn, M, E, rn, X, rn);
+    if (mu != 0) {
+      for (int j=0; j<M; j++) {
+        for (int t=0; t<n; t++) {
+          axpy(r, 1.0, mu, 1, X + j*rn + t*r, 1);
+        }
+      }
+    }
+    if (Ealloc) FREE(E);
+    return VARMAPACK_OK;
+  }
+  if (X0 != 0 && (!stationary || nX0 > imax(p, q))) {
+    if (p > 0 && !ALLOC(Aflp, r*r*p)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (q > 0 && !ALLOC(Bflp, r*r*q)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    flipmat(A, Aflp, r, p);
+    flipmat(B, Bflp, r, q);
+    for (int j=0; j<M; j++) {
+      copy(rh, X0, 1, X + j*rn, 1);
+      if (mu != 0) {
+        for (int t=0; t<h; t++) axpy(r, -1.0, mu, 1, X + j*rn + t*r, 1);
+      }
+    }
+    lacpy("All", (n-h)*r, M, E + rh, rn, X + rh, rn);
+    for (int t=h; t<n; t++) {
+      int iX = r*t;
+      int iA = r*(t - p);
+      int iB = r*(t - q);
+      if (p > 0)
+        gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0,
+             X + iX, rn);
+      if (q > 0)
+        gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0,
+             X + iX, rn);
+    }
+    if (mu != 0) {
+      for (int j=0; j<M; j++) {
+        for (int t=0; t<n; t++) {
+          axpy(r, 1.0, mu, 1, X + j*rn + t*r, 1);
+        }
+      }
+    }
+    FREE(Bflp);
+    FREE(Aflp);
+    if (Ealloc) FREE(E);
+    return VARMAPACK_OK;
+  }
   // SOLVE VECTOR-YULE-WALKER EQUATIONS FOR COVARIANCE OF X
-  if (!ALLOC(C, r*r*(q+1))) goto fail;
-  if (!ALLOC(G, r*r*(q+1))) goto fail;
-  if (!ALLOC(S, r*r*(p+1))) goto fail;
-  if (!vpack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
-    FREE(S); FREE(G); FREE(C);
-    xErrorExit("varmapack_sim: Singular Yule-Walker equations, unable to continue");
+  if (!ALLOC(C, r*r*(q+1))) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (!ALLOC(G, r*r*(q+1))) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (!ALLOC(S, r*r*(p+1))) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
+    error = VARMAPACK_INTERNAL;
+    goto fail;
   }
   printM("S", S, r, r*(p+1));
   printM("G", G, r, r*(q+1));
-  if (rh > 0 && !ALLOC(SS, rh*rh)) goto fail;
-  if (!SBuild("Low", S, A, G, p, q, r, h, SS)) goto fail;
+  if (rh > 0 && !ALLOC(SS, rh*rh)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (!SBuild("Low", S, A, G, p, q, r, h, SS)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
   printM("SS", SS, rh, rh);
   FREE(S); FREE(G);
-  if (rh > 0 && !ALLOC(R, rh*rh)) goto fail;
-  randompack_mvn("T", 0, Sig, r, n*M, E, r, 0, rng);
+  if (rh > 0 && !ALLOC(R, rh*rh)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
   printM("E", E, rn, M);
   if (X0 == 0) {  // Start series from scratch
-    if (rh > 0 && !ALLOC(Wrk, rh*M)) goto fail;
-    if (rh > 0 && !ALLOC(Psi, rh*rh)) goto fail;
-    if (rh > 0 && !ALLOC(PsiHat, rh*rh)) goto fail;
-    vpack_FindPsi(A, B, Psi, p, q, r);
-    vpack_FindPsiHat(Psi, PsiHat, Sig, r, h);
+    if (rh > 0 && !ALLOC(Wrk, rh*M)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (rh > 0 && !ALLOC(Psi, rh*rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (rh > 0 && !ALLOC(PsiHat, rh*rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    FindPsi(A, B, Psi, p, q, r);
+    FindPsiHat(Psi, PsiHat, Sig, r, h);
     //printM("PsiHat", PsiHat, rh, rh);
     lacpy("Low", rh, rh, SS, rh, R, rh);
     syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
     // printM("R", R, rh, rh);
-    randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng); // draw Wrk from N(0, R)
+    if (!randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
     printM("Wrk", Wrk, r, h*M);
     lacpy("All", rh, M, Wrk, rh, X, rn);    // copy to X1
     gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, // X1 := Psi*E(1:h) + X1
@@ -145,14 +233,29 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   }
   else { // initialize series with X0
     double *Chat, *LS;
-    if (!ALLOC(CC, rh*rh)) goto fail;
-    if (!ALLOC(x0bar, rh)) goto fail;
-    if (!ALLOC(e, rh)) goto fail;
-    if (!ALLOC(wrk, rh)) goto fail;
+    if (!ALLOC(CC, rh*rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (!ALLOC(x0bar, rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (!ALLOC(e, rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
+    if (!ALLOC(wrk, rh)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
     LS = SS;
     printI("rh", rh);
     potrf("Low", rh, LS, rh, &info); // Cholesky factorize SS
-    xAssert(info == 0);
+    if (info != 0) {
+      error = info > 0 ? VARMAPACK_NOT_POSITIVE_SEMIDEFINITE : VARMAPACK_INTERNAL;
+      goto fail;
+    }
     CCBuild(A, C, p, q, r, h, CC);
     Chat = CC; // Chat = LS\CC
     trsm("Left", "Low", "NT", "NotUD", rh, rh, 1.0, LS, rh, Chat, rh);
@@ -170,7 +273,10 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
     printMT("e", e, rh, 1);
     printM("R", R, rh, rh);
     printM("E0-fyrir", E, rh, M);
-    randompack_mvn("T", e, R, rh, M, E, rn, 0, rng); // first h shocks
+    if (!randompack_mvn("T", e, R, rh, M, E, rn, 0, rng)) {
+      error = VARMAPACK_ALLOCATION;
+      goto fail;
+    }
     printM("E0-eftir", E, rh, M);
     for (int j=0; j<M; j++) {
       copy(rh, x0bar, 1, X + j*rn, 1);
@@ -182,8 +288,14 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   FREE(R); FREE(SS); 
   printMT("E", E, rn, M);
   lacpy("All", (n-h)*r, M, E + rh, rn, X + rh, rn);
-  if (p > 0 && !ALLOC(Aflp, r*r*p)) goto fail;
-  if (q > 0 && !ALLOC(Bflp, r*r*q)) goto fail;
+  if (p > 0 && !ALLOC(Aflp, r*r*p)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
+  if (q > 0 && !ALLOC(Bflp, r*r*q)) {
+    error = VARMAPACK_ALLOCATION;
+    goto fail;
+  }
   flipmat(A, Aflp, r, p);
   flipmat(B, Bflp, r, q);
   for (int t=h; t<n; t++) {    
@@ -207,8 +319,7 @@ void varmapack_sim(double A[], double B[], double Sig[], double mu[], int p, int
   }
   FREE(Bflp); FREE(Aflp);
   if (Ealloc) FREE(E);
-  *ok = true;
-  return;
+  return VARMAPACK_OK;
 fail:
   FREE(Bflp); FREE(Aflp);
   FREE(wrk); FREE(e); FREE(x0bar); FREE(CC);
@@ -216,92 +327,7 @@ fail:
   FREE(R); FREE(SS);
   FREE(S); FREE(G); FREE(C);
   if (Ealloc) FREE(E);
-  *ok = false;
-}
-
-static void SExtend ( // Extend Sj matrices to include S(p+1)...S(n-1)
-  double A[],    // in   r × r × p, autoregressive parameter matrices
-  double G[],    // in   r × r × (q+1), G0, G1,...,Gq
-  double S[],    // in   r × r × (p+1), S0, S1,...,Sp
-  double Scol[], // out  r·n × r, column of Si-matrices S0, S1,..., S(n-1)
-  int p,         // in   number of autoregressive terms
-  int q,         // in   number of moving average terms
-  int r,         // in   dimension of x(t)
-  int n)         // in   length of time series
-{
-  int iScol = n*r, i, j;
-  double *Scolj, *Ai, *Scoli;
-  for (j=0; j<p+1; j++) {
-    lacpy("All", r, r, S + j*r*r, r, Scol + j*r, iScol);
-  }
-  for (j=p+1; j<n; j++) {
-    Scolj = Scol + j*r;
-    if (j<=q) {
-      lacpy("All", r, r, G + j*r*r, r, Scolj, iScol);
-    }
-    for (i=0; i<p; i++) {
-      Ai = A+i*r*r;
-      Scoli = Scolj - (i+1)*r;
-      gemm("N", "N", r, r, r, 1.0, Ai, r, Scoli, iScol, 1.0, Scolj, iScol);
-    }
-  }
-}
-
-static bool SBuild( // Build covariance matrix of all the values of a VARMA time series
-  char *uplo,  // in   Create all of SS (when "A") or lower part only (when "L")
-  double S[],  // in   r × r·(p+1), = [S0...Sp], Si = Cov(x(t),x(t-i))
-  double A[],  // in   r × r × p, A=[A1...Ap], autoregressive parameter matrices
-  double G[],  // in   r × r·(q+1), = [G0...Gq], Gi = cov(y(t),x(t-i))
-  int p,       // in   number of autoregressive terms
-  int q,       // in   number of moving average terms
-  int r,       // in   dimension of xt
-  int n,       // in   length of series (n can be any nonnegative value, even 0)
-  double SS[]) // out  r·n × r·n, covariance of [x1'...xn']'
-{
-  //  DESCRIPTION: The time series is given by
-  //
-  //                  x(t) = A1·x(t-1) + ... + Ap·x(t-p) + y(t)
-  //  where
-  //                  y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q),
-  //
-  //  and x(t), y(t) and eps(t) are r-dimensional with eps(t) N(0,Sig). S and G
-  //  can (for example) have been obtained with vpack_FindCG. The SS matrix is:
-  //
-  //                   S0  S1' S2'...Sn-1'
-  //                   S1  S0  S1'...Sn-2'
-  //                   S2               :
-  //                   :                :
-  //                   Sn-1 ...... S1  S0
-  //
-  //  and the Sj are found with the recurrence relation:
-  //
-  //      Sj = A1*S(j-1) + A2*S(j-2) + ........ + Ap*S(j-p) + Gj
-  //
-  //  with Gj = 0 for j > q.
-  //
-  // NOTE: This function may (of course) be used to determine the covariance 
-  // matrix of a segment of a timeseries by specifying n smaller then the total
-  // length of the series (for example an initial segment, but since the series
-  // is stationary all segments of the same length have the same covariance).
-  double *Scol, *SSj, *SSi;
-  int j, m;
-  if (n==0) return true;
-  m = imax(p+1,n);
-  if (!ALLOC(Scol, (r*m)*r)) return false;
-  SExtend(A, G, S, Scol, p, q, r, m);
-  for (j=0; j<n; j++) {
-    SSj = SS + j*r*n*r + j*r;
-    if (uplo[0] == 'A') {
-      SSi = SSj + r*n*r;
-      lacpy("All", r*(n-j), r, Scol, r*m, SSj, r*n);
-      if (j < n-1) copytranspose(r*(n-j-1), r, Scol+r, r*m, SSi, r*n);
-    }
-    else {
-      lacpy("Low", r*(n-j), r, Scol, r*m, SSj, r*n);
-    }
-  }
-  FREE(Scol);
-  return true;
+  return error;
 }
 
 static void CCBuild( // Build covariance between terms and shocks of VARMA time series

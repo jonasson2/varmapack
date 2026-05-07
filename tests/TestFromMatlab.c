@@ -31,12 +31,10 @@ void TestFromMatlab(void) {
   double diff = 0.0;
   ok = CompareWithMatlab(f, "B", A, 2, 3, &diff);
   xCheck(ok && diff < 1e-15);
-  varmapack_set_errstream(0);
   ok = CompareWithMatlab(f, "ZZ", A, 2, 3, &diff);
   xCheck(!ok);
   ok = CompareWithMatlab(f, "B", A, 2, 2, &diff);
   xCheck(!ok);
-  varmapack_set_errstream(stderr);
   fclose(f);
   remove(fname);
 }

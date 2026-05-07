@@ -1,4 +1,4 @@
-#include "varmapack_VYW.h"
+#include "VYW.h"
 
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
@@ -8,10 +8,12 @@
 static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info);
 static bool vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
                       int piv[], int p, int r);
+static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,
+                    int r, int n);
 static void kronecker(int n, double alpha, double A[], double B[], double C[]);
 static void kronI(int n, double alpha, double A[], double C[]);
 
-bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
+HIDDEN bool VYWFactorizeSolve(double A[], double B[], double Sig[],
                         int p, int q, int r,
                         double S[], double C[], double G[])
 {
@@ -35,7 +37,7 @@ bool vpack_VYWFactorizeSolve(double A[], double B[], double Sig[],
     ownG = true;
   }
 
-  vpack_FindCG(A, B, Sig, p, q, r, Cbuf, Gbuf);
+  FindCG(A, B, Sig, p, q, r, Cbuf, Gbuf);
 
   if (p == 0) {
     copy(rr, Gbuf, 1, S, 1);
@@ -65,6 +67,65 @@ fail:
   if (ownG) FREE(Gbuf);
   if (ownC) FREE(Cbuf);
   return false;
+}
+
+HIDDEN bool SBuild(
+  char *uplo,
+  double S[],
+  double A[],
+  double G[],
+  int p,
+  int q,
+  int r,
+  int n,
+  double SS[])
+{
+  double *Scol, *SSj, *SSi;
+  int j, m;
+  if (n == 0) return true;
+  m = imax(p+1, n);
+  if (!ALLOC(Scol, (r*m)*r)) return false;
+  SExtend(A, G, S, Scol, p, q, r, m);
+  for (j = 0; j < n; j++) {
+    SSj = SS + j*r*n*r + j*r;
+    if (uplo[0] == 'A') {
+      SSi = SSj + r*n*r;
+      lacpy("All", r*(n-j), r, Scol, r*m, SSj, r*n);
+      if (j < n-1) copytranspose(r*(n-j-1), r, Scol+r, r*m, SSi, r*n);
+    }
+    else {
+      lacpy("Low", r*(n-j), r, Scol, r*m, SSj, r*n);
+    }
+  }
+  FREE(Scol);
+  return true;
+}
+
+HIDDEN bool VYWSetupSS(
+  double A[],
+  double B[],
+  double Sig[],
+  int p,
+  int q,
+  int r,
+  int h,
+  double SS[])
+{
+  int rr = r*r;
+  double *C = 0;
+  double *G = 0;
+  double *S = 0;
+  bool ok = false;
+  if (!ALLOC(C, rr*(q+1))) goto done;
+  if (!ALLOC(G, rr*(q+1))) goto done;
+  if (!ALLOC(S, rr*(p+1))) goto done;
+  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) goto done;
+  ok = SBuild("Low", S, A, G, p, q, r, h, SS);
+done:
+  FREE(S);
+  FREE(G);
+  FREE(C);
+  return ok;
 }
 
 static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int *info)
@@ -156,6 +217,34 @@ fail:
   return false;
 }
 
+static void SExtend(
+  double A[],
+  double G[],
+  double S[],
+  double Scol[],
+  int p,
+  int q,
+  int r,
+  int n)
+{
+  int iScol = n*r, i, j;
+  double *Scolj, *Ai, *Scoli;
+  for (j = 0; j < p+1; j++) {
+    lacpy("All", r, r, S + j*r*r, r, Scol + j*r, iScol);
+  }
+  for (j = p+1; j < n; j++) {
+    Scolj = Scol + j*r;
+    if (j <= q) {
+      lacpy("All", r, r, G + j*r*r, r, Scolj, iScol);
+    }
+    for (i = 0; i < p; i++) {
+      Ai = A+i*r*r;
+      Scoli = Scolj - (i+1)*r;
+      gemm("N", "N", r, r, r, 1.0, Ai, r, Scoli, iScol, 1.0, Scolj, iScol);
+    }
+  }
+}
+
 static bool vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs, int nY,
                       int piv[], int p, int r)
 {
@@ -211,7 +300,12 @@ static bool vyw_solve(double A[], double LU[], double S[], double Y[], int nrhs,
     lacpy("All", rr, nrhs, gj, mg, S + rr*nrhs*j, rr);
   }
   double *Sp = S + rr*nrhs*p;
-  if (nY > p) lacpy("All", rr, nrhs, Yp, rr, Sp, rr);
+  if (nY > p) {
+    lacpy("All", rr, nrhs, Yp, rr, Sp, rr);
+  }
+  else {
+    setzero(rr*nrhs, Sp);
+  }
   for (int k = 0; k < nrhs; k++) {
     double *Skp = Sp + rr*k;
     for (int i = 1; i <= p; i++) {

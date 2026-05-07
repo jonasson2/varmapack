@@ -12,37 +12,43 @@
 //   S   : r×r×(maxlag+1) array containing the first (maxlag+1) matrices of the
 //         theoretical autocovariance function (varmapack_acvf) of the process {x_t},
 //         S[:,:,k] = Cov(x_t, x_{t−k}),  k = 0,…,maxlag
-//   ok  : 1 on success, 0 on failure (non-
-//
-// Returns true on success, false on failure.
+// Returns VARMAPACK_OK on success.
 
+#include <math.h>
 #include <stdbool.h>
 #include "varmapack.h"
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "varmapack_VYW.h"
+#include "VYW.h"
 
-bool varmapack_acvf(double A[], double B[], double Sig[], int p, int q, int r, double Gamma[],
-              int maxlag) {
+varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
+                               int q, int r, double Gamma[], int maxlag) {
   double *S = Gamma;
   double *G = 0;
-  int r2 = r*r;
-  xAssert(p >= 0 && q >= 0 && r > 0);
-  xAssert(maxlag >= p);
-  if (!ALLOC(G, r2*(q+1))) {
-    return false;
+  if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || Gamma == 0) {
+    return VARMAPACK_INVALID_ARGUMENT;
   }
-  if (!vpack_VYWFactorizeSolve(A, B, Sig, p, q, r, S, 0, G)) {
+  if (p < 0 || q < 0 || r <= 0 || maxlag < p) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
+  int r2 = r*r;
+  double rho = varmapack_specrad(A, r, p);
+  if (isnan(rho)) return VARMAPACK_INVALID_ARGUMENT;
+  if (rho >= 1) return VARMAPACK_NONSTATIONARY;
+  if (!ALLOC(G, r2*(q+1))) {
+    return VARMAPACK_ALLOCATION;
+  }
+  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, 0, G)) {
     FREE(G);
-    return false;
+    return VARMAPACK_INTERNAL;
   }
   if (p == 0) {
     int qcopy = imin(q, maxlag);
     copy(r2*(qcopy+1), G, 1, S, 1);
     if (qcopy < maxlag) setzero(r2*(maxlag - qcopy), S + r2*(qcopy+1));
     FREE(G);
-    return true;
+    return VARMAPACK_OK;
   }
   for (int j=p+1; j<=maxlag; j++) {
     double *Sj = S + j*r2;
@@ -60,5 +66,5 @@ bool varmapack_acvf(double A[], double B[], double Sig[], int p, int q, int r, d
     }
   }
   FREE(G);
-  return true;
+  return VARMAPACK_OK;
 }

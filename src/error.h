@@ -18,17 +18,15 @@
 #define ASSERT(cond, ...)				\
  do {							\
    if (!(cond)) {					\
-     error_report(__FILE__, __LINE__, __VA_ARGS__);	\
-     return false;					\
+     fprintf(stderr, "error in %s:%d: ", basename_only(__FILE__), __LINE__); \
+     fprintf(stderr, __VA_ARGS__);			\
+     fprintf(stderr, "\n");				\
+     abort();						\
    }							\
  } while (0)
 
 #define ALLOC(ptr, count) (((ptr) = calloc((count), sizeof *(ptr))) != 0)
 #define FREE(p)  do { free(p); (p) = 0; } while (0)
-
-void varmapack_set_errstream(FILE *stream);
-void varmapack_set_errprefix(char *prefix);
-void error_report(const char *file, int line, const char *fmt, ...);
 
 #ifdef MEX
 #include "mex.h"
@@ -57,10 +55,6 @@ static inline void xPrintAssertion(char *assertion, char *file, int line) {
     sprintf(msg, "%s %.*s...%s %d %s %s", m1, nmax, assertion, m2, line, m3, file);
   }
   xErrorExit(msg);
-}
-
-static inline void xAssertMessage(int expression, char *message) {
-  if (!expression) xErrorExit(message);
 }
 
 static inline const char *basename_only(const char *path) {

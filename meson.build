@@ -1,4 +1,4 @@
-project('varmapack', 'c',
+project('varmapack', 'c', 'fortran',
   version : '1.0',
   default_options : [
     'c_std=c11',
@@ -26,9 +26,7 @@ else
   message('Using user-specified BLAS search order: ' + ', '.join(blas_search_order))
 endif
 
-if buildtype.startswith('debug')
-  add_project_arguments('-DDEBUG_PRINT', language : 'c')
-endif
+debug_print_args = buildtype.startswith('debug') ? ['-DDEBUG_PRINT'] : []
 
 # Common detection function for all platforms
 cc = meson.get_compiler('c')
@@ -90,3 +88,4 @@ inc = include_directories('src')
 subdir('src')
 subdir('tests')
 subdir('examples')
+subdir('benchmark')

@@ -40,7 +40,7 @@ static bool FindVar(FILE *f, char *varname, int *m, int *n, int *line) {
       ASSERT(fscanf(f, " %*s") == 0, "illegal value for %s", name);
     }
   }
-  ASSERT(false, "%s not found in compare file", varname);
+  return false;
 }
 
 static bool ReadVec(FILE *f, char *fmt, double x[], int n, int line) {
@@ -63,7 +63,7 @@ bool DoubleFromMatlab(FILE *f, char *var, double *val) {
   int m, n, line;
   bool found = FindVar(f, var, &m, &n, &line);
   if (!found) return false;
-  ASSERT(m == 1 && n == 1, "expected 1,1 on line %d in compare file", line);
+  if (m != 1 || n != 1) return false;
   if (!ReadVec(f, "%lf", val, 1, line)) return false;
   return true;
 }
@@ -72,7 +72,7 @@ bool IntFromMatlab(FILE *f, char *var, int *val) {
   int m, n, line;
   bool found = FindVar(f, var, &m, &n, &line);
   if (!found) return false;
-  ASSERT(m == 1 && n == 1, "expected 1,1 on line %d in compare file", line);
+  if (m != 1 || n != 1) return false;
   if (!ReadIntVec(f, val, 1, line)) return false;
   return true;
 }
@@ -82,7 +82,7 @@ bool IntVecFromMatlab(FILE *f, char *vector, int *x, int n) {
   bool found = FindVar(f, vector, &M, &N, &line);
   if (!found) return false;
   bool ok = (M == n && N == 1) || (N == n && M == 1);
-  ASSERT(ok, "expected 1,%d or %d,1 on line %d in compare file", n, n, line);
+  if (!ok) return false;
   if (!ReadIntVec(f, x, n, line)) return false;
   return true;
 }
@@ -91,7 +91,7 @@ bool MatrixFromMatlab(FILE *f, char *matrix, double A[], int m, int n) {
   int M, N, line;
   bool found = FindVar(f, matrix, &M, &N, &line);
   if (!found) return false;
-  ASSERT(m*n == M*N, "expected %d values on line %d in compare file", m*n, line);
+  if (m*n != M*N) return false;
   if (!ReadVec(f, "%lf", A, m*n, line)) return false;
   return true;
 }

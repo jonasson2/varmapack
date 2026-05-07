@@ -11,12 +11,12 @@ void TestFindCG(void) {
   int p, q, r, icase;
   char name[16] = "";
   double *A, *B, *Sig, *C, *G;
-  bool ok;
+  varmapack_error error;
 
   // First call: query dimensions for smallARMA1
   icase = 8;
-  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
+  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
   xCheck(p == 1);
   xCheck(q == 1);
   xCheck(r == 2);
@@ -28,9 +28,9 @@ void TestFindCG(void) {
   xCheck(ALLOC(C, r*r*(q + 1)));
   xCheck(ALLOC(G, r*r*(q + 1)));
 
-  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
-  vpack_FindCG(A, B, Sig, p, q, r, C, G);
+  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
+  FindCG(A, B, Sig, p, q, r, C, G);
 
   // Expected values from MATLAB for smallARMA1.
   // [ 2.0  1.0  1.4  1.3

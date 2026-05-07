@@ -1,5 +1,5 @@
 function matlabcompare(cases, Ms, n)
-  % MATLABCOMPARE writes matlabcompare.txt, the reference data consumed by
+  % MATLABCOMPARE writes tests/matlabcompare.txt, the reference data consumed by
   % TestAgainstMatlab.c. The text format is:
   %
   %   # comment
@@ -12,10 +12,10 @@ function matlabcompare(cases, Ms, n)
   here = fileparts(mfilename('fullpath'));
   addpath(fullfile(here, "matlab"));
   addpath(fullfile(here, "..", "matlab-reference"));
-  if nargin < 3, n = 5; end
+  if nargin < 3, n = 8; end
   if nargin < 2, Ms = 1; end
-  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('number'); end
-  fid = fopen("../matlabcompare.txt", "w");
+  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('count'); end
+  fid = fopen(fullfile(here, "matlabcompare.txt"), "w");
   fprintf(fid, "# varmapack Matlab reference data v1\n");
   fprintf(fid, "# Format documented in tests/matlabcompare.m\n");
   mat2file(fid, length(Ms), "#Ms");
@@ -23,10 +23,11 @@ function matlabcompare(cases, Ms, n)
   mat2file(fid, n);
   mat2file(fid, Ms);
   mat2file(fid, cases);
-  % folder = """" + pwd() + filesep + """";
-  % cmd = "  strcpy(matmatfolder, " + folder + ");\n";
-  % fprintf(fid, cmd);
-  % char *matmatfolder[] = """ + pwd() + filesep + """");
+  reducedCases = [3, 7, 12];
+  reducedM = 3;
+  mat2file(fid, length(reducedCases), "#reducedCases");
+  mat2file(fid, reducedM, "reducedM");
+  mat2file(fid, reducedCases, "reducedCases");
   for k = cases
     icase = k + 1;
     [A, B, Sig, p, q, r] = ref_varma_testcase(k);    
@@ -51,17 +52,16 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, acvfMaxlag, "acvfMaxlag-" + k);
     mat2file(fid, Gamma, "Gamma-" + k);
     for M = Ms
-      global varmapack_rng
-      varmapack_rng = randompack_create();
-      cleanup = onCleanup(@() randompack_free(varmapack_rng));
-      randompack_seed(varmapack_rng, 42);
-      [X, E, condR] = ref_varma_sim(A, B, Sig, n, 0, M);
-      randompack_seed(varmapack_rng, 42);
-      [X0, E0]      = ref_varma_sim(A, B, Sig, n, 0, M, x0);
-      randompack_seed(varmapack_rng, 42);
-      [Xmu, Emu]    = ref_varma_sim(A, B, Sig, n, mu, M);
-      randompack_seed(varmapack_rng, 42);
-      [X0mu, E0mu]  = ref_varma_sim(A, B, Sig, n, mu, M, x0);
+      rng = randompack_create();
+      cleanup = onCleanup(@() randompack_free(rng));
+      randompack_seed(rng, 42);
+      [X, E, condR] = ref_varma_sim(A, B, Sig, n, 0, M, [], rng);
+      randompack_seed(rng, 42);
+      [X0, E0]      = ref_varma_sim(A, B, Sig, n, 0, M, x0, rng);
+      randompack_seed(rng, 42);
+      [Xmu, Emu]    = ref_varma_sim(A, B, Sig, n, mu, M, [], rng);
+      randompack_seed(rng, 42);
+      [X0mu, E0mu]  = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng);
       if M == Ms(1), mat2file(fid, condR, "condR-" + k); end
       Cml = ref_varma_autocov(X(:, :, 1), n - 1, "ML");
       Cc = ref_varma_autocov(X(:, :, 1), n - 1, "C");
@@ -76,6 +76,39 @@ function matlabcompare(cases, Ms, n)
       mat2file(fid, X0mu, "X0mu" + M + "-" + k);
       mat2file(fid, E0mu, "E0mu" + M + "-" + k);
     end
+  end
+  for k = reducedCases
+    [A, B, Sig, p, q, r] = ref_varma_testcase(k);
+    x0 = startmat(r, max(p,q));
+    mu = (1:r)'/10;
+    M = reducedM;
+    rng = randompack_create();
+    cleanup = onCleanup(@() randompack_free(rng));
+    randompack_seed(rng, 42);
+    [X, E] = ref_varma_sim(A, B, Sig, n, 0, M, [], rng);
+    randompack_seed(rng, 42);
+    [X0, E0] = ref_varma_sim(A, B, Sig, n, 0, M, x0, rng);
+    randompack_seed(rng, 42);
+    [Xmu, Emu] = ref_varma_sim(A, B, Sig, n, mu, M, [], rng);
+    randompack_seed(rng, 42);
+    [X0mu, E0mu] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng);
+    if r == 1
+      Xrep2 = X(:, 2)';
+    else
+      Xrep2 = X(:, :, 2);
+    end
+    CmlT = ref_varma_autocov(Xrep2, n - 1, "ML");
+    CcT = ref_varma_autocov(Xrep2, n - 1, "C");
+    mat2file(fid, CmlT, "RedAutoMLT" + M + "-" + k);
+    mat2file(fid, CcT, "RedAutoCT" + M + "-" + k);
+    mat2file(fid, X, "RedX" + M + "-" + k);
+    mat2file(fid, E, "RedE" + M + "-" + k);
+    mat2file(fid, X0, "RedX0" + M + "-" + k);
+    mat2file(fid, E0, "RedE0" + M + "-" + k);
+    mat2file(fid, Xmu, "RedXmu" + M + "-" + k);
+    mat2file(fid, Emu, "RedEmu" + M + "-" + k);
+    mat2file(fid, X0mu, "RedX0mu" + M + "-" + k);
+    mat2file(fid, E0mu, "RedE0mu" + M + "-" + k);
   end
   fclose(fid);
 end

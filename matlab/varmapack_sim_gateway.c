@@ -9,17 +9,18 @@ static double *get_double_array(const mxArray *arg, const char *name);
 static int get_int_scalar(const mxArray *arg, const char *name);
 static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
                        int *p, int *q, int *r);
+static void check_varmapack_error(varmapack_error error);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   int p, q, r, n, M, nX0 = 0;
-  bool ok = false;
+  varmapack_error error;
   double *A, *B, *Sig, *mu = 0, *X0 = 0, *X, *E;
   randompack_rng *rng;
   mxArray *Eout = 0;
   mwSize dim[3];
   if (nrhs != 8)
     mexErrMsgIdAndTxt("varmapack:sim:nrhs", "Wrong number of input arguments");
-  if (nlhs > 3)
+  if (nlhs > 2)
     mexErrMsgIdAndTxt("varmapack:sim:nlhs", "Wrong number of output arguments");
   A = get_double_array(prhs[0], "A");
   B = get_double_array(prhs[1], "B");
@@ -49,10 +50,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   X = mxGetPr(plhs[0]);
   E = Eout ? mxGetPr(Eout) : 0;
-  varmapack_sim(A, B, Sig, mu, p, q, r, n, M, X0, nX0, rng, X, E, &ok);
-  if (nlhs >= 3) {
-    plhs[2] = mxCreateLogicalScalar(ok);
-  }
+  error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, X0, nX0, rng, X, E);
+  check_varmapack_error(error);
 }
 
 static randompack_rng *get_rng(const mxArray *arg) {
@@ -108,4 +107,33 @@ static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
     mexErrMsgIdAndTxt("varmapack:sim:argument", "A or B is too large");
   *p = (int)(cA/rSig);
   *q = (int)(cB/rSig);
+}
+
+static void check_varmapack_error(varmapack_error error) {
+  if (error == VARMAPACK_OK) return;
+  switch (error) {
+    case VARMAPACK_INVALID_ARGUMENT:
+      mexErrMsgIdAndTxt("varmapack:sim:invalidArgument", "%s",
+                        varmapack_strerror(error));
+      break;
+    case VARMAPACK_ALLOCATION:
+      mexErrMsgIdAndTxt("varmapack:sim:allocation", "%s",
+                        varmapack_strerror(error));
+      break;
+    case VARMAPACK_NONSTATIONARY:
+      mexErrMsgIdAndTxt("varmapack:sim:nonstationary", "%s",
+                        varmapack_strerror(error));
+      break;
+    case VARMAPACK_NOT_POSITIVE_SEMIDEFINITE:
+      mexErrMsgIdAndTxt("varmapack:sim:notPositiveSemidefinite", "%s",
+                        varmapack_strerror(error));
+      break;
+    case VARMAPACK_INTERNAL:
+      mexErrMsgIdAndTxt("varmapack:sim:internal", "%s",
+                        varmapack_strerror(error));
+      break;
+    default:
+      mexErrMsgIdAndTxt("varmapack:sim:error", "%s", varmapack_strerror(error));
+      break;
+  }
 }

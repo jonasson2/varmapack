@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 #include "BlasGateway.h"
 #include "error.h"
 #include "VarmaUtilities.h"
@@ -8,14 +9,16 @@
 #include "printX.h"
 #define DEBUG
 #include "debugprint.h"
-#include "varmapack_VYW.h"
+#include "VYW.h"
 
 static void flipud(int m, int n, double src[], double dst[]);
 static void hilb(double A[], int m);
 static int find_named_case(const char *namev[], const char *name, int Ncase);
-static bool error(FILE *errfp, const char *msg);
+static void construct_rho_A(double A[], int p, int r);
+static varmapack_error scale_to_rho(double A[], int p, int r, double rho);
+static double scaled_specrad(double A[], double scale, int p, int r);
 
-bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
+varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood calculation
   double A[],    // out     r×r×p, autoregressive parameter matrices (or null)
   double B[],    // out     r×r×q, moving average parameter matrices (or null)
   double Sig[],  // out     r×r, covariance of the shock terms eps(t) (or null)
@@ -24,8 +27,8 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   int *qp,       // in/out  Number of moving avg. terms (or null)
   int *rp,       // in/out  dimension of each x(t) (or null)
   int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
-  randompack_rng *rng,  // in      random number generator
-  FILE *fp)      // in      stream to print errors (or null)
+  double rho,    // in      target spectral radius when name is "rho"
+  randompack_rng *rng)  // in      random number generator
 {
   // TESTCASE CREATION
   // The following kinds of testcases, suitable for testing or timing various components
@@ -97,38 +100,38 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   //double *Sigv[] = {S1, S1, S1, S2,  S2, S3, S3, S3, S3, S4, S4,  S4,  S4,  S4,  S6};
   int p, q, r, Ncase = sizeof(namev)/sizeof(char*);
   // SANITY CHECKS:
-  if (icase == 0) return error(fp, "icase must not be a null pointer");
+  if (icase == 0) return VARMAPACK_INVALID_ARGUMENT;
   int nnull = !A + !B + !Sig;
   if (nnull != 0 && nnull !=3)
-    return error(fp, "If any of A, B, Sig is null, they must all be");
-  bool MAX = !strcmp(name, "max");
+    return VARMAPACK_INVALID_ARGUMENT;
+  bool MAX = name && !strcmp(name, "max");
+  bool RHO = name && !strcmp(name, "rho");
   bool INQUIRY = nnull == 3;
-  bool NAMED = name && strlen(name) > 0;
+  bool NAMED = name && strlen(name) > 0 && !RHO;
   if (!INQUIRY) {
     if (NAMED) {
       *icase = find_named_case(namev, name, Ncase);
-      if (*icase == 0) return error(fp, "Unknown testcase name");
+      if (*icase == 0) return VARMAPACK_UNKNOWN_TESTCASE;
     }
-    if (*icase <= 0) {
-      if (!pp || !qp || !rp) return error(fp,"p, q and r must not be null ptrs");
+    if (*icase <= 0 || RHO) {
+      if (!pp || !qp || !rp) return VARMAPACK_INVALID_ARGUMENT;
       if (*pp < 0 || *qp < 0 || *rp <= 0) {
-	char msg[40];
-	snprintf(msg, sizeof(msg), "invalid dimensions p=%d q=%d r=%d", *pp, *qp, *rp);
-	return error(fp, msg);
+        return VARMAPACK_INVALID_ARGUMENT;
       }
-      if (*icase == 0 && rng == 0) return error(fp,"When icase = 0, rng must not be null");
+      if (*icase == 0 && !RHO && rng == 0) return VARMAPACK_INVALID_ARGUMENT;
     }
-    if (*icase < -1 || *icase > Ncase) return error(fp, "icase out of range");
-    if (*icase <= 0 && !INQUIRY && !MAX)
-      return error(fp, "A, B, Sig must not be null if icase <= 0");
+    if (!RHO && (*icase < -1 || *icase > Ncase)) return VARMAPACK_UNKNOWN_TESTCASE;
   }
   else if (!MAX && NAMED) {
     *icase = find_named_case(namev, name, Ncase);
-    if (*icase == 0) return error(fp, "Unknown testcase name");
+    if (*icase == 0) return VARMAPACK_UNKNOWN_TESTCASE;
   }
   else if (INQUIRY && !NAMED) {
+    if (*icase == 0 || *icase == -1) {
+      return VARMAPACK_INVALID_ARGUMENT;
+    }
     if (*icase < -1 || *icase > Ncase) {
-      return error(fp, "icase out of range");
+      return VARMAPACK_UNKNOWN_TESTCASE;
     }
   }
   // MAX INQUIRY
@@ -139,7 +142,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
       if (qp) *qp = imax(*qp, qv[k]);
       if (rp) *rp = imax(*rp, rv[k]);
     }
-    return true;
+    return VARMAPACK_OK;
   }
   // CASE INQUIRY
   else if (INQUIRY) {
@@ -153,7 +156,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     if (pp) *pp = pv[k];
     if (qp) *qp = qv[k];
     if (rp) *rp = rv[k];
-    return true;
+    return VARMAPACK_OK;
   }
   // CONSTRUCT TESTCASE
   double
@@ -223,12 +226,19 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   Sigv[9]=Sigv[10]=Sigv[11]=Sigv[12]=Sigv[13]=S4; Sigv[14]=S6;
   //
   randompack_rng *rng12 = randompack_create(0);
-  xAssert(randompack_seed(seed12, 0, 0, rng12));
-  randompack_u01(A15, n12, rng12);
+  if (rng12 == 0) return VARMAPACK_ALLOCATION;
+  if (!randompack_seed(seed12, 0, 0, rng12)) {
+    randompack_free(rng12);
+    return VARMAPACK_INTERNAL;
+  }
+  if (!randompack_u01(A15, n12, rng12)) {
+    randompack_free(rng12);
+    return VARMAPACK_INTERNAL;
+  }
   randompack_free(rng12);
   scal(n12, c12, A15, 1);
   hilb(S6, r12);
-  if (*icase <= 0) {
+  if (RHO || *icase <= 0) {
     p = *pp;
     q = *qp;
     r = *rp;
@@ -238,43 +248,56 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     q = qv[*icase-1];
     r = rv[*icase-1];
   }
-  if (*icase == -1 || *icase == 0) {
+  if (RHO || *icase == -1 || *icase == 0) {
     if (Sig) {
       hilb(Sig, r);
       for (i = 0; i < r; i++) Sig[i + i*r] += 0.2; // add 0.2 to diagonal
     }
   }
-  if (*icase == -1) {
+  if (RHO) {
+    if (A && p > 0) {
+      construct_rho_A(A, p, r);
+      varmapack_error error = scale_to_rho(A, p, r, rho);
+      if (error) return error;
+    }
+    if (A && p == 0 && rho != 0) return VARMAPACK_INVALID_ARGUMENT;
+    if (B && q>0) for (i=0; i<r*r*q; i++) B[i] = 1.0/(q*r);
+  }
+  else if (*icase == -1) {
     if (A && p>0) for (i=0; i<r*r*p; i++) A[i] = 0.5/(p*r);
     if (B && q>0) for (i=0; i<r*r*q; i++) B[i] = 1.0/(q*r);     
   }
   else if (*icase == 0) {
     if (A && p>0) {
-      randompack_u01(A, r*r*p, rng);
+      if (!randompack_u01(A, r*r*p, rng)) return VARMAPACK_INTERNAL;
       scal(r*r*p, 0.5/(p*r), A, 1); 
       double *tmpS = 0;
-      if (!ALLOC(tmpS, r*r*(p+1))) return error(fp, "allocation failed");
+      if (!ALLOC(tmpS, r*r*(p+1))) return VARMAPACK_ALLOCATION;
       double *tmpB = 0;
       if (q > 0) {
         if (!ALLOC(tmpB, r*r*q)) {
           FREE(tmpS);
-          return error(fp, "allocation failed");
+          return VARMAPACK_ALLOCATION;
         }
         setzero(r*r*q, tmpB);
       }
       j = 0;
       while (true) {
-        ok = vpack_VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
+        ok = VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
         if (ok) break;
         scal(r*p, 0.5, A, 1);
         j++;
-        xAssert(j < 10);
+        if (j >= 10) {
+          if (q > 0) FREE(tmpB);
+          FREE(tmpS);
+          return VARMAPACK_INTERNAL;
+        }
       }
       if (q > 0) FREE(tmpB);
       FREE(tmpS);
     }
     if (B && q>0) {
-      randompack_u01(B, r*r*q, rng);
+      if (!randompack_u01(B, r*r*q, rng)) return VARMAPACK_INTERNAL;
       scal(r*r*q, 1.0/(q*r), B, 1);
     }
   }
@@ -290,7 +313,7 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
     if (Sig && Sigv[*icase-1]) copy(r*r, Sigv[*icase-1], 1, Sig, 1);
     if (name && !NAMED) strcpy(name, namev[*icase-1]); // name <---namev
   }
-  else return error(fp, "Unexpected error");
+  else return VARMAPACK_INTERNAL;
     //     case {"pivotfailure"} % create almost singular vyw equations
     //       A = {
     //         -0.6250  0.2400    0.2500    0.1250    0.6250    0.3750
@@ -302,10 +325,10 @@ bool varmapack_testcase (  // Create a testcase for VARMA likelihood calculation
   if (pp) *pp = p;
   if (qp) *qp = q;
   if (rp) *rp = r;
-  return true;
+  return VARMAPACK_OK;
 }
 
-static void flipud(int m, int n, double*src, double*dst) {
+static void flipud(int m, int n, double *src, double *dst) {
   int i, j;
   for (j=0; j<n; j++)
     for (i=0; i<m; i++) 
@@ -327,10 +350,55 @@ static int find_named_case(const char *namev[], const char *name, int Ncase) {
   return 0; // not found
 }
 
-static bool error(FILE *errfp, const char *msg) {
-  if (errfp) {
-    fprintf(errfp, "varmapack_testcase error: %s\n", msg);
-    fflush(errfp);
+static void construct_rho_A(double A[], int p, int r) {
+  double scale = 2/(r*pow(p, 1.0/3.0));
+  for (int j=0; j<p*r; j++) {
+    int jj = j + 1;
+    for (int i=0; i<r; i++) {
+      int ii = i + 1;
+      int mn = ii < jj ? ii : jj;
+      int mx = ii > jj ? ii : jj;
+      A[i + j*r] = scale*mn/mx;
+    }
   }
-  return false;
+}
+
+static varmapack_error scale_to_rho(double A[], int p, int r, double rho) {
+  double lo = 0, hi = 1, mid = 0, midrho = 0;
+  if (rho < 0 || isnan(rho)) return VARMAPACK_INVALID_ARGUMENT;
+  if (p == 0) {
+    if (rho != 0) return VARMAPACK_INVALID_ARGUMENT;
+    return VARMAPACK_OK;
+  }
+  if (rho == 0) {
+    setzero(r*r*p, A);
+    return VARMAPACK_OK;
+  }
+  for (int iter=0; scaled_specrad(A, hi, p, r) <= rho; iter++) {
+    hi = 2*hi;
+    if (iter >= 60) return VARMAPACK_INTERNAL;
+  }
+  for (int iter=0; iter<100; iter++) {
+    mid = (lo + hi)/2;
+    midrho = scaled_specrad(A, mid, p, r);
+    if (isnan(midrho)) return VARMAPACK_INTERNAL;
+    if (fabs(midrho - rho) < 1e-4) {
+      scal(r*r*p, mid, A, 1);
+      return VARMAPACK_OK;
+    }
+    if (midrho < rho) lo = mid;
+    else hi = mid;
+  }
+  scal(r*r*p, (lo + hi)/2, A, 1);
+  return VARMAPACK_OK;
+}
+
+static double scaled_specrad(double A[], double scale, int p, int r) {
+  double *As = 0, rho;
+  if (!ALLOC(As, r*r*p)) return NAN;
+  copy(r*r*p, A, 1, As, 1);
+  scal(r*r*p, scale, As, 1);
+  rho = varmapack_specrad(As, r, p);
+  FREE(As);
+  return rho;
 }

@@ -1,24 +1,40 @@
-// VYW.h:  Declaration of Vector-Yule-Walker functions
+// VYW.h -- internal vector Yule-Walker setup utilities
 #ifndef VYW_H
 #define VYW_H
 
-void VYWFactorize ( // Set up and factorize matrix of Yule-Walker equations
-  double A[],   // in   r×r×p, autoregressive parameter matrices
-  double LU[],  // out  LU factors of the N×N matrix F where N = r*r*p-r*(r-1)/2
-  int piv[],    // out  N-vector with pivoting information
-  int p,        // in   number of autoregressive terms
-  int r,        // in   dimension of each x(t)
-  int *info);   // out  nonzero if factorization fails due to singularity
+#include <stdbool.h>
+#include "varmapack_config.h"
 
-void VYWSolve ( // Solve modified Yule-Walker equations
+HIDDEN bool VYWFactorizeSolve(
   double A[],   // in   r×r×p, autoregressive parameter matrices
-  double LU[],  // in   LU factors of the N×N matrix F where N = r*r*p-r*(r-1)/2
-  double S[],   // out  r×r×nrhs×(p+1), solution to system
-  double Y[],   // in   r×r×nrhs×nY, rhs of system to solve
-  int nrhs,     // in   number of right hand sides (must be 1 in this version)
-  int nY,       // in   number of Y arrays (either q+1 or p+1)
-  int piv[],    // in   N-vector with pivoting info from VYWFactorize
+  double B[],   // in   r×r×q, moving average parameter matrices (ignored when q=0)
+  double Sig[], // in   r×r, innovation covariance
   int p,        // in   number of autoregressive terms
-  int r);       // in   dimension of each x(t)
+  int q,        // in   number of moving-average terms
+  int r,        // in   dimension of each x(t)
+  double S[],   // out  r×r×(p+1), covariance sequence S0…Sp
+  double C[],   // out  optional r×r×(q+1) buffer for Ci (can be null)
+  double G[]);  // out  optional r×r×(q+1) buffer for Gi (can be null)
+
+HIDDEN bool SBuild(
+  char *uplo,
+  double S[],
+  double A[],
+  double G[],
+  int p,
+  int q,
+  int r,
+  int n,
+  double SS[]);
+
+HIDDEN bool VYWSetupSS(
+  double A[],
+  double B[],
+  double Sig[],
+  int p,
+  int q,
+  int r,
+  int h,
+  double SS[]);
 
 #endif

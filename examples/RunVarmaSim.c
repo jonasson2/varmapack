@@ -17,14 +17,15 @@
 
 static void print_testcase_table(void) {
   int p, q, r, icase, ncases;
-  bool ok;
-  varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0); // how many?
+  varmapack_error error;
+  error = varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0);
+  xAssert(error == VARMAPACK_OK);
   char name[32];
   printf("No. Name          p  q  r\n");
   for(icase = 1; icase <= ncases; icase++) {
     name[0] = 0;
-    ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
-    xAssert(ok);
+    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    xAssert(error == VARMAPACK_OK);
     printf("%2d  %-12s %2d %2d %2d\n", icase, name, p, q, r);
   }
 }
@@ -117,26 +118,28 @@ static bool testcase_dims(char *s, int *p, int *q, int *r, int *icase) {
     *icase = 0;
   } 
   else {
-    bool ok;
+    varmapack_error error;
     char name[16] = "";
     if (!strcmp(s, "")) FAIL("Empty argument");  
     char MAX[TCN + 1] = "max";
-    if (!varmapack_testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0)) FAIL("Internal error");
+    error = varmapack_testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0);
+    if (error != VARMAPACK_OK) FAIL("Internal error");
     if (all_digits(s)) { // Pure digits (indexed testcase) → ask varmapack_testcase() for dimensions
       *icase = atoi(s);
       if (*icase < 1 || *icase > ncase) FAIL("Illegal testcase index");
-      ok = varmapack_testcase(0, 0, 0, name, p, q, r, icase, 0, stderr);
+      error = varmapack_testcase(0, 0, 0, name, p, q, r, icase, 0, 0);
     }
     else { // Named testcase → ask varmapack_testcase() for dimensions
-      ok = varmapack_testcase(0, 0, 0, s, p, q, r, icase, 0, stderr);
+      error = varmapack_testcase(0, 0, 0, s, p, q, r, icase, 0, 0);
     }
-    if (!ok) return false;
+    if (error != VARMAPACK_OK) return false;
   }
   return true;
 }
 
 int main(int argc, char **argv) {
-  bool ok, vsok;
+  bool ok;
+  varmapack_error error;
   int n = 0, p, q, r, icase, seed;
   char testcase[TCN + 1];
   double *A = 0, *B = 0, *Sig = 0, *X = 0, *mu = 0, *Gamma = 0;
@@ -159,16 +162,18 @@ int main(int argc, char **argv) {
   else
     randompack_seed(seed, 0, 0, rng);
   char name[16] = "";
-  if (!varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rng, stderr)) goto fail;
+  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, rng);
+  if (error != VARMAPACK_OK) goto fail;
   //
-  varmapack_sim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0, &vsok);
-  if (!vsok) goto fail;
+  error = varmapack_sim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0);
+  if (error != VARMAPACK_OK) goto fail;
   //
   printM("X", X, r, n);
   if (!ALLOC(mu, r)) goto fail;
   if (!ALLOC(Gamma, 2*r*r)) goto fail;
   meanmat("T", r, n, X, r,  mu);
-  varmapack_acvf(A, B, Sig, p, q, r, Gamma, 1);
+  error = varmapack_acvf(A, B, Sig, p, q, r, Gamma, 1);
+  if (error != VARMAPACK_OK) goto fail;
   if (print) {
     print4I("p, q, r, n", p, q, r, n);
     printMsg("Model definition matrices:");

@@ -5,20 +5,28 @@
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 
-void varmapack_autocov(const char *transp, const char *norm, int r, int n,
-                       double X[], int maxlag, double C[]) {
-  xAssert(transp != 0 && norm != 0);
+varmapack_error varmapack_autocov(const char *transp, const char *norm, int r,
+                                  int n, double X[], int maxlag, double C[]) {
+  if (transp == 0 || norm == 0 || X == 0 || C == 0) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
+  if (r <= 0 || n <= 0 || maxlag < 0 || maxlag > n-1) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
   bool ML = (norm[0] == 'M' || norm[0] == 'm');
   bool CORRECTED = (norm[0] == 'C' || norm[0] == 'c');
-  xAssert(ML || CORRECTED);
+  if (!ML && !CORRECTED) return VARMAPACK_INVALID_ARGUMENT;
   bool TRANSP = !(transp[0] == 'N' || transp[0] == 'n');
-  xAssert((!TRANSP && (transp[0] == 'N' || transp[0] == 'n')) ||
-          (TRANSP && (transp[0] == 'T' || transp[0] == 't')));
-  xAssert(maxlag <= n-1);
-  double *Xc;
-  double *mu;
-  xAssert(ALLOC(Xc, r*n));
-  xAssert(ALLOC(mu, r));
+  if (!(!TRANSP || transp[0] == 'T' || transp[0] == 't')) {
+    return VARMAPACK_INVALID_ARGUMENT;
+  }
+  double *Xc = 0;
+  double *mu = 0;
+  if (!ALLOC(Xc, r*n)) return VARMAPACK_ALLOCATION;
+  if (!ALLOC(mu, r)) {
+    FREE(Xc);
+    return VARMAPACK_ALLOCATION;
+  }
   copy(r*n, X, 1, Xc, 1);
   if (TRANSP) {
     meanmat("N", n, r, Xc, n, mu);
@@ -49,4 +57,5 @@ void varmapack_autocov(const char *transp, const char *norm, int r, int n,
   }
   FREE(mu);
   FREE(Xc);
+  return VARMAPACK_OK;
 }

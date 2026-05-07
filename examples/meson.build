@@ -4,19 +4,14 @@ example_util = files(
 
 run_varmasim = executable(
   'RunVarmaSim',
-  ['RunVarmaSim.c'] + example_util,
+  ['RunVarmaSim.c', '../src/printX.c'] + example_util,
   dependencies : [varmapack_dep],
+  c_args : debug_print_args,
 )
 
 debugprint_demo = executable(
   'debugprint-demo',
   ['debugprint-demo.c'] + example_util,
-  dependencies : [varmapack_dep],
-)
-
-xassert_demo = executable(
-  'error-demo',
-  ['error_demo.c'],
   dependencies : [varmapack_dep],
 )
 

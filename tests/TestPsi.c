@@ -11,13 +11,13 @@
 static void TestFindPsi(void) {
   int p, q, r, n, icase, h;
   char name[16] = "";
-  bool ok;
+  varmapack_error error;
   double *A, *B, *Sig, *Psi;
 
   // Query dimensions for mediumARMA1
   icase = 12;
-  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
+  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
   xCheck(r == 3 && p == 3 && q == 3);
   h = imax(p, q);
 
@@ -27,10 +27,10 @@ static void TestFindPsi(void) {
   xCheck(ALLOC(Sig, r*r));
   xCheck(ALLOC(Psi, r*h*r*h));
 
-  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
+  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
 
-  vpack_FindPsi(A, B, Psi, p, q, r);
+  FindPsi(A, B, Psi, p, q, r);
 
   // Expected Psi from Matlab find_Psi(A,B) for mediumARMA1 (3x9x3 flattened)
   double Psi_exp[] = {
@@ -55,9 +55,11 @@ static void TestFindPsiHat(void) {
   int p, q, r, h, icase;
   char name[16] = "";
   double *A, *B, *Sig, *Psi, *Psi_hat;
+  varmapack_error error;
   
   icase = 12;
-  varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
+  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
   h = imax(p, q);
   
   xCheck(ALLOC(A, r*r*p));
@@ -66,14 +68,15 @@ static void TestFindPsiHat(void) {
   xCheck(ALLOC(Psi, r*h*r*h));
   xCheck(ALLOC(Psi_hat, r*h*r*h));
 
-  varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
-  vpack_FindPsi(A, B, Psi, p, q, r);
+  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
+  FindPsi(A, B, Psi, p, q, r);
   double Sig_mod[] = {
     1.0, 1.0, 1.0,
     1.0, 2.0, 1.0,
     1.0, 1.0, 2.0
   };
-  vpack_FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
+  FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
 
   // Expected Psi_hat from Matlab find_Psi_hat for mediumARMA1 with modified Sig:
   double Psi_hat_exp[] = {
@@ -96,11 +99,11 @@ static void TestPsiTinyAR(void) {
   // Matlab comparison
   double A[1], B[1], Sig[1], Psi[1], PsiHat[1];
   int p=1, q=0, r=1, icase, h=imax(p, q);
-  bool ok;
-  ok = varmapack_testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
-  vpack_FindPsi(A, B, Psi, p, q, r);
-  vpack_FindPsiHat(Psi, PsiHat, Sig, r, h);
+  varmapack_error error;
+  error = varmapack_testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
+  FindPsi(A, B, Psi, p, q, r);
+  FindPsiHat(Psi, PsiHat, Sig, r, h);
   xCheck(Psi[0] == 1);
   xCheck(almostSame(PsiHat[0], 0.894427190999916));
 }
@@ -109,13 +112,13 @@ static void TestPsiSimple(void) {
   // Another Matlab comparison
   int p, q, r, icase, h;
   char name[16] = "";
-  bool ok;
+  varmapack_error error;
   double *A, *B, *Sig, *Psi, *Psi_hat;
   double A2[] = {0.1, 0.3, 0.2, 0.4};
 
   icase = 9;
-  ok = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
+  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
   xCheck(r == 2);
   h = imax(p, q);
 
@@ -125,16 +128,16 @@ static void TestPsiSimple(void) {
   xCheck(ALLOC(Psi, r*h*r*h));
   xCheck(ALLOC(Psi_hat, r*h*r*h));
 
-  ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stdout);
-  xCheck(ok);
+  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  xCheck(!error);
   xCheck(r == 2);
 
   copy(4, A2, 1, A + 4, 1);  // A := [A A2]
   p = 2;
   Sig[0] = 1.0;              // So LSig is simple
 
-  vpack_FindPsi(A, B, Psi, p, q, r);
-  vpack_FindPsiHat(Psi, Psi_hat, Sig, r, h);
+  FindPsi(A, B, Psi, p, q, r);
+  FindPsiHat(Psi, Psi_hat, Sig, r, h);
   
   double Psi_exp[] = {
     1,  0, .6, .4,

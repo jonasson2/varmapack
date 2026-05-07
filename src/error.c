@@ -1,37 +1,26 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <string.h>
-#include "error.h"
+#include "varmapack.h"
 
-static FILE *error_stream = 0;
-static bool error_stream_explicit = false;
-static char error_prefix[64] = "";
-
-void varmapack_set_errstream(FILE *stream) {
-  error_stream = stream;
-  error_stream_explicit = true;
-}
-
-void varmapack_set_errprefix(char *prefix) {
-  STRSET(error_prefix, prefix);
-}
-
-static void error_init(void) {
-  if (!error_stream_explicit && error_stream == 0) {
-    error_stream = stderr;
+const char *varmapack_strerror(varmapack_error error) {
+  switch (error) {
+    case VARMAPACK_OK:
+      return "ok";
+    case VARMAPACK_INVALID_ARGUMENT:
+      return "invalid argument";
+    case VARMAPACK_DIMENSION:
+      return "invalid dimension(s)";
+    case VARMAPACK_ALLOCATION:
+      return "allocation failed";
+    case VARMAPACK_UNKNOWN_TESTCASE:
+      return "unknown testcase";
+    case VARMAPACK_NONSTATIONARY:
+      return "nonstationary model";
+    case VARMAPACK_SINGULAR:
+      return "singular matrix";
+    case VARMAPACK_NOT_POSITIVE_SEMIDEFINITE:
+      return "matrix is not positive semidefinite";
+    case VARMAPACK_INTERNAL:
+      return "internal error";
+    default:
+      return "unknown varmapack error";
   }
-}
-
-void error_report(const char *file, int line, const char *fmt, ...) {
-  error_init();
-  if (error_stream == 0) return;
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(error_stream, "error in %s:%d: ", basename_only(file), line);
-  if (error_prefix[0])
-    fprintf(error_stream, "%s: ", error_prefix);
-  vfprintf(error_stream, fmt, ap);
-  fprintf(error_stream, "\n");
-  va_end(ap);
 }

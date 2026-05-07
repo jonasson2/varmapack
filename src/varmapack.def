@@ -1,0 +1,8 @@
+LIBRARY varmapack
+EXPORTS
+  varmapack_acvf
+  varmapack_autocov
+  varmapack_sim
+  varmapack_specrad
+  varmapack_strerror
+  varmapack_testcase

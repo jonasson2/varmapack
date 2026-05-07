@@ -1,3 +1,0 @@
-option('blas', type: 'string', value: 'clapack',
-       description: 'Specify BLAS library as clapack, openblas, mkl or accelerate')
-

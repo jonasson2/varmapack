@@ -6,6 +6,7 @@
 #include "BlasGateway.h"
 #include "Tests.h"
 #include "varmapack.h"
+#include "xCheck.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -33,6 +34,35 @@ int almostZero(double a[], int n) {
   // true if a ≈ 0
   int ia = iamax(n, a, 1);
   return fabs(a[ia]) < 5.0e-14;
+}
+
+void checkArrayTol(double x[], double y[], int n, double tol) {
+  for (int i=0; i<n; i++) {
+    xCheck(fabs(x[i] - y[i]) < tol);
+  }
+}
+
+void checkArraySame(double x[], double y[], int n) {
+  checkArrayTol(x, y, n, 1e-15);
+}
+
+void checkArrayZero(double x[], int n) {
+  for (int i=0; i<n; i++) {
+    xCheck(x[i] == 0);
+  }
+}
+
+void checkArrayFinite(double x[], int n) {
+  for (int i=0; i<n; i++) {
+    xCheck(isfinite(x[i]));
+  }
+}
+
+randompack_rng *seededRng(uint64_t seed) {
+  randompack_rng *rng = randompack_create(0);
+  xCheck(rng != 0);
+  xCheck(randompack_seed(seed, 0, 0, rng));
+  return rng;
 }
 
 int almostEqual(double a[], double b[], int n) {

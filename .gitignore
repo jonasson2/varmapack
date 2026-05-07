@@ -49,3 +49,7 @@ compile_commands.json
 
 # Local reference material
 nogit/
+third-party/
+
+# Codex half-finished Fortran->C translation of sb03md
+sb03md/

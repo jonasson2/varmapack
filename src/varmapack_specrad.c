@@ -9,7 +9,8 @@ double varmapack_specrad(double *A, int r, int p) {
   int i, k, lwork, info;
   int n = r*p;
   double *Ac, *wr, *wi, *work, alwork, hyp, rho, dummy[1];
-  if (n == 0) return 0;
+  if (p < 0 || r <= 0 || (p > 0 && A == 0)) return NAN;
+  if (p == 0) return 0;
   Ac = wr = wi = work = 0;
   if (!ALLOC(Ac, n*n)) goto fail;
   if (!ALLOC(wr, n)) goto fail;

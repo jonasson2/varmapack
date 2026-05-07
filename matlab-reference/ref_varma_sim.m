@@ -83,7 +83,7 @@
 %   (C) Kristján Jónasson, Dept. of Computer Science, University of Iceland,
 %   2025. jonasson@hi.is.
 
-function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
+function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
@@ -99,6 +99,7 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
   end
   if nargin < 6 || isempty(M), M=1; end
   if nargin < 7, x0 = []; end
+  if nargin < 8, rng = []; end
   if isempty(x0) && ref_varma_specrad(A) >= 1
     error("Cannot run varma_sim with unspecified x0 and rho(A) ≥ 1");
   end
@@ -106,7 +107,6 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
   PLU = vyw_factorize(A);
   assert(isempty(PLU) || isempty(PLU{1}) || PLU{1}(1) ~= 0)  % vyw_factorize ok
   S = vyw_solve(A, PLU, G);
-  mat2c(cell2mat(S), "S");
 
   % Check size of provided start vector, set h to its size if ok
   if ~isempty(x0)
@@ -117,32 +117,25 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
   end
 
   SS = S_build(S, A, G, h);
-  E = reshape(randnm(n*M, Sig, "T"), r*n, M);
+  E = reshape(randnm(n*M, Sig, "T", rng), r*n, M);
 
   % Build theoretical covariance of xt
   if isempty(x0)  % Generate x{1:h}
-    % mat2c(E, "E1")
     Psi = find_Psi(A, B);
     Psi_hat = find_Psi_hat(Psi, Sig);
-    % mat2c(Psi_hat);
     R = SS - Psi_hat*Psi_hat';
-    % mat2c(tril(R), "R");
     e = Psi*E(1:r*h, :);
-    Wrk = randnm(M, R, "T");
-    % mat2c(Wrk);
+    Wrk = randnm(M, R, "T", rng);
     X1 = e + Wrk;
     h = h;
   else  % x0 given
     SS = S_build(S, A, G, h);
     C = find_C(A, B, Sig, h);
     CC = CC_build(A, C, h);
-    mat2c(CC);
     LS = chol(SS, 'lower'); % TODO: Check this
     Chat = LS\CC;
-    mat2c(Chat);
     x0bar = x0(:) - repmat(mu, h, 1);
     e = Chat'*(LS\x0bar);
-    mat2c(e, "e");
     R = -Chat'*Chat;
     J = 1:r;
     for j = 1:h
@@ -151,8 +144,7 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
     end
 
     % Draw eps{1:h} and fill x{1:h}
-    E(1:r*h, :) = e + randnm(M, R, "T");
-    mat2c(E, "E0");
+    E(1:r*h, :) = e + randnm(M, R, "T", rng);
     X1 = repmat(x0bar,1,M);
   end
   condR = cond(R);
@@ -161,7 +153,6 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
   % fprintf("cond(R) = %.2e, cond(Sig) = %.2e, rho = %.4f\n", condR, condSig, rho);
   X2 = zeros(n*r - h*r, M);
   X = [X1; X2];
-  mat2c(X, "X1");
 
   % Generate x{h+1:n}
   I = r*h + (1:r);
@@ -173,7 +164,6 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
     J = J+r;
     K = K+r;
   end
-  mat2c(X);
 
   % Reshape as appropriate for ARMA or VARMA
   if r==1 && M==1  %  one ARMA sequence:
@@ -188,7 +178,7 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0)
   end
 end
 
-function x = randnm(n, Sig, transpose)
+function x = randnm(n, Sig, transpose, rng)
   % Multivariate normal random vectors. In this new (2025) version the
   % eigendecomposition of Sig = U·Lam·U' is used to find the linear
   % transformation applied to the independent random variates when its Cholesky
@@ -199,12 +189,15 @@ function x = randnm(n, Sig, transpose)
   TRANSP = nargin > 2 && startsWith(transpose, {'t', 'T'});
   r = size(Sig, 1);
   if n==0, x = zeros(0, r); return, end
-  global varmapack_rng
-  if isempty(varmapack_rng), error('Randompack RNG is not initialized'); end
+  if nargin < 4 || isempty(rng)
+    global varmapack_rng
+    rng = varmapack_rng;
+  end
+  if isempty(rng), error('Randompack RNG is not initialized'); end
   if TRANSP
-    x = randompack_mvn(varmapack_rng, Sig, n, zeros(r, 1));
+    x = randompack_mvn(rng, Sig, n, zeros(r, 1));
   else
-    x = randompack_mvn(varmapack_rng, Sig, n, zeros(r, 1))';
+    x = randompack_mvn(rng, Sig, n, zeros(r, 1))';
   end
 end
 

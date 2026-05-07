@@ -31,6 +31,7 @@ ARCHITECTURE
 - Do not manually edit generated R source copies once sync scripts exist
 - In tests, use utilities declared/defined in Tests.h, xCheck.h, and ExtraUtil.h
 - Meson/Ninja drive builds
+- Build and verify newly written code in the `release` Meson directory by default
 - Julia and Fortran interfaces are out of scope for now
 
 ---------------------------

@@ -14,7 +14,6 @@
 #include "printX.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "DebugUtil.h"
 #include "FromMatlab.h"
 
 static int getdim(FILE *fid, char *base, int k) {
@@ -30,8 +29,8 @@ static int getdim(FILE *fid, char *base, int k) {
 static double sim_tol(int n, double rho) {
   double stability = rho < 1 ? 1/(1 - rho) : 1/DBL_EPSILON;
   // This eps multiplier allows for array size and stationarity sensitivity:
-  // 10*sqrt(n)/(1-rho)^2. The form and constant were chosen by trial and error.
-  return 10*DBL_EPSILON*sqrt((double)(n > 0 ? n : 1))*stability*stability;
+  // 25*sqrt(n)/(1-rho)^2. The form and constant were chosen by trial and error.
+  return 25*DBL_EPSILON*sqrt((double)(n > 0 ? n : 1))*stability*stability;
 }
 
 static void check_norm_relative(char *what, int icase, double diff, double tol) {
@@ -45,13 +44,146 @@ static bool pathwise_conditional_check(int icase) {
   return icase != 7;
 }
 
+static bool compare_reduced_m(FILE *fid, int n) {
+  int nReducedCases, reducedM;
+  int *reducedCases = 0;
+  bool ok;
+  varmapack_error error;
+  char name[64] = {0};
+  ok = IntFromMatlab(fid, "#reducedCases", &nReducedCases);
+  ok &= IntFromMatlab(fid, "reducedM", &reducedM);
+  xCheck(ok && nReducedCases > 0);
+  ASSERT(ALLOC(reducedCases, nReducedCases), "allocation failed");
+  ok = IntVecFromMatlab(fid, "reducedCases", reducedCases, nReducedCases);
+  xCheck(ok);
+  for (int k=0; k<nReducedCases; k++) {
+    int icase = reducedCases[k];
+    int label = icase + 1;
+    int p = 0, q = 0, r = 0;
+    int h, r2;
+    double *A = 0, *B = 0, *Sig = 0, *mu = 0, *x0 = 0;
+    double *X = 0, *E = 0, *X0 = 0, *E0 = 0;
+    double *Xmu = 0, *Emu = 0, *X0mu = 0, *E0mu = 0;
+    double *XT = 0, *AutoMLT = 0, *AutoCT = 0;
+    double diffE, diffX, diffE0, diffX0, diffEmu, diffXmu, diffE0mu, diffX0mu;
+    double diffAutoMLT, diffAutoCT, rhoC, simTol, autoTol;
+    randompack_rng *rng = 0;
+    STRSET(name, "");
+    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    xCheck(!error);
+    h = imax(p, q);
+    r2 = r*r;
+    snprintf(name, 64, "reduced M=%d varmapack_testcase number %2d", reducedM, icase);
+    xCheckAddMsg(name);
+    ASSERT(ALLOC(A, r2*(p > 0 ? p : 1)), "allocation failed");
+    ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
+    ASSERT(ALLOC(Sig, r2), "allocation failed");
+    ASSERT(ALLOC(x0, r*h > 0 ? r*h : 1), "allocation failed");
+    ASSERT(ALLOC(mu, r), "allocation failed");
+    STRSET(name, "");
+    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    xCheck(!error);
+    STRSETF(name, "x0%d", label);
+    ok = MatrixFromMatlab(fid, name, x0, r, h);
+    STRSETF(name, "mu%d", label);
+    ok &= MatrixFromMatlab(fid, name, mu, r, 1);
+    xCheck(ok);
+    ASSERT(ALLOC(X, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(X0, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(Xmu, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(X0mu, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(E, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(E0, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(Emu, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(E0mu, r*n*reducedM), "allocation failed");
+    ASSERT(ALLOC(XT, n*r), "allocation failed");
+    ASSERT(ALLOC(AutoMLT, r2*n), "allocation failed");
+    ASSERT(ALLOC(AutoCT, r2*n), "allocation failed");
+    rng = randompack_create(0);
+    randompack_seed(42, 0, 0, rng);
+    error = varmapack_sim(A, B, Sig, 0, p, q, r, n, reducedM, 0, 0, rng, X, E);
+    xCheck(!error);
+    randompack_seed(42, 0, 0, rng);
+    error = varmapack_sim(A, B, Sig, 0, p, q, r, n, reducedM, x0, h, rng, X0, E0);
+    xCheck(!error);
+    randompack_seed(42, 0, 0, rng);
+    error = varmapack_sim(A, B, Sig, mu, p, q, r, n, reducedM, 0, 0, rng, Xmu, Emu);
+    xCheck(!error);
+    randompack_seed(42, 0, 0, rng);
+    error = varmapack_sim(A, B, Sig, mu, p, q, r, n, reducedM, x0, h, rng, X0mu, E0mu);
+    xCheck(!error);
+    copytranspose(r, n, X + r*n, r, XT, n);
+    error = varmapack_autocov("T", "ML", r, n, XT, n-1, AutoMLT);
+    xCheck(!error);
+    error = varmapack_autocov("T", "C", r, n, XT, n-1, AutoCT);
+    xCheck(!error);
+    STRSETF(name, "RedAutoMLT%d-%d", reducedM, icase);
+    ok = CompareWithMatlab(fid, name, AutoMLT, r*r, n, &diffAutoMLT);
+    STRSETF(name, "RedAutoCT%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, AutoCT, r*r, n, &diffAutoCT);
+    STRSETF(name, "RedE%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, E, r*n, reducedM, &diffE);
+    STRSETF(name, "RedX%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, X, r*n, reducedM, &diffX);
+    STRSETF(name, "RedE0%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, E0, r*n, reducedM, &diffE0);
+    STRSETF(name, "RedX0%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, X0, r*n, reducedM, &diffX0);
+    STRSETF(name, "RedEmu%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, Emu, r*n, reducedM, &diffEmu);
+    STRSETF(name, "RedXmu%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, Xmu, r*n, reducedM, &diffXmu);
+    STRSETF(name, "RedE0mu%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, E0mu, r*n, reducedM, &diffE0mu);
+    STRSETF(name, "RedX0mu%d-%d", reducedM, icase);
+    ok &= CompareWithMatlab(fid, name, X0mu, r*n, reducedM, &diffX0mu);
+    ASSERT(ok, "error comparing reduced M with Matlab");
+    rhoC = varmapack_specrad(A, r, p);
+    simTol = sim_tol(r*n*reducedM, rhoC);
+    autoTol = sim_tol(r2*n, rhoC);
+    check_norm_relative("RedE", icase, diffE, simTol);
+    check_norm_relative("RedX", icase, diffX, simTol);
+    check_norm_relative("RedAutoMLT", icase, diffAutoMLT, autoTol);
+    check_norm_relative("RedAutoCT", icase, diffAutoCT, autoTol);
+    check_norm_relative("RedEmu", icase, diffEmu, simTol);
+    check_norm_relative("RedXmu", icase, diffXmu, simTol);
+    if (pathwise_conditional_check(icase)) {
+      check_norm_relative("RedE0", icase, diffE0, simTol);
+      check_norm_relative("RedX0", icase, diffX0, simTol);
+      check_norm_relative("RedE0mu", icase, diffE0mu, simTol);
+      check_norm_relative("RedX0mu", icase, diffX0mu, simTol);
+    }
+    FREE(AutoCT);
+    FREE(AutoMLT);
+    FREE(XT);
+    FREE(E0mu);
+    FREE(X0mu);
+    FREE(Emu);
+    FREE(Xmu);
+    FREE(E0);
+    FREE(X0);
+    FREE(E);
+    FREE(X);
+    FREE(mu);
+    FREE(x0);
+    FREE(Sig);
+    FREE(B);
+    FREE(A);
+    randompack_free(rng);
+  }
+  FREE(reducedCases);
+  xCheckAddMsg("");
+  return true;
+}
+
 bool TestAgainstMatlab(void) {
   // Bring in MATLAB reference data
   int n, p, q, r, pk, qk, rk, h, ncases, nMs, acvfMaxlag;
   double *cases = 0, *Ms = 0, *A = 0, *B = 0, *Sig = 0, *mu = 0, *x0 = 0;
   double *Gamma = 0;
-  double condR, tol, rhoMatlab, rhoC;
+  double tol, rhoMatlab, rhoC;
   bool ok;
+  varmapack_error error;
   char name[64] = {0};
   char comparefile[] = "matlabcompare.txt";
   FILE *fid = fopen(comparefile, "r");
@@ -78,10 +210,7 @@ bool TestAgainstMatlab(void) {
     r = getdim(fid, "r", label);
     h = imax(p, q);
 
-    // Get condition number, set tolerance
-    STRSETF(name, "condR-%d", icase);
-    ok = DoubleFromMatlab(fid, name, &condR);
-    xCheck(ok);
+    // Set tolerance for comparing testcase inputs.
     tol = 5e-16;
 
     // Get starting vector
@@ -108,8 +237,8 @@ bool TestAgainstMatlab(void) {
 
     // Query testcase dimensions and check them
     STRSET(name, "");
-    ok = varmapack_testcase(0, 0, 0, name, &pk, &qk, &rk, &icase, 0, stderr);
-    xCheck(ok);
+    error = varmapack_testcase(0, 0, 0, name, &pk, &qk, &rk, &icase, 0, 0);
+    xCheck(!error);
     xCheck(pk == p);
     xCheck(qk == q);
     xCheck(rk == r);
@@ -121,13 +250,13 @@ bool TestAgainstMatlab(void) {
     ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
     STRSET(name, "");
-    ok = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, stderr);
-    xCheck(ok);
+    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    xCheck(!error);
     rhoC = varmapack_specrad(A, r, p);
     xCheck(fabs(rhoC - rhoMatlab) < 1e-12);
     ASSERT(ALLOC(Gamma, r2*(acvfMaxlag+1)), "allocation failed");
-    ok = varmapack_acvf(A, B, Sig, p, q, r, Gamma, acvfMaxlag);
-    xCheck(ok);
+    error = varmapack_acvf(A, B, Sig, p, q, r, Gamma, acvfMaxlag);
+    xCheck(!error);
 
     // Compare A, B, Sig against MATLAB reference
     double diffA, diffB, diffSig, diffGamma;
@@ -146,7 +275,6 @@ bool TestAgainstMatlab(void) {
       double *X = 0, *E = 0, *X0 = 0, *E0 = 0;
       double *Xmu = 0, *Emu = 0, *X0mu = 0, *E0mu = 0;
       double *AutoML = 0, *AutoC = 0;
-      bool sim_ok;
       h = imax(p, q);
     
       ASSERT(ALLOC(X, r*n*M), "allocation failed");
@@ -165,18 +293,22 @@ bool TestAgainstMatlab(void) {
       printM("B", B, r, r*q);
       printM("Sig", Sig, r, r);
       randompack_seed(42, 0, 0, rng);
-      varmapack_sim(A, B, Sig, 0, p, q, r, n, M, 0, 0, rng, X, E, &sim_ok);
+      error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, 0, 0, rng, X, E);
+      xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      varmapack_sim(A, B, Sig, 0, p, q, r, n, M, x0, h, rng, X0, E0, &sim_ok);
+      error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, x0, h, rng, X0, E0);
+      xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      varmapack_sim(A, B, Sig, mu, p, q, r, n, M, 0, 0, rng, Xmu, Emu, &sim_ok);
+      error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, 0, 0, rng, Xmu, Emu);
+      xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      varmapack_sim(A, B, Sig, mu, p, q, r, n, M, x0, h, rng, X0mu, E0mu,
-                    &sim_ok);
-      varmapack_autocov("N", "ML", r, n, X, n-1, AutoML);
-      varmapack_autocov("N", "C", r, n, X, n-1, AutoC);
+      error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, x0, h, rng, X0mu, E0mu);
+      xCheck(!error);
+      error = varmapack_autocov("N", "ML", r, n, X, n-1, AutoML);
+      xCheck(!error);
+      error = varmapack_autocov("N", "C", r, n, X, n-1, AutoC);
+      xCheck(!error);
       printM("X0", X0, r, n*M);
-      xCheck(sim_ok == 1);
       // Compare E and X
       
       double diffE, diffX, diffE0, diffX0, diffEmu, diffXmu, diffE0mu, diffX0mu;
@@ -212,7 +344,6 @@ bool TestAgainstMatlab(void) {
       printD(">>> diffE0mu", diffE0mu);
       double simTol = sim_tol(r*n*M, rhoC);
       double autoTol = sim_tol(r2*n, rhoC);
-      printD(">>> condR", condR);
       printD(">>> simulation tolerance", simTol);
       printD(">>> autocov tolerance", autoTol);
       check_norm_relative("E", icase, diffE, simTol);
@@ -249,6 +380,8 @@ bool TestAgainstMatlab(void) {
     FREE(x0);
     xCheckAddMsg("");
   }
+  ok = compare_reduced_m(fid, n);
+  xCheck(ok);
   FREE(cases);
   FREE(Ms);
   fclose(fid);

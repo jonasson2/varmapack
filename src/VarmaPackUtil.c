@@ -1,9 +1,10 @@
 #include "BlasGateway.h"
 #include "error.h"
 #include "printX.h"
+#include "varmapack_config.h"
 #include "VarmaUtilities.h"
 
-void vpack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
+HIDDEN void FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   double A[],   // in   r×r×p, autoregressive parameter matrices
   double B[],   // in   r×r×q, moving average parameter matrices
   double Sig[], // in   r×r, covariance of the shock terms eps(t)
@@ -46,7 +47,7 @@ void vpack_FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
   }
 }
 
-void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
+HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   // Prepare
   int h = imax(p, q), rr = r*r, hr = h*r, i, j, k, l;
   double *Aflp = 0, *Psi_jj;
@@ -75,7 +76,7 @@ void vpack_FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   FREE(Aflp);
 }
 
-void vpack_FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
+HIDDEN void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
   double *LSig, *Psi_hat_kk;
   int info, hr = h*r, rr = r*r, k, nrow;
   xAssert(ALLOC(LSig, rr));
