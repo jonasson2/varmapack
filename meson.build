@@ -10,6 +10,13 @@ project('varmapack', 'c', 'fortran',
 buildtype = get_option('buildtype')
 host_system = host_machine.system()
 
+if host_system != 'windows'  # Ensure <time.h> exposes clock_gettime/CLOCK_*
+  add_project_arguments('-D_POSIX_C_SOURCE=200809L', language: 'c')
+  if host_system == 'darwin'
+    add_project_arguments('-D_DARWIN_C_SOURCE', language: 'c')
+  endif
+endif
+
 # Get user-specified BLAS order or use platform defaults
 blas_order_option = get_option('blas_order')
 
