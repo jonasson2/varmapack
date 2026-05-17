@@ -76,11 +76,7 @@ static bool parse_int_list(char *s, int_list *xs) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.2,
-    .w = 0.1,
-    .d = 2,
-    .p = {3, {1, 3, 5}},
-    .r = {4, {2, 5, 12, 32}}
+    .t = 0.2, .w = 0.1, .d = 2, .p = {3, {1, 3, 5}}, .r = {4, {2, 5, 12, 32}}
   };
 }
 
@@ -191,8 +187,7 @@ static void warm_cpu(double seconds) {
 }
 
 static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
-                         double **A, double **B, double **Sig,
-                         randompack_rng *rng) {
+                         double **A, double **B, double **Sig, randompack_rng *rng) {
   int icase = 0;
   char name[12] = "rho";
   double rho = 0.95;
@@ -297,8 +292,7 @@ static time_result time_case(setup_case c, double target, randompack_rng *rng) {
     t = clock_nsec();
   }
   time_result result = {
-    .vyw_ns = (double)vyw_ns/(double)reps,
-    .lyap_ns = (double)lyap_ns/(double)reps,
+    .vyw_ns = (double)vyw_ns/(double)reps, .lyap_ns = (double)lyap_ns/(double)reps,
     .other_vyw_ns = (double)other_vyw_ns/(double)reps,
     .other_lyap_ns = (double)other_lyap_ns/(double)reps
   };

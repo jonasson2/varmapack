@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
   error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, rng);
   if (error != VARMAPACK_OK) goto fail;
   //
-  error = varmapack_sim(A, B, Sig, 0, p, q, r, n, 1, 0, 0, rng, X, 0);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, 1, 0, 0, X, 0, rng);
   if (error != VARMAPACK_OK) goto fail;
   //
   printM("X", X, r, n);

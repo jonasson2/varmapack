@@ -12,7 +12,7 @@ static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
 static void check_varmapack_error(varmapack_error error);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  int p, q, r, n, M, nX0 = 0;
+  int p, q, r, n, M, nmu = 0, nX0 = 0;
   varmapack_error error;
   double *A, *B, *Sig, *mu = 0, *X0 = 0, *X, *E;
   randompack_rng *rng;
@@ -29,8 +29,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   n = get_int_scalar(prhs[3], "n");
   if (!mxIsEmpty(prhs[4])) {
     mu = get_double_array(prhs[4], "mu");
-    if ((int)mxGetNumberOfElements(prhs[4]) != r)
-      mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must be empty or length r");
+    if ((int)mxGetM(prhs[4]) != r)
+      mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must be empty or have r rows");
+    nmu = (int)mxGetN(prhs[4]);
+    if (nmu > n)
+      mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must not have more than n columns");
   }
   M = get_int_scalar(prhs[5], "M");
   if (!mxIsEmpty(prhs[6])) {
@@ -50,7 +53,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   X = mxGetPr(plhs[0]);
   E = Eout ? mxGetPr(Eout) : 0;
-  error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, X0, nX0, rng, X, E);
+  error = varmapack_sim(A, B, Sig, mu, nmu, p, q, r, n, M, X0, nX0, X, E, rng);
   check_varmapack_error(error);
 }
 
@@ -66,20 +69,17 @@ static randompack_rng *get_rng(const mxArray *arg) {
 
 static double *get_double_array(const mxArray *arg, const char *name) {
   if (!mxIsDouble(arg) || mxIsComplex(arg))
-    mexErrMsgIdAndTxt("varmapack:sim:argument", "%s must be a real double array",
-                      name);
+    mexErrMsgIdAndTxt("varmapack:sim:argument", "%s must be a real double array", name);
   return mxGetPr(arg);
 }
 
 static int get_int_scalar(const mxArray *arg, const char *name) {
   double x;
   if (!mxIsNumeric(arg) || mxIsComplex(arg) || mxGetNumberOfElements(arg) != 1)
-    mexErrMsgIdAndTxt("varmapack:sim:argument", "%s must be a numeric scalar",
-                      name);
+    mexErrMsgIdAndTxt("varmapack:sim:argument", "%s must be a numeric scalar", name);
   x = mxGetScalar(arg);
   if (x < 0 || x > INT_MAX || x != (int)x)
-    mexErrMsgIdAndTxt("varmapack:sim:argument",
-                      "%s must be a nonnegative integer", name);
+    mexErrMsgIdAndTxt("varmapack:sim:argument", "%s must be a nonnegative integer", name);
   return (int)x;
 }
 
@@ -113,24 +113,23 @@ static void check_varmapack_error(varmapack_error error) {
   if (error == VARMAPACK_OK) return;
   switch (error) {
     case VARMAPACK_INVALID_ARGUMENT:
-      mexErrMsgIdAndTxt("varmapack:sim:invalidArgument", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:sim:invalidArgument", "%s", varmapack_strerror(error));
       break;
     case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:sim:allocation", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:sim:allocation", "%s", varmapack_strerror(error));
       break;
     case VARMAPACK_NONSTATIONARY:
-      mexErrMsgIdAndTxt("varmapack:sim:nonstationary", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:sim:nonstationary", "%s", varmapack_strerror(error));
+      break;
+    case VARMAPACK_NONSTATIONARY_MA:
+      mexErrMsgIdAndTxt("varmapack:sim:nonstationaryMA", "%s", varmapack_strerror(error));
       break;
     case VARMAPACK_NOT_POSITIVE_SEMIDEFINITE:
       mexErrMsgIdAndTxt("varmapack:sim:notPositiveSemidefinite", "%s",
                         varmapack_strerror(error));
       break;
     case VARMAPACK_INTERNAL:
-      mexErrMsgIdAndTxt("varmapack:sim:internal", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:sim:internal", "%s", varmapack_strerror(error));
       break;
     default:
       mexErrMsgIdAndTxt("varmapack:sim:error", "%s", varmapack_strerror(error));

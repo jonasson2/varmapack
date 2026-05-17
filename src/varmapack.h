@@ -12,25 +12,20 @@ extern "C" {
 #include <stdio.h>
 
 typedef enum {
-  VARMAPACK_OK = 0,
-  VARMAPACK_INVALID_ARGUMENT,
-  VARMAPACK_DIMENSION,
-  VARMAPACK_ALLOCATION,
-  VARMAPACK_UNKNOWN_TESTCASE,
-  VARMAPACK_NONSTATIONARY,
-  VARMAPACK_SINGULAR,
-  VARMAPACK_NOT_POSITIVE_SEMIDEFINITE,
-  VARMAPACK_INTERNAL
+  VARMAPACK_OK = 0, VARMAPACK_INVALID_ARGUMENT, VARMAPACK_DIMENSION, VARMAPACK_ALLOCATION,
+  VARMAPACK_UNKNOWN_TESTCASE, VARMAPACK_NONSTATIONARY,
+  VARMAPACK_NONSTATIONARY_MA, VARMAPACK_SINGULAR,
+  VARMAPACK_NOT_POSITIVE_SEMIDEFINITE, VARMAPACK_INTERNAL
 } varmapack_error;
 
-VARMAPACK_API const char *varmapack_strerror(
-  varmapack_error error);
+const char *varmapack_strerror( varmapack_error error);
 
-VARMAPACK_API varmapack_error varmapack_sim ( // Simulate VARMA time series
+varmapack_error varmapack_sim ( // Simulate VARMA time series
   double A[],   // in      r×r×p, autoregressive parameter matrices
   double B[],   // in      r×r×q, moving average parameter matrices
   double Sig[], // in      r×r, covariance of the shock terms ε(t)
-  double mu[],  // in      r-vector, mean of x(t); NULL for zero-mean
+  double mu[],  // in      r×nmu, time series means; last supplied mean repeats
+  int nmu,      // in      number of supplied mean vectors, 0 means zero mean
   int p,        // in      number of autoregressive terms
   int q,        // in      number of moving-average terms
   int r,        // in      dimension of each x(t)
@@ -38,17 +33,17 @@ VARMAPACK_API varmapack_error varmapack_sim ( // Simulate VARMA time series
   int M,        // in      number of replicates to generate
   double X0[],  // in      r×nX0 with nX0 ≥ max(p,q); optional starter or NULL
   int nX0,      // in      number of starting values
-  randompack_rng *rng, // in/out  random number generator
   double X[],   // out     r×n×M generated series
-  double E[]    // out     r×n×M shock series (or NULL to skip)
+  double E[],   // out     r×n×M shock series (or NULL to skip)
+  randompack_rng *rng // in/out  random number generator
   );
 
-VARMAPACK_API double varmapack_specrad( // Spectral radius of companion matrix of a VAR process
+double varmapack_specrad( // Spectral radius of model companion matrix
   double A[],   // in   r×r×p, autoregressive parameter matrices
   int r,        // in   dimension of each x(t), row count of A
   int p);       // in   number of autoregressive terms
 
-VARMAPACK_API varmapack_error varmapack_acvf( // Theoretical autocovariance function of VARMA model
+varmapack_error varmapack_acvf( // Theoretical autocovariance function of VARMA model
   double A[],    // in   r×r×p autoregressive matrices
   double B[],    // in   r×r×q moving average matrices
   double Sig[],  // in   r×r shock's covariance
@@ -58,7 +53,26 @@ VARMAPACK_API varmapack_error varmapack_acvf( // Theoretical autocovariance func
   double Gamma[],// out  r×r×(maxlag+1) covariance sequence, Γk = Cov(xt, x{t-k})
   int maxlag);   // in   largest lag to compute
 
-VARMAPACK_API varmapack_error varmapack_autocov( // Sample autocovariance of observed data
+varmapack_error varmapack_psi( // VARMA impulse-response coefficients
+  double A[],   // in   r×r×p autoregressive parameter matrices
+  double B[],   // in   r×r×q moving average parameter matrices
+  int p,        // in   number of autoregressive terms
+  int q,        // in   number of moving-average terms
+  int r,        // in   dimension of each x(t)
+  int maxlag,   // in   largest coefficient index to compute
+  double Psi[]);// out  r×r×(maxlag+1), coefficient sequence, Psi_0,...
+
+varmapack_error varmapack_irf( // Orthogonalized impulse responses
+  double A[],     // in   r×r×p autoregressive parameter matrices
+  double B[],     // in   r×r×q moving average parameter matrices
+  double Sig[],   // in   r×r shock covariance matrix
+  int p,          // in   number of autoregressive terms
+  int q,          // in   number of moving-average terms
+  int r,          // in   dimension of each x(t)
+  int maxlag,     // in   largest coefficient index to compute
+  double Theta[]);// out  r×r×(maxlag+1), Theta_j = Psi_j*chol(Sig)
+
+varmapack_error varmapack_autocov( // Sample autocovariance of observed data
   const char *transp, // in   "N": X r×n with x(t) in column t; "T": n×r, x(t) in row t
   const char *norm,   // in   "ML" for 1/n scaling, "C" for 1/(n−k) correction
   int r,              // in   dimension of each observation
@@ -67,7 +81,7 @@ VARMAPACK_API varmapack_error varmapack_autocov( // Sample autocovariance of obs
   int maxlag,         // in   number of lags to compute (≤ n−1)
   double C[]);        // out  r×r×(maxlag+1) array of lag-k covariance matrices
 
-VARMAPACK_API varmapack_error varmapack_testcase( // Create a testcase for VARMA calculation
+varmapack_error varmapack_testcase( // Create testcase for VARMA calculation
   double A[],    // out     r×r×p, autoregressive parameter matrices (or null)
   double B[],    // out     r×r×q, moving average parameter matrices (or null)
   double Sig[],  // out     r×r, covariance of the shock terms eps(t) (or null)

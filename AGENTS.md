@@ -35,6 +35,13 @@ ARCHITECTURE
 - Julia and Fortran interfaces are out of scope for now
 
 ---------------------------
+EDITING
+---------------------------
+- Before editing a file, check whether it has changed and reread it from disk.
+  Do not rely on stale context, since user refactoring may have happened between
+  Codex turns.
+
+---------------------------
 OUTPUT
 ---------------------------
 - Keep responses concise, technical, and style-compliant.

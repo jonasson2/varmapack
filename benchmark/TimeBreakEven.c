@@ -45,14 +45,7 @@ static void die(char *msg) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.01,
-    .w = 0.1,
-    .r0 = 7,
-    .r1 = 30,
-    .p0 = 1,
-    .p1 = 7,
-    .q0 = 0,
-    .q1 = 7
+    .t = 0.01, .w = 0.1, .r0 = 7, .r1 = 30, .p0 = 1, .p1 = 7, .q0 = 0, .q1 = 7
   };
 }
 
@@ -114,13 +107,11 @@ static void make_problem(int p, int q, int r, double **A, double **B,
   *B = malloc(sizeof(double)*r*r*(q > 0 ? q : 1));
   *Sig = malloc(sizeof(double)*r*r);
   if (!*A || !*B || !*Sig) die("allocation failed");
-  error = varmapack_testcase(*A, *B, *Sig, name, &p, &q, &r, &icase,
-                             rho, rng);
+  error = varmapack_testcase(*A, *B, *Sig, name, &p, &q, &r, &icase, rho, rng);
   if (error) die("varmapack_testcase failed");
 }
 
-static timing time_case(int p, int q, int r, double target,
-                        randompack_rng *rng) {
+static timing time_case(int p, int q, int r, double target, randompack_rng *rng) {
   int rr = r*r;
   int reps = 0;
   uint64_t start, now, t0, t1, t2;

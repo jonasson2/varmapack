@@ -21,8 +21,7 @@ static void SExtend(double A[], double G[], double S[], double Scol[], int p, in
       lacpy("All", r, r, G + j*r*r, r, Scolj, iScol);
     }
     for (int i=0; i<p; i++) {
-      gemm("N", "N", r, r, r, 1, A + i*r*r, r, Scolj - (i+1)*r, iScol, 1,
-           Scolj, iScol);
+      gemm("N", "N", r, r, r, 1, A + i*r*r, r, Scolj - (i+1)*r, iScol, 1, Scolj, iScol);
     }
   }
 }
@@ -52,8 +51,7 @@ static void CCBuild(double A[], double C[], int p, int q, int r, int n, double C
   for (int j=q+1; j<n; j++) {
     double *CCj = CC + j*r;
     for (int i=1; i<=j && i<=p; i++) {
-      gemm("N", "N", r, r, r, 1, A + (i-1)*r*r, r, CC + (j-i)*r, r*n, 1,
-           CCj, r*n);
+      gemm("N", "N", r, r, r, 1, A + (i-1)*r*r, r, CC + (j-i)*r, r*n, 1, CCj, r*n);
     }
   }
   for (int j=1; j<n; j++) {
@@ -102,8 +100,7 @@ static void check_case7_support(void) {
   char name[32] = "";
   double *A = 0, *B = 0, *Sig = 0, *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
   double *work = 0, *X = 0, *E = 0;
-  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r,
-                                               &icase, 0, 0);
+  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
   xCheck(!error);
   h = imax(p, q);
   rh = r*h;
@@ -132,7 +129,7 @@ static void check_case7_support(void) {
   xCheck(nulls > 0 && nulls < rh);
   randompack_rng *rng = randompack_create(0);
   xCheck(randompack_seed(42, 0, 0, rng));
-  error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, X0, h, rng, X, E);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, X, E, rng);
   xCheck(!error);
   for (int k=0; k<nulls; k++) {
     double nr = 0;

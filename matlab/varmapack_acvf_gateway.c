@@ -33,16 +33,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
 static double *get_double_array(const mxArray *arg, const char *name) {
   if (!mxIsDouble(arg) || mxIsComplex(arg))
-    mexErrMsgIdAndTxt("varmapack:acvf:argument", "%s must be a real double array",
-                      name);
+    mexErrMsgIdAndTxt("varmapack:acvf:argument", "%s must be a real double array", name);
   return mxGetPr(arg);
 }
 
 static int get_int_scalar(const mxArray *arg, const char *name) {
   double x;
   if (!mxIsNumeric(arg) || mxIsComplex(arg) || mxGetNumberOfElements(arg) != 1)
-    mexErrMsgIdAndTxt("varmapack:acvf:argument", "%s must be a numeric scalar",
-                      name);
+    mexErrMsgIdAndTxt("varmapack:acvf:argument", "%s must be a numeric scalar", name);
   x = mxGetScalar(arg);
   if (x < 0 || x > INT_MAX || x != (int)x)
     mexErrMsgIdAndTxt("varmapack:acvf:argument",
@@ -86,8 +84,7 @@ static void check_varmapack_error(varmapack_error error) {
       mexErrMsgIdAndTxt("varmapack:acvf:allocation", "%s", varmapack_strerror(error));
       break;
     case VARMAPACK_NONSTATIONARY:
-      mexErrMsgIdAndTxt("varmapack:acvf:nonstationary", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:acvf:nonstationary", "%s", varmapack_strerror(error));
       break;
     default:
       mexErrMsgIdAndTxt("varmapack:acvf:error", "%s", varmapack_strerror(error));

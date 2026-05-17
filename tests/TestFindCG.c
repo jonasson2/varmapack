@@ -10,7 +10,7 @@ void TestFindCG(void) {
   // Just a rudimentary test. Tested thoroughly by Testvarmapack_sim.
   int p, q, r, icase;
   char name[16] = "";
-  double *A, *B, *Sig, *C, *G;
+  double *A, *B, *Sig, *C, *G, *W;
   varmapack_error error;
 
   // First call: query dimensions for smallARMA1
@@ -27,6 +27,7 @@ void TestFindCG(void) {
   xCheck(ALLOC(Sig, r*r));
   xCheck(ALLOC(C, r*r*(q + 1)));
   xCheck(ALLOC(G, r*r*(q + 1)));
+  xCheck(ALLOC(W, r*r*(q + 1)));
 
   error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
   xCheck(!error);
@@ -43,10 +44,19 @@ void TestFindCG(void) {
 
   xCheck(almostEqual(C, Cexp, r*r*(q + 1)));
   xCheck(almostEqual(G, Gexp, r*r*(q + 1)));
+  xCheck(FindW(B, Sig, q, r, W));
+
+  // Lower-lag convention: Wi = cov(y(t), y(t-i)).
+  // [ 2.38  1.38  0.70  0.80
+  //   1.38  2.38  0.70  0.80 ]
+  double Wexp[] = {2.38, 1.38, 1.38, 2.38, 0.70, 0.70, 0.80, 0.80};
+
+  xCheck(almostEqual(W, Wexp, r*r*(q + 1)));
 
   FREE(A);
   FREE(B);
   FREE(Sig);
   FREE(C);
   FREE(G);
+  FREE(W);
 }

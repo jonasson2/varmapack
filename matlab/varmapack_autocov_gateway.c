@@ -43,8 +43,7 @@ static double *get_double_matrix(const mxArray *arg, const char *name) {
 static int get_int_scalar(const mxArray *arg, const char *name) {
   double x;
   if (!mxIsNumeric(arg) || mxIsComplex(arg) || mxGetNumberOfElements(arg) != 1)
-    mexErrMsgIdAndTxt("varmapack:autocov:argument", "%s must be a numeric scalar",
-                      name);
+    mexErrMsgIdAndTxt("varmapack:autocov:argument", "%s must be a numeric scalar", name);
   x = mxGetScalar(arg);
   if (x < 0 || x > INT_MAX || x != (int)x)
     mexErrMsgIdAndTxt("varmapack:autocov:argument",
@@ -76,8 +75,7 @@ static void check_varmapack_error(varmapack_error error) {
                         varmapack_strerror(error));
       break;
     case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:autocov:allocation", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:autocov:allocation", "%s", varmapack_strerror(error));
       break;
     default:
       mexErrMsgIdAndTxt("varmapack:autocov:error", "%s", varmapack_strerror(error));

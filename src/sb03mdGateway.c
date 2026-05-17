@@ -6,30 +6,11 @@
 
 typedef long int sb03md_fstrlen;
 
-void sb03md_(
-  char *dico,
-  char *job,
-  char *fact,
-  char *trana,
-  int *n,
-  double a[],
-  int *lda,
-  double u[],
-  int *ldu,
-  double c[],
-  int *ldc,
-  double *scale,
-  double *sep,
-  double *ferr,
-  double wr[],
-  double wi[],
-  int iwork[],
-  double dwork[],
-  int *ldwork,
-  int *info,
-  sb03md_fstrlen lendico,
-  sb03md_fstrlen lenjob,
-  sb03md_fstrlen lenfact,
+void sb03md_( char *dico, char *job, char *fact,
+  char *trana, int *n, double a[], int *lda, double u[], int *ldu, double c[], int *ldc,
+  double *scale, double *sep, double *ferr, double wr[],
+  double wi[], int iwork[], double dwork[], int *ldwork,
+  int *info, sb03md_fstrlen lendico, sb03md_fstrlen lenjob, sb03md_fstrlen lenfact,
   sb03md_fstrlen lentrana);
 
 static void call_sb03md(char dico, char job, char fact, char trana, int n,

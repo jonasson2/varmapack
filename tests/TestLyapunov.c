@@ -21,8 +21,7 @@ static void check_case(char name[]) {
   double *Cl = 0;
   double *Gl = 0;
   randompack_rng *rng = randompack_create(0);
-  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r,
-                                               &icase, 0, rng);
+  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, rng);
   int rr = r*r;
   xCheck(!error);
   xCheck(ALLOC(A, rr*(p > 0 ? p : 1)));

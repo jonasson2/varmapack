@@ -86,8 +86,7 @@ static randompack_rng *get_rng(const mxArray *arg) {
 static int get_int_scalar(const mxArray *arg, const char *name) {
   double x;
   if (!mxIsNumeric(arg) || mxIsComplex(arg) || mxGetNumberOfElements(arg) != 1)
-    mexErrMsgIdAndTxt("varmapack:testcase:argument",
-                      "%s must be a numeric scalar", name);
+    mexErrMsgIdAndTxt("varmapack:testcase:argument", "%s must be a numeric scalar", name);
   x = mxGetScalar(arg);
   if (x < 0 || x > INT_MAX || x != (int)x)
     mexErrMsgIdAndTxt("varmapack:testcase:argument",
@@ -98,12 +97,10 @@ static int get_int_scalar(const mxArray *arg, const char *name) {
 static double get_double_scalar(const mxArray *arg, const char *name) {
   double x;
   if (!mxIsNumeric(arg) || mxIsComplex(arg) || mxGetNumberOfElements(arg) != 1)
-    mexErrMsgIdAndTxt("varmapack:testcase:argument",
-                      "%s must be a numeric scalar", name);
+    mexErrMsgIdAndTxt("varmapack:testcase:argument", "%s must be a numeric scalar", name);
   x = mxGetScalar(arg);
   if (x < 0)
-    mexErrMsgIdAndTxt("varmapack:testcase:argument",
-                      "%s must be nonnegative", name);
+    mexErrMsgIdAndTxt("varmapack:testcase:argument", "%s must be nonnegative", name);
   return x;
 }
 
@@ -161,12 +158,10 @@ static void check_varmapack_error(varmapack_error error) {
                         varmapack_strerror(error));
       break;
     case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:testcase:allocation", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:testcase:allocation", "%s", varmapack_strerror(error));
       break;
     default:
-      mexErrMsgIdAndTxt("varmapack:testcase:error", "%s",
-                        varmapack_strerror(error));
+      mexErrMsgIdAndTxt("varmapack:testcase:error", "%s", varmapack_strerror(error));
       break;
   }
 }

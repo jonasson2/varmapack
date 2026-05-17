@@ -38,8 +38,7 @@ void print2I(const char *s, int i1, int i2);          // print 2 integers
 void print3I(const char *s, int i1, int i2, int i3);  // print 3 integers
 void print4I(const char *s, int i1, int i2, int i3, int i4); // print 4 integers
 void print5I(const char *s, int i1, int i2, int i3, int i4, int i5); // 5 ints
-void print6I(const char *s, int i1, int i2, int i3, int i4, int i5,
-                           int i6); // 6 ints
+void print6I(const char *s, int i1, int i2, int i3, int i4, int i5, int i6); // 6 ints
 
 #else
 

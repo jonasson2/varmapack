@@ -51,10 +51,7 @@ static void check_acvf_scalar_arma12(void) {
   double Sig[] = {2};
   double Gamma[5];
   double expected[] = {
-    3.3266666666666667,
-    2.013333333333333,
-    0.8066666666666668,
-    0.4033333333333334,
+    3.3266666666666667, 2.013333333333333, 0.8066666666666668, 0.4033333333333334,
     0.2016666666666667
   };
   varmapack_error error = varmapack_acvf(A, B, Sig, 1, 2, 1, Gamma, 4);
@@ -67,10 +64,8 @@ static void check_acvf_vector_var1_diagonal(void) {
   double Sig[] = {3, 0, 0, 4};
   double Gamma[4*4];
   double expected[] = {
-    4, 0, 0, 4.266666666666667,
-    2, 0, 0, 1.066666666666667,
-    1, 0, 0, 0.2666666666666667,
-    0.5, 0, 0, 0.06666666666666667
+    4, 0, 0, 4.266666666666667, 2, 0, 0, 1.066666666666667,
+    1, 0, 0, 0.2666666666666667, 0.5, 0, 0, 0.06666666666666667
   };
   varmapack_error error = varmapack_acvf(A, 0, Sig, 1, 0, 2, Gamma, 3);
   xCheck(!error);
@@ -82,9 +77,7 @@ static void check_acvf_vector_ma1(void) {
   double Sig[] = {2, 0.5, 0.5, 1};
   double Gamma[4*3];
   double expected[] = {
-    2.11, 0.615, 0.615, 1.16,
-    0.45, 0.55, 0.2, 0.05,
-    0, 0, 0, 0
+    2.11, 0.615, 0.615, 1.16, 0.45, 0.55, 0.2, 0.05, 0, 0, 0, 0
   };
   varmapack_error error = varmapack_acvf(0, B, Sig, 0, 1, 2, Gamma, 2);
   xCheck(!error);

@@ -103,6 +103,8 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   if isempty(x0) && ref_varma_specrad(A) >= 1
     error("Cannot run varma_sim with unspecified x0 and rho(A) ≥ 1");
   end
+  returnE = nargout >= 2;
+  rollingE = ~returnE;
   [~, G] = find_CG(A, B, Sig);
   PLU = vyw_factorize(A);
   assert(isempty(PLU) || isempty(PLU{1}) || PLU{1}(1) ~= 0)  % vyw_factorize ok
@@ -117,10 +119,17 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   end
 
   SS = S_build(S, A, G, h);
-  E = reshape(randnm(n*M, Sig, "T", rng), r*n, M);
+  if rollingE
+    E = zeros(r*(h + 1), M);
+  else
+    E = zeros(r*n, M);
+  end
 
   % Build theoretical covariance of xt
   if isempty(x0)  % Generate x{1:h}
+    for j = 1:M
+      E(1:r*h,j) = reshape(randnm(h, Sig, "T", rng), r*h, 1);
+    end
     Psi = find_Psi(A, B);
     Psi_hat = find_Psi_hat(Psi, Sig);
     R = SS - Psi_hat*Psi_hat';
@@ -128,6 +137,10 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
     Wrk = randnm(M, R, "T", rng);
     X1 = e + Wrk;
     h = h;
+  elseif q == 0 && ref_varma_specrad(A) >= 1  % Fixed-history pure AR path.
+    x0bar = x0(:) - repmat(mu, h, 1);
+    X1 = repmat(x0bar,1,M);
+    R = Sig;
   else  % x0 given
     SS = S_build(S, A, G, h);
     C = find_C(A, B, Sig, h);
@@ -158,23 +171,55 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   I = r*h + (1:r);
   J = r*(h-p)+1 : r*h;
   K = r*(h-q)+1 : r*h;
-  for t = h+1:n
-    X(I,:) = E(I,:) + Aflp*X(J,:) + Bflp*E(K,:);
-    I = I+r;
-    J = J+r;
-    K = K+r;
+  if rollingE
+    Ehist = zeros(r*q, M);
+    for t = h+1:n
+      slot = mod(t - 1, h + 1) + 1;
+      iE = r*(slot - 1) + (1:r);
+      E(iE,:) = randnm(M, Sig, "T", rng);
+      X(I,:) = E(iE,:);
+      if p > 0
+        X(I,:) = X(I,:) + Aflp*X(J,:);
+      end
+      if q > 0
+        for j = 1:q
+          slotj = mod(t - q + j - 2, h + 1) + 1;
+          Ehist(r*(j - 1) + (1:r), :) = E(r*(slotj - 1) + (1:r), :);
+        end
+        X(I,:) = X(I,:) + Bflp*Ehist;
+      end
+      I = I+r;
+      J = J+r;
+    end
+    E = [];
+  else
+    for j = 1:M
+      E(r*h+1:r*n,j) = reshape(randnm(n - h, Sig, "T", rng), r*(n - h), 1);
+    end
+    for t = h+1:n
+      X(I,:) = E(I,:);
+      if p > 0
+        X(I,:) = X(I,:) + Aflp*X(J,:);
+      end
+      if q > 0
+        X(I,:) = X(I,:) + Bflp*E(K,:);
+      end
+      I = I+r;
+      J = J+r;
+      K = K+r;
+    end
   end
 
   % Reshape as appropriate for ARMA or VARMA
   if r==1 && M==1  %  one ARMA sequence:
     X = reshape(X,1,n) + mu;
-    E = reshape(E,1,n);
+    if returnE, E = reshape(E,1,n); end
   elseif r==1      %  several ARMA sequences:
     X = reshape(X,n,M) + mu;
-    E = reshape(E,n,M);
+    if returnE, E = reshape(E,n,M); end
   else             %   one or more VARMA sequences in r×n×M array:
     X = reshape(X,r,n,M) + repmat(mu,[1,n,M]);
-    E = reshape(E,r,n,M); 
+    if returnE, E = reshape(E,r,n,M); end
   end
 end
 

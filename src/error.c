@@ -14,6 +14,8 @@ const char *varmapack_strerror(varmapack_error error) {
       return "unknown testcase";
     case VARMAPACK_NONSTATIONARY:
       return "nonstationary model";
+    case VARMAPACK_NONSTATIONARY_MA:
+      return "nonstationary model with MA term(s) and specified X0";
     case VARMAPACK_SINGULAR:
       return "singular matrix";
     case VARMAPACK_NOT_POSITIVE_SEMIDEFINITE:

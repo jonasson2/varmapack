@@ -20,10 +20,7 @@ static void check_scalar_maxlag(void) {
 
 static void check_constant_series(void) {
   double X[] = {
-    3, -1,
-    3, -1,
-    3, -1,
-    3, -1
+    3, -1, 3, -1, 3, -1, 3, -1
   };
   double C[2*2*4];
   varmapack_error error;
@@ -37,14 +34,11 @@ static void check_constant_series(void) {
 
 static void check_maxlag_zero(void) {
   double X[] = {
-    1, 2,
-    3, 4,
-    5, 8
+    1, 2, 3, 4, 5, 8
   };
   double C[4];
   double expected[] = {
-    8.0/3.0, 4,
-    4, 56.0/9.0
+    8.0/3.0, 4, 4, 56.0/9.0
   };
   varmapack_error error;
   error = varmapack_autocov("N", "ML", 2, 3, X, 0, C);

@@ -25,8 +25,7 @@ static void check_symmetric_positive_diag(double A[], int n) {
 static void check_max(void) {
   int pmax = 0, qmax = 0, rmax = 0, icase_max;
   varmapack_error error;
-  error = varmapack_testcase(0, 0, 0, "max", &pmax, &qmax, &rmax, &icase_max, 0,
-                              0);
+  error = varmapack_testcase(0, 0, 0, "max", &pmax, &qmax, &rmax, &icase_max, 0, 0);
   xCheck(!error);
   xCheck(icase_max == 15);
   xCheck(pmax == 4);
@@ -116,8 +115,7 @@ static void check_construct_all_named(void) {
   for (int k=1; k<=icase_max; k++) {
     int p = 0, q = 0, r = 0, icase = k;
     char name[64] = "";
-    varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r,
-                                                 &icase, 0, 0);
+    varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
     xCheck(!error);
     int nA = r*r*(p > 0 ? p : 1);
     int nB = r*r*(q > 0 ? q : 1);
@@ -141,8 +139,7 @@ static void check_construct_all_named(void) {
 static void check_deterministic_unnamed(void) {
   int p = 2, q = 1, r = 3, icase = -1;
   double A[18], B[9], Sig[9];
-  varmapack_error error = varmapack_testcase(A, B, Sig, "", &p, &q, &r,
-                                               &icase, 0, 0);
+  varmapack_error error = varmapack_testcase(A, B, Sig, "", &p, &q, &r, &icase, 0, 0);
   xCheck(!error);
   xCheck(p == 2 && q == 1 && r == 3);
   for (int i=0; i<18; i++) {
@@ -164,8 +161,7 @@ static void check_random_unnamed(void) {
   int p = 2, q = 1, r = 2, icase = 0;
   double A1[8], B1[4], Sig1[4], A2[8], B2[4], Sig2[4];
   randompack_rng *rng = randompack_create(0);
-  varmapack_error error = varmapack_testcase(A1, B1, Sig1, "", &p, &q, &r,
-                                               &icase, 0, 0);
+  varmapack_error error = varmapack_testcase(A1, B1, Sig1, "", &p, &q, &r, &icase, 0, 0);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
   xCheck(rng != 0);
   xCheck(randompack_seed(123, 0, 0, rng));
@@ -203,8 +199,7 @@ static void check_rho_case(void) {
   q = 1;
   r = 2;
   icase = 0;
-  varmapack_error error = varmapack_testcase(A, B, Sig, "rho", &p, &q, &r,
-                                               &icase, 0, 0);
+  varmapack_error error = varmapack_testcase(A, B, Sig, "rho", &p, &q, &r, &icase, 0, 0);
   xCheck(!error);
   for (int i=0; i<r*r*p; i++) xCheck(A[i] == 0);
   p = 0;

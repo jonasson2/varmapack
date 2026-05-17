@@ -9,6 +9,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   if (!mxIsUint64(prhs[1]) || mxIsComplex(prhs[1]))
     mexErrMsgIdAndTxt("randompack:set_state", "state must be a uint64 array");
   state = (uint64_t *)mxGetData(prhs[1]);
-  fail_if_false(randompack_set_state(state, n, rng), rng,
-                "randompack_set_state failed");
+  fail_if_false(randompack_set_state(state, n, rng), rng, "randompack_set_state failed");
 }

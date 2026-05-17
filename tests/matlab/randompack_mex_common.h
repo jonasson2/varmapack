@@ -61,8 +61,7 @@ static void check_nargs(int nlhs, int nrhs, int nlhs_max, int nrhs_need) {
 static void fail_if_false(bool ok, randompack_rng *rng, const char *msg) {
   if (ok) return;
   const char *err = rng ? randompack_last_error(rng) : 0;
-  mexErrMsgIdAndTxt("randompack:call", "%s%s%s", msg, err ? ": " : "",
-                    err ? err : "");
+  mexErrMsgIdAndTxt("randompack:call", "%s%s%s", msg, err ? ": " : "", err ? err : "");
 }
 
 #endif

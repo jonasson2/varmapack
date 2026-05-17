@@ -40,8 +40,7 @@ static void checkScalarUnstable(void) {
 static void check2x2(void) {
   int r = 2, p = 1;
   double A[] = {
-    0.95, 0.40,
-    0.10, 0.20
+    0.95, 0.40, 0.10, 0.20
   };
   double rho = varmapack_specrad(A, r, p);
   xCheck(nearly_one(rho, 1e-14));
@@ -51,8 +50,7 @@ static void check2x2(void) {
 static void checkScaling(void) {
   int r = 2, p = 1;
   double A[] = {
-    0.95 * 20, 0.40 * 20,
-    0.10 * 20, 0.20 * 20
+    0.95 * 20, 0.40 * 20, 0.10 * 20, 0.20 * 20
   };
   double rho = varmapack_specrad(A, r, p);
   xCheck(almostSame(rho, 20));
@@ -91,10 +89,8 @@ static void checkAllNamedStationary(void) {
     xCheck(!error);
     double rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
     if (!(rho < 1 - strict_tol)) {
-      fprintf(stderr,
-              "[Testvarmapack_specrad] Nonstationary/borderline: case %d (%s), "
-              "rho=%.15g (p=%d, q=%d, r=%d)\n",
-              icase, name, rho, p, q, r);
+      fprintf(stderr, "[Testvarmapack_specrad] Nonstationary/borderline: case %d (%s), "
+              "rho=%.15g (p=%d, q=%d, r=%d)\n", icase, name, rho, p, q, r);
     }
     xCheck(rho < 1 - strict_tol);
     FREE(A);

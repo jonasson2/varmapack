@@ -1,10 +1,5 @@
-project('varmapack', 'c', 'fortran',
-  version : '1.0',
-  default_options : [
-    'c_std=c11',
-    'warning_level=3',
-    'buildtype=debug',
-  ]
+project('varmapack', 'c', 'fortran', version : '1.0', default_options : [
+    'c_std=c11', 'warning_level=3', 'buildtype=debug', ]
 )
 
 buildtype = get_option('buildtype')
@@ -96,3 +91,6 @@ subdir('src')
 subdir('tests')
 subdir('examples')
 subdir('benchmark')
+if get_option('build_python')
+  subdir('python')
+endif

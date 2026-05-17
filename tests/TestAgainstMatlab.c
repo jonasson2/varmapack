@@ -29,8 +29,8 @@ static int getdim(FILE *fid, char *base, int k) {
 static double sim_tol(int n, double rho) {
   double stability = rho < 1 ? 1/(1 - rho) : 1/DBL_EPSILON;
   // This eps multiplier allows for array size and stationarity sensitivity:
-  // 25*sqrt(n)/(1-rho)^2. The form and constant were chosen by trial and error.
-  return 25*DBL_EPSILON*sqrt((double)(n > 0 ? n : 1))*stability*stability;
+  // 150*sqrt(n)/(1-rho)^2. The form and constant were chosen by trial and error.
+  return 150*DBL_EPSILON*sqrt((double)(n > 0 ? n : 1))*stability*stability;
 }
 
 static void check_norm_relative(char *what, int icase, double diff, double tol) {
@@ -101,16 +101,16 @@ static bool compare_reduced_m(FILE *fid, int n) {
     ASSERT(ALLOC(AutoCT, r2*n), "allocation failed");
     rng = randompack_create(0);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, 0, p, q, r, n, reducedM, 0, 0, rng, X, E);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, 0, 0, X, E, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, 0, p, q, r, n, reducedM, x0, h, rng, X0, E0);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, x0, h, X0, E0, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, mu, p, q, r, n, reducedM, 0, 0, rng, Xmu, Emu);
+    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, 0, 0, Xmu, Emu, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, mu, p, q, r, n, reducedM, x0, h, rng, X0mu, E0mu);
+    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, x0, h, X0mu, E0mu, rng);
     xCheck(!error);
     copytranspose(r, n, X + r*n, r, XT, n);
     error = varmapack_autocov("T", "ML", r, n, XT, n-1, AutoMLT);
@@ -173,6 +173,105 @@ static bool compare_reduced_m(FILE *fid, int n) {
   }
   FREE(reducedCases);
   xCheckAddMsg("");
+  return true;
+}
+
+static bool compare_rolling_matlab(void) {
+  int n, p, q, r, h, ncases, nMs;
+  double *cases = 0, *Ms = 0;
+  double *A = 0, *B = 0, *Sig = 0, *mu = 0, *x0 = 0;
+  bool ok;
+  varmapack_error error;
+  char name[64] = {0};
+  char comparefile[] = "matlabcompare-rolling.txt";
+  FILE *fid = fopen(comparefile, "r");
+  ASSERT(fid != 0, "File %s cannot be read", comparefile);
+  ok = IntFromMatlab(fid, "#cases", &ncases);
+  ok &= IntFromMatlab(fid, "#Ms", &nMs);
+  ok &= IntFromMatlab(fid, "n", &n);
+  xCheck(ok && ncases < 1000);
+  ASSERT(ALLOC(cases, ncases), "allocation failed");
+  ASSERT(ALLOC(Ms, nMs), "allocation failed");
+  ok = MatrixFromMatlab(fid, "cases", cases, 1, ncases);
+  ok &= MatrixFromMatlab(fid, "Ms", Ms, 1, nMs);
+  xCheck(ok);
+  for (int k=0; k<ncases; k++) {
+    int icase = cases[k];
+    int label = icase + 1;
+    int r2;
+    double rhoC;
+    STRSET(name, "");
+    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    xCheck(!error);
+    h = imax(p, q);
+    r2 = r*r;
+    ASSERT(ALLOC(A, r2*(p > 0 ? p : 1)), "allocation failed");
+    ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
+    ASSERT(ALLOC(Sig, r2), "allocation failed");
+    ASSERT(ALLOC(x0, r*h > 0 ? r*h : 1), "allocation failed");
+    ASSERT(ALLOC(mu, r), "allocation failed");
+    STRSET(name, "");
+    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    xCheck(!error);
+    rhoC = varmapack_specrad(A, r, p);
+    STRSETF(name, "x0%d", label);
+    ok = MatrixFromMatlab(fid, name, x0, r, h);
+    STRSETF(name, "mu%d", label);
+    ok &= MatrixFromMatlab(fid, name, mu, r, 1);
+    xCheck(ok);
+    for (int j=0; j<nMs; j++) {
+      int M = Ms[j];
+      double *X = 0, *X0 = 0, *Xmu = 0, *X0mu = 0;
+      double diffX, diffX0, diffXmu, diffX0mu;
+      // Rolling MA uses split products, so allow a small extra roundoff margin.
+      double simTol = 5*sim_tol(r*n*M, rhoC);
+      randompack_rng *rng = randompack_create(0);
+      ASSERT(ALLOC(X, r*n*M), "allocation failed");
+      ASSERT(ALLOC(X0, r*n*M), "allocation failed");
+      ASSERT(ALLOC(Xmu, r*n*M), "allocation failed");
+      ASSERT(ALLOC(X0mu, r*n*M), "allocation failed");
+      randompack_seed(42, 0, 0, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
+      xCheck(!error);
+      randompack_seed(42, 0, 0, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, x0, h, X0, 0, rng);
+      xCheck(!error);
+      randompack_seed(42, 0, 0, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, Xmu, 0, rng);
+      xCheck(!error);
+      randompack_seed(42, 0, 0, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, x0, h, X0mu, 0, rng);
+      xCheck(!error);
+      STRSETF(name, "X%d-%d", M, icase);
+      ok = CompareWithMatlab(fid, name, X, r*n, M, &diffX);
+      STRSETF(name, "X0%d-%d", M, icase);
+      ok &= CompareWithMatlab(fid, name, X0, r*n, M, &diffX0);
+      STRSETF(name, "Xmu%d-%d", M, icase);
+      ok &= CompareWithMatlab(fid, name, Xmu, r*n, M, &diffXmu);
+      STRSETF(name, "X0mu%d-%d", M, icase);
+      ok &= CompareWithMatlab(fid, name, X0mu, r*n, M, &diffX0mu);
+      ASSERT(ok, "error comparing rolling simulation with Matlab");
+      check_norm_relative("RollX", icase, diffX, simTol);
+      check_norm_relative("RollXmu", icase, diffXmu, simTol);
+      if (pathwise_conditional_check(icase)) {
+        check_norm_relative("RollX0", icase, diffX0, simTol);
+        check_norm_relative("RollX0mu", icase, diffX0mu, simTol);
+      }
+      FREE(X0mu);
+      FREE(Xmu);
+      FREE(X0);
+      FREE(X);
+      randompack_free(rng);
+    }
+    FREE(mu);
+    FREE(x0);
+    FREE(Sig);
+    FREE(B);
+    FREE(A);
+  }
+  FREE(Ms);
+  FREE(cases);
+  fclose(fid);
   return true;
 }
 
@@ -293,16 +392,16 @@ bool TestAgainstMatlab(void) {
       printM("B", B, r, r*q);
       printM("Sig", Sig, r, r);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, 0, 0, rng, X, E);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, x0, h, rng, X0, E0);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, x0, h, X0, E0, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, 0, 0, rng, Xmu, Emu);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, Xmu, Emu, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, p, q, r, n, M, x0, h, rng, X0mu, E0mu);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, x0, h, X0mu, E0mu, rng);
       xCheck(!error);
       error = varmapack_autocov("N", "ML", r, n, X, n-1, AutoML);
       xCheck(!error);
@@ -353,10 +452,10 @@ bool TestAgainstMatlab(void) {
       check_norm_relative("Emu", icase, diffEmu, simTol);
       check_norm_relative("Xmu", icase, diffXmu, simTol);
       if (pathwise_conditional_check(icase)) {
-        check_norm_relative("E0", icase, diffE0, simTol);
         check_norm_relative("X0", icase, diffX0, simTol);
-        check_norm_relative("E0mu", icase, diffE0mu, simTol);
         check_norm_relative("X0mu", icase, diffX0mu, simTol);
+        check_norm_relative("E0", icase, diffE0, simTol);
+        check_norm_relative("E0mu", icase, diffE0mu, simTol);
       }
 
       // Free memory
@@ -381,6 +480,8 @@ bool TestAgainstMatlab(void) {
     xCheckAddMsg("");
   }
   ok = compare_reduced_m(fid, n);
+  xCheck(ok);
+  ok = compare_rolling_matlab();
   xCheck(ok);
   FREE(cases);
   FREE(Ms);

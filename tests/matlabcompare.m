@@ -16,13 +16,21 @@ function matlabcompare(cases, Ms, n)
   if nargin < 2, Ms = 1; end
   if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('count'); end
   fid = fopen(fullfile(here, "matlabcompare.txt"), "w");
+  fidRolling = fopen(fullfile(here, "matlabcompare-rolling.txt"), "w");
   fprintf(fid, "# varmapack Matlab reference data v1\n");
   fprintf(fid, "# Format documented in tests/matlabcompare.m\n");
+  fprintf(fidRolling, "# varmapack Matlab rolling-E reference data v1\n");
+  fprintf(fidRolling, "# Format documented in tests/matlabcompare.m\n");
   mat2file(fid, length(Ms), "#Ms");
   mat2file(fid, length(cases), "#cases");
   mat2file(fid, n);
   mat2file(fid, Ms);
   mat2file(fid, cases);
+  mat2file(fidRolling, length(Ms), "#Ms");
+  mat2file(fidRolling, length(cases), "#cases");
+  mat2file(fidRolling, n);
+  mat2file(fidRolling, Ms);
+  mat2file(fidRolling, cases);
   reducedCases = [3, 7, 12];
   reducedM = 3;
   mat2file(fid, length(reducedCases), "#reducedCases");
@@ -41,6 +49,8 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, Sig, "Sig" + icase);
     mat2file(fid, x0, "x0" + icase);
     mat2file(fid, mu, "mu" + icase);
+    mat2file(fidRolling, x0, "x0" + icase);
+    mat2file(fidRolling, mu, "mu" + icase);
     if p == 0
       rho = 0;
     else
@@ -75,6 +85,18 @@ function matlabcompare(cases, Ms, n)
       mat2file(fid, Emu, "Emu" + M + "-" + k);
       mat2file(fid, X0mu, "X0mu" + M + "-" + k);
       mat2file(fid, E0mu, "E0mu" + M + "-" + k);
+      randompack_seed(rng, 42);
+      Xroll = ref_varma_sim(A, B, Sig, n, 0, M, [], rng);
+      randompack_seed(rng, 42);
+      X0roll = ref_varma_sim(A, B, Sig, n, 0, M, x0, rng);
+      randompack_seed(rng, 42);
+      Xmuroll = ref_varma_sim(A, B, Sig, n, mu, M, [], rng);
+      randompack_seed(rng, 42);
+      X0muroll = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng);
+      mat2file(fidRolling, Xroll, "X" + M + "-" + k);
+      mat2file(fidRolling, X0roll, "X0" + M + "-" + k);
+      mat2file(fidRolling, Xmuroll, "Xmu" + M + "-" + k);
+      mat2file(fidRolling, X0muroll, "X0mu" + M + "-" + k);
     end
   end
   for k = reducedCases
@@ -111,6 +133,7 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, E0mu, "RedE0mu" + M + "-" + k);
   end
   fclose(fid);
+  fclose(fidRolling);
 end
 
 function x0 = startmat(r, h)

@@ -65,8 +65,7 @@ static void rp_dpstf2(char *uplo, int n, double *a, int lda, int *piv,
       ajj = sqrt(ajj);
       A(j, j) = ajj;
       if (j < n-1) {
-        gemv("Trans", j, n-j-1, -1, &A(0, j+1), lda, &A(0, j), 1, 1,
-             &A(j, j+1), lda);
+        gemv("Trans", j, n-j-1, -1, &A(0, j+1), lda, &A(0, j), 1, 1, &A(j, j+1), lda);
         scal(n-j-1, 1/ajj, &A(j, j+1), lda);
       }
     }
@@ -108,8 +107,7 @@ static void rp_dpstf2(char *uplo, int n, double *a, int lda, int *piv,
       ajj = sqrt(ajj);
       A(j, j) = ajj;
       if (j < n-1) {
-        gemv("No Trans", n-j-1, j, -1, &A(j+1, 0), lda, &A(j, 0), lda, 1,
-             &A(j+1, j), 1);
+        gemv("No Trans", n-j-1, j, -1, &A(j+1, 0), lda, &A(j, 0), lda, 1, &A(j+1, j), 1);
         scal(n-j-1, 1/ajj, &A(j+1, j), 1);
       }
     }
@@ -183,8 +181,7 @@ HIDDEN void rp_dpstrf(char *uplo, int n, double *a, int lda, int *piv,
         ajj = sqrt(ajj);
         A(j, j) = ajj;
         if (j < n-1) {
-          gemv("Trans", j-k, n-j-1, -1, &A(k, j+1), lda, &A(k, j), 1, 1,
-               &A(j, j+1), lda);
+          gemv("Trans", j-k, n-j-1, -1, &A(k, j+1), lda, &A(k, j), 1, 1, &A(j, j+1), lda);
           scal(n-j-1, 1/ajj, &A(j, j+1), lda);
         }
       }

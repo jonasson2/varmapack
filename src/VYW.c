@@ -13,36 +13,20 @@ static void SExtend(double A[], double G[], double S[], double Scol[], int p, in
 static void kronecker(int n, double alpha, double A[], double B[], double C[]);
 static void kronI(int n, double alpha, double A[], double C[]);
 
-HIDDEN bool VYWFactorizeSolve(double A[], double B[], double Sig[],
-                        int p, int q, int r,
+HIDDEN bool VYWFactorizeSolve(double A[], double B[], double Sig[], int p, int q, int r,
                         double S[], double C[], double G[])
 {
   xAssert((A != 0 || p == 0) && Sig != 0 && S != 0);
   xAssert(p >= 0 && q >= 0 && r > 0);
   xAssert(B != 0 || q == 0);
-
+  xAssert(C != 0 && G != 0);
   int rr = r*r;
-  double *Cbuf = C;
-  double *Gbuf = G;
   double *vywFactors = 0;
   int *piv = 0;
-  bool ownC = false;
-  bool ownG = false;
-  if (Cbuf == 0) {
-    if (!ALLOC(Cbuf, rr*(q+1))) goto fail;
-    ownC = true;
-  }
-  if (Gbuf == 0) {
-    if (!ALLOC(Gbuf, rr*(q+1))) goto fail;
-    ownG = true;
-  }
-
-  FindCG(A, B, Sig, p, q, r, Cbuf, Gbuf);
+  FindCG(A, B, Sig, p, q, r, C, G);
 
   if (p == 0) {
-    copy(rr, Gbuf, 1, S, 1);
-    if (ownG) FREE(Gbuf);
-    if (ownC) FREE(Cbuf);
+    copy(rr, G, 1, S, 1);
     return true;
   }
 
@@ -53,32 +37,20 @@ HIDDEN bool VYWFactorizeSolve(double A[], double B[], double Sig[],
   int info;
   if (!vyw_factorize(A, vywFactors, piv, p, r, &info)) goto fail;
   if (info == 0) {
-    if (!vyw_solve(A, vywFactors, S, Gbuf, 1, q+1, piv, p, r)) goto fail;
+    if (!vyw_solve(A, vywFactors, S, G, 1, q+1, piv, p, r)) goto fail;
   }
 
   FREE(piv);
   FREE(vywFactors);
-  if (ownG) FREE(Gbuf);
-  if (ownC) FREE(Cbuf);
   return info == 0;
 fail:
   FREE(piv);
   FREE(vywFactors);
-  if (ownG) FREE(Gbuf);
-  if (ownC) FREE(Cbuf);
   return false;
 }
 
-HIDDEN bool SBuild(
-  char *uplo,
-  double S[],
-  double A[],
-  double G[],
-  int p,
-  int q,
-  int r,
-  int n,
-  double SS[])
+HIDDEN bool SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r,
+  int n, double SS[])
 {
   double *Scol, *SSj, *SSi;
   int j, m;
@@ -101,14 +73,7 @@ HIDDEN bool SBuild(
   return true;
 }
 
-HIDDEN bool VYWSetupSS(
-  double A[],
-  double B[],
-  double Sig[],
-  int p,
-  int q,
-  int r,
-  int h,
+HIDDEN bool VYWSetupSS( double A[], double B[], double Sig[], int p, int q, int r, int h,
   double SS[])
 {
   int rr = r*r;
@@ -217,15 +182,8 @@ fail:
   return false;
 }
 
-static void SExtend(
-  double A[],
-  double G[],
-  double S[],
-  double Scol[],
-  int p,
-  int q,
-  int r,
-  int n)
+static void SExtend( double A[], double G[], double S[],
+  double Scol[], int p, int q, int r, int n)
 {
   int iScol = n*r, i, j;
   double *Scolj, *Ai, *Scoli;

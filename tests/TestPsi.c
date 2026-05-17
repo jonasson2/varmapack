@@ -72,9 +72,7 @@ static void TestFindPsiHat(void) {
   xCheck(!error);
   FindPsi(A, B, Psi, p, q, r);
   double Sig_mod[] = {
-    1.0, 1.0, 1.0,
-    1.0, 2.0, 1.0,
-    1.0, 1.0, 2.0
+    1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 2.0
   };
   FindPsiHat(Psi, Psi_hat, Sig_mod, r, h);
 
@@ -140,25 +138,116 @@ static void TestPsiSimple(void) {
   FindPsiHat(Psi, Psi_hat, Sig, r, h);
   
   double Psi_exp[] = {
-    1,  0, .6, .4,
-    0,  1, .4, .4,
-    0,  0, 1,  0,
-    0,  0, 0,  1};
+    1,  0, .6, .4, 0,  1, .4, .4, 0,  0, 1,  0, 0,  0, 0,  1};
   double Psi_hat_exp[] = {
-    1, 1, 1,  .8,
-    0, 1, .4, .4,
-    0, 0, 1,  1,
-    0, 0, 0,  1};
+    1, 1, 1,  .8, 0, 1, .4, .4, 0, 0, 1,  1, 0, 0, 0,  1};
 
   xCheck(almostEqual(Psi, Psi_exp, r*h*r*h));
   xCheck(almostEqual(Psi_hat, Psi_hat_exp, r*h*r*h));
   FREE(B); FREE(Sig); FREE(A); FREE(Psi); FREE(Psi_hat);
 }
 
+static void TestPublicPsiScalar(void) {
+  double A[] = {0.5};
+  double B[] = {0.2};
+  double Psi[4];
+  double expected[] = {1, 0.7, 0.35, 0.175};
+  varmapack_error error;
+  error = varmapack_psi(A, B, 1, 1, 1, 3, Psi);
+  xCheck(!error);
+  xCheck(almostEqual(Psi, expected, 4));
+}
+
+static void TestPublicPsiMatrix(void) {
+  double A[] = {0.1, 0.3, 0.2, 0.4};
+  double B[] = {0.5, 0.7, 0.6, 0.8};
+  double Psi[12];
+  double expected[] = {
+    1, 0, 0, 1, 0.6, 1.0, 0.8, 1.2, 0.26, 0.58, 0.32, 0.72
+  };
+  varmapack_error error;
+  error = varmapack_psi(A, B, 1, 1, 2, 2, Psi);
+  xCheck(!error);
+  xCheck(almostEqual(Psi, expected, 12));
+}
+
+static void TestPublicPsiErrors(void) {
+  double A[] = {0.5};
+  double B[] = {0.2};
+  double Psi[2];
+  varmapack_error error;
+  error = varmapack_psi(0, B, 1, 1, 1, 1, Psi);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_psi(A, 0, 1, 1, 1, 1, Psi);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_psi(A, B, -1, 1, 1, 1, Psi);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_psi(A, B, 1, 1, 0, 1, Psi);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_psi(A, B, 1, 1, 1, -1, Psi);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_psi(A, B, 1, 1, 1, 1, 0);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+}
+
+static void TestPublicIrfMatrix(void) {
+  double A[] = {0.1, 0.3, 0.2, 0.4};
+  double B[] = {0.5, 0.7, 0.6, 0.8};
+  double Sig[] = {4, 0, 0, 9};
+  double Theta[12];
+  double expected[] = {
+    2, 0, 0, 3, 1.2, 2.0, 2.4, 3.6, 0.52, 1.16, 0.96, 2.16
+  };
+  varmapack_error error;
+  error = varmapack_irf(A, B, Sig, 1, 1, 2, 2, Theta);
+  xCheck(!error);
+  xCheck(almostEqual(Theta, expected, 12));
+}
+
+static void TestPublicIrfSingularPSD(void) {
+  double A[] = {0.1, 0.3, 0.2, 0.4};
+  double B[] = {0.5, 0.7, 0.6, 0.8};
+  double Sig1[] = {1, 2, 2, 4};
+  double Sig2[] = {1, 1, 1, 1};
+  double Theta[12];
+  double Recon[4];
+  varmapack_error error;
+  error = varmapack_irf(A, B, Sig1, 1, 1, 2, 2, Theta);
+  xCheck(!error);
+  syrk("Low", "NoT", 2, 2, 1, Theta, 2, 0, Recon, 2);
+  copylowertoupper(2, Recon, 2);
+  xCheck(almostEqual(Recon, Sig1, 4));
+  error = varmapack_irf(A, B, Sig2, 1, 1, 2, 2, Theta);
+  xCheck(!error);
+  syrk("Low", "NoT", 2, 2, 1, Theta, 2, 0, Recon, 2);
+  copylowertoupper(2, Recon, 2);
+  xCheck(almostEqual(Recon, Sig2, 4));
+}
+
+static void TestPublicIrfErrors(void) {
+  double A[] = {0.5};
+  double B[] = {0.2};
+  double Sig[] = {-1};
+  double Theta[2];
+  varmapack_error error;
+  error = varmapack_irf(A, B, 0, 1, 1, 1, 1, Theta);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_irf(A, B, Sig, 1, 1, 1, 1, 0);
+  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  error = varmapack_irf(A, B, Sig, 1, 1, 1, 1, Theta);
+  xCheck(error == VARMAPACK_NOT_POSITIVE_SEMIDEFINITE);
+}
+
 // -----------------------------------------------------------------------------
 // Public entry for this test module
 // -----------------------------------------------------------------------------
 void TestPsi(void) {
+  TestPublicPsiScalar();
+  TestPublicPsiMatrix();
+  TestPublicPsiErrors();
+  TestPublicIrfMatrix();
+  TestPublicIrfSingularPSD();
+  TestPublicIrfErrors();
   TestPsiTinyAR();
   TestPsiSimple();
   TestFindPsi();

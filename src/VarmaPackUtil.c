@@ -1,6 +1,8 @@
 #include "BlasGateway.h"
 #include "error.h"
 #include "printX.h"
+#include "varmapack.h"
+#include "VarmaPackUtil.h"
 #include "varmapack_config.h"
 #include "VarmaUtilities.h"
 
@@ -77,17 +79,73 @@ HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
 }
 
 HIDDEN void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
-  double *LSig, *Psi_hat_kk;
-  int info, hr = h*r, rr = r*r, k, nrow;
+  double *LSig, *Psi_hat_kk, *W;
+  int hr = h*r, rr = r*r, k, nrow;
+  bool triangular;
   xAssert(ALLOC(LSig, rr));
-  lacpy("Low", r, r, Sig, r, LSig, r);
-  potrf("Low", r, LSig, r, &info);
-  xAssert(info == 0);
+  xAssert(ALLOC(W, hr*r));
+  xAssert(psdFactor(Sig, r, LSig, &triangular) == VARMAPACK_OK);
   lacpy("Low", hr, hr, Psi, hr, Psi_hat, hr);
   for (k=0; k<h; k++) {
     Psi_hat_kk = Psi_hat + k*h*rr + k*r;
     nrow = hr - k*r;
-    trmm("Right", "Low", "NoT", "NonUnit", nrow, r, 1.0, LSig, r, Psi_hat_kk, hr);
+    if (triangular) {
+      trmm("Right", "Low", "NoT", "NonUnit", nrow, r, 1, LSig, r, Psi_hat_kk, hr);
+    }
+    else {
+      lacpy("All", nrow, r, Psi_hat_kk, hr, W, nrow);
+      gemm("NoT", "NoT", nrow, r, r, 1, W, nrow, LSig, r, 0, Psi_hat_kk, hr);
+    }
   }
+  FREE(W);
   FREE(LSig);
+}
+
+HIDDEN varmapack_error psdFactor(double Sig[], int r, double L[], bool *triangular) {
+  int info, rank, rr = r*r;
+  int *piv = 0;
+  double *C = 0;
+  double *work = 0;
+  double *recon = 0;
+  double tol;
+  varmapack_error error = VARMAPACK_OK;
+  if (triangular) *triangular = false;
+  if (!ALLOC(C, rr)) goto alloc_fail;
+  if (!ALLOC(piv, r)) goto alloc_fail;
+  if (!ALLOC(work, 2*r)) goto alloc_fail;
+  if (!ALLOC(recon, rr)) goto alloc_fail;
+  lacpy("All", r, r, Sig, r, C, r);
+  potrf("Low", r, C, r, &info);
+  if (info < 0) { error = VARMAPACK_INTERNAL; goto fail; }
+  if (info == 0) {
+    setzero(rr, L);
+    lacpy("Low", r, r, C, r, L, r);
+    if (triangular) *triangular = true;
+    goto fail;
+  }
+  lacpy("All", r, r, Sig, r, C, r);
+  pstrf("Low", r, C, r, piv, &rank, -1, work, &info);
+  if (info < 0) { error = VARMAPACK_INTERNAL; goto fail; }
+  setzero(rr, L);
+  for (int k=0; k<rank; k++) {
+    for (int i=k; i<r; i++) {
+      L[piv[i] + k*r] = C[i + k*r];
+    }
+  }
+  setzero(rr, recon);
+  if (rank > 0) syrk("Low", "NoT", r, rank, 1, L, r, 0, recon, r);
+  copylowertoupper(r, recon, r);
+  tol = 100*r*lamch("E");
+  if (relabsdiff(Sig, recon, rr) > tol) {
+    error = VARMAPACK_NOT_POSITIVE_SEMIDEFINITE;
+  }
+fail:
+  FREE(recon);
+  FREE(work);
+  FREE(piv);
+  FREE(C);
+  return error;
+alloc_fail:
+  error = VARMAPACK_ALLOCATION;
+  goto fail;
 }

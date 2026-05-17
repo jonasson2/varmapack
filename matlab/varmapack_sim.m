@@ -13,7 +13,7 @@ function [X, E] = varmapack_sim(A, B, Sig, n, mu, M, x0, rng)
     mu = [];
   else
     if isscalar(mu), mu = repmat(mu, r, 1); end
-    mu = mu(:);
+    if size(mu, 1) ~= r, error('varmapack_sim: mu must have r rows'); end
   end
   if nargin < 6 || isempty(M), M = 1; end
   if nargin < 7, x0 = []; end
@@ -30,12 +30,12 @@ function [X, E] = varmapack_sim(A, B, Sig, n, mu, M, x0, rng)
   end
   if r == 1 && M == 1
     X = reshape(X, 1, n);
-    E = reshape(E, 1, n);
+    if nargout >= 2, E = reshape(E, 1, n); end
   elseif r == 1
     X = reshape(X, n, M);
-    E = reshape(E, n, M);
+    if nargout >= 2, E = reshape(E, n, M); end
   else
     X = reshape(X, r, n, M);
-    E = reshape(E, r, n, M);
+    if nargout >= 2, E = reshape(E, r, n, M); end
   end
 end

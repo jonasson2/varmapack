@@ -7,11 +7,8 @@
 #include "Tests.h"
 
 static void checkmeancov(void) {
-  double X[] = {1.0, 3.0, 5.0,
-                1.0, 4.0, 4.0};
-  double Y[] = {1.0, 1.0,
-                3.0, 4.0,
-                5.0, 4.0};
+  double X[] = {1.0, 3.0, 5.0, 1.0, 4.0, 4.0};
+  double Y[] = {1.0, 1.0, 3.0, 4.0, 5.0, 4.0};
   double C[4], D[4];
   cov("N", 3, 2, X, C);
   xCheck(almostSame(mean(X, 3), 3.0));

@@ -45,10 +45,7 @@ static void die(char *msg) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.2,
-    .w = 0.1,
-    .d = 2,
-    .ref = {3, 3, 5, 100, 100}
+    .t = 0.2, .w = 0.1, .d = 2, .ref = {3, 3, 5, 100, 100}
   };
 }
 
@@ -118,8 +115,7 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
 }
 
 static bool same_case(bench_case a, bench_case b) {
-  return a.p == b.p && a.q == b.q && a.r == b.r && a.n == b.n &&
-         a.M == b.M;
+  return a.p == b.p && a.q == b.q && a.r == b.r && a.n == b.n && a.M == b.M;
 }
 
 static void add_case(bench_case cases[], int *ncases, bench_case row) {
@@ -238,7 +234,7 @@ static double time_case(bench_case c, double target, randompack_rng *rng) {
   start = clock_nsec();
   t = start;
   while ((t - start)*1e-9 < target) {
-    error = varmapack_sim(A, B, Sig, 0, p, q, r, n, M, 0, 0, rng, X, 0);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
     if (error) {
       fprintf(stderr, "varmapack_sim failed: %s\n", varmapack_strerror(error));
       exit(1);
@@ -279,16 +275,14 @@ int main(int argc, char **argv) {
   printf("\n");
   warm_cpu(opts.w);
   ncases = make_cases(&opts, cases);
-  printf("%3s %5s %3s %3s %5s %10s %10s\n",
-         "r", "n", "p", "q", "M", "Setup", "C");
+  printf("%3s %5s %3s %3s %5s %10s %10s\n", "r", "n", "p", "q", "M", "Setup", "C");
   for (int i = 0; i < ncases; i++) {
     bench_case c = cases[i];
     int n = c.n == 0 ? (c.p > c.q ? c.p : c.q) : c.n;
     int h = c.p > c.q ? c.p : c.q;
     double init = time_setup_case(c, opts.t, rng)*h/(n*c.M);
     double ns = time_case(c, opts.t, rng);
-    printf("%3d %5d %3d %3d %5d %10.2f %10.1f%s\n",
-           c.r, n, c.p, c.q, c.M, init, ns,
+    printf("%3d %5d %3d %3d %5d %10.2f %10.1f%s\n", c.r, n, c.p, c.q, c.M, init, ns,
            same_case(c, opts.ref) ? " reference" : "");
   }
   randompack_free(rng);

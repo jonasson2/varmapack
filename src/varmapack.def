@@ -2,6 +2,8 @@ LIBRARY varmapack
 EXPORTS
   varmapack_acvf
   varmapack_autocov
+  varmapack_irf
+  varmapack_psi
   varmapack_sim
   varmapack_specrad
   varmapack_strerror

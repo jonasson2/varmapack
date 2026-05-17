@@ -7,14 +7,12 @@ function ascertain(x__,s__)
 %  it evaluates to 0 (false).
 if ischar(x__)
 	ok__ = evalin('caller', x__);
-	if ~ok__,
-    disp ' '
+	if ~ok__, disp ' '
     error(['Assertion ' x__ ' failed']); 
   end
 else
 	if nargin == 1, s__ = 'Assertion failed'; end
-	if ~x__, 
-    disp ' '
+	if ~x__, disp ' '
     error(s__); 
   end
 end

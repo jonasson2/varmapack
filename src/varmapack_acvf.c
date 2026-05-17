@@ -25,6 +25,7 @@
 varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
                                int q, int r, double Gamma[], int maxlag) {
   double *S = Gamma;
+  double *C = 0;
   double *G = 0;
   if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || Gamma == 0) {
     return VARMAPACK_INVALID_ARGUMENT;
@@ -36,10 +37,15 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
   double rho = varmapack_specrad(A, r, p);
   if (isnan(rho)) return VARMAPACK_INVALID_ARGUMENT;
   if (rho >= 1) return VARMAPACK_NONSTATIONARY;
-  if (!ALLOC(G, r2*(q+1))) {
+  if (!ALLOC(C, r2*(q+1))) {
     return VARMAPACK_ALLOCATION;
   }
-  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, 0, G)) {
+  if (!ALLOC(G, r2*(q+1))) {
+    FREE(C);
+    return VARMAPACK_ALLOCATION;
+  }
+  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
+    FREE(C);
     FREE(G);
     return VARMAPACK_INTERNAL;
   }
@@ -47,6 +53,7 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
     int qcopy = imin(q, maxlag);
     copy(r2*(qcopy+1), G, 1, S, 1);
     if (qcopy < maxlag) setzero(r2*(maxlag - qcopy), S + r2*(qcopy+1));
+    FREE(C);
     FREE(G);
     return VARMAPACK_OK;
   }
@@ -65,6 +72,7 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
       gemm("N", "N", r, r, r, 1.0, Ai, r, Sji, r, 1.0, Sj, r);
     }
   }
+  FREE(C);
   FREE(G);
   return VARMAPACK_OK;
 }

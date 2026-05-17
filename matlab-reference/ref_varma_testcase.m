@@ -35,7 +35,6 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
   testcases = {
     %              p  q  r       
     'tinyAR'     % 1  0  1
-    'tinyAR'
     'tinyMA'
     'tinyARMA'
     'smallAR1'

@@ -57,6 +57,7 @@ HIDDEN bool LyapunovFactorizeSolve(double A[], double B[], double Sig[],
   xAssert((A != 0 || p == 0) && Sig != 0 && S != 0);
   xAssert(B != 0 || q == 0);
   xAssert(p >= 0 && q >= 0 && r > 0);
+  xAssert(C != 0 && G != 0);
   int nx = p > 0 ? p + 1 : 1;
   int ne = q + 1;
   int nb = nx + ne;
@@ -65,19 +66,7 @@ HIDDEN bool LyapunovFactorizeSolve(double A[], double B[], double Sig[],
   double *F = 0;
   double *Q = 0;
   double *P = 0;
-  double *Cbuf = C;
-  double *Gbuf = G;
-  bool ownC = false;
-  bool ownG = false;
   bool ok = false;
-  if (Cbuf == 0) {
-    if (!ALLOC(Cbuf, rr*(q+1))) goto done;
-    ownC = true;
-  }
-  if (Gbuf == 0) {
-    if (!ALLOC(Gbuf, rr*(q+1))) goto done;
-    ownG = true;
-  }
   if (!ALLOC(F, nstate*nstate)) goto done;
   if (!ALLOC(Q, nstate*nstate)) goto done;
   if (!ALLOC(P, nstate*nstate)) goto done;
@@ -87,16 +76,14 @@ HIDDEN bool LyapunovFactorizeSolve(double A[], double B[], double Sig[],
     lacpy("All", r, r, block(P, nstate, r, 0, i), nstate, S + i*rr, r);
   }
   for (int i=0; i<=q; i++) {
-    lacpy("All", r, r, block(P, nstate, r, 0, nx+i), nstate, Cbuf + i*rr, r);
+    lacpy("All", r, r, block(P, nstate, r, 0, nx+i), nstate, C + i*rr, r);
   }
-  compute_G(B, Cbuf, q, r, Gbuf);
+  compute_G(B, C, q, r, G);
   ok = true;
 done:
   FREE(P);
   FREE(Q);
   FREE(F);
-  if (ownG) FREE(Gbuf);
-  if (ownC) FREE(Cbuf);
   return ok;
 }
 

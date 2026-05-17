@@ -1,12 +1,10 @@
 %S_BUILD  Calculate covariance of x
 %
 %  SS = S_BUILD(S,A,G,n) finds the covariance matrix of the vector x =
-%  [x1'...xn']' of all the values of a VARMA time series,
-%
+%  [x1'...xn']' of all the values of a VARMA time series, %
 %                  x(t) = A1·x(t-1) + ... + Ap·x(t-p) + y(t)
 %  where
-%                  y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q),
-%
+%                  y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q), %
 %  and x(t), y(t) and eps(t) are r-dimensional with eps(t) N(0,Sig). S = 
 %  {S0,S1...Sp}, with Sj = Cov(x(t),x(t-j)) and G = {G0 G1...Gq} with Gj =
 %  Cov(y(t),x(t-j)) should be previously calculated with find_CGW. A should

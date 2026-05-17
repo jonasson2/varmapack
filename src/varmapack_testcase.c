@@ -160,46 +160,25 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
   }
   // CONSTRUCT TESTCASE
   double
-    A1[] = {0.5},
-    A3[] = {0.4},
-    A4[] = {0.1, 0.1,   0.1, 0.100000001},
+    A1[] = {0.5}, A3[] = {0.4}, A4[] = {0.1, 0.1,   0.1, 0.100000001},
     A5[] = {0.60, 0.05, 0.30, 0.02,   0.04, 0.60, 0.02, 0.30},
-    A8[] = {0.3, 0.1,   0.4, 0.2},
-    A9[] = {0.2, 0.3,   0.2, 0.3},
-    A10[] = {
+    A8[] = {0.3, 0.1,   0.4, 0.2}, A9[] = {0.2, 0.3,   0.2, 0.3}, A10[] = {
       0.35, 0.15, 0.15,//  0.11, 0.14, 0.07,
       0.25, 0.15, 0.05,//  0.12, 0.15, 0.08,
       0.15, 0.05, 0.01,//  0.13, 0.16, 0.09
-    },
-    A12[9*3],
-    A13[9*3],
-    A33[] = {
+    }, A12[9*3], A13[9*3], A33[] = {
       0.15, 0.10, 0.05,  0.11, 0.14, 0.17,  0.01, 0.04, 0.06,
       0.16, 0.11, 0.06,  0.12, 0.15, 0.18,  0.02, 0.05, 0.08,
       0.17, 0.12, 0.07,  0.13, 0.16, 0.19,  0.03, 0.06, 0.09
-    },
-    A15[n12],
-    B2[] = {0.5},
-    B3[] = {0.4},
-    B6[] = {0.3, 0.1,   0.1, 0.2},
-    B7[] = {0.3, 0.1, 0.1, 0.1,   0.3, 0.1, 0.1, 0.1},
-    B8[] = {0.2, 0.3,   0.2, 0.3},
-    B9[] = {0.4, 0.1, 0.2, 0.1,   0.2, 0.1, 0.3, 0.1},
+    }, A15[n12], B2[] = {0.5}, B3[] = {0.4},
+    B6[] = {0.3, 0.1,   0.1, 0.2}, B7[] = {0.3, 0.1, 0.1, 0.1,   0.3, 0.1, 0.1, 0.1},
+    B8[] = {0.2, 0.3,   0.2, 0.3}, B9[] = {0.4, 0.1, 0.2, 0.1,   0.2, 0.1, 0.3, 0.1},
     B11[] = {
-      0.35, 0.25, 0.15,
-      0.25, 0.15, 0.05,
-      0.15, 0.05, 0.01
-    },
-    B12[9*3],
-    B13[9*3],
-    B14[] =  {
-      0.35, 0.25, 0.15,  0.11, 0.14, 0.17,
-      0.25, 0.15, 0.05,  0.12, 0.15, 0.18,
+      0.35, 0.25, 0.15, 0.25, 0.15, 0.05, 0.15, 0.05, 0.01
+    }, B12[9*3], B13[9*3], B14[] =  {
+      0.35, 0.25, 0.15,  0.11, 0.14, 0.17, 0.25, 0.15, 0.05,  0.12, 0.15, 0.18,
       0.15, 0.05, 0.01,  0.13, 0.16, 0.19
-    },
-    S1[] = {0.8},
-    S2[] = {2, 1,   1, 3},
-    S3[] = {2, 1,   1, 2},
+    }, S1[] = {0.8}, S2[] = {2, 1,   1, 3}, S3[] = {2, 1,   1, 2},
     S4[] = {2.0, 0.5, 0.0,   0.5, 2.0, 0.5,   0.0, 0.5, 1.0},
     //S5[] = {1.0, 0.0, 0.0,   0.0, 1.0, 0.0,   0.0, 0.0, 1.0},
     S6[r12*r12];
@@ -273,9 +252,22 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
       scal(r*r*p, 0.5/(p*r), A, 1); 
       double *tmpS = 0;
       if (!ALLOC(tmpS, r*r*(p+1))) return VARMAPACK_ALLOCATION;
+      double *tmpC = 0;
+      if (!ALLOC(tmpC, r*r*(q+1))) {
+        FREE(tmpS);
+        return VARMAPACK_ALLOCATION;
+      }
+      double *tmpG = 0;
+      if (!ALLOC(tmpG, r*r*(q+1))) {
+        FREE(tmpC);
+        FREE(tmpS);
+        return VARMAPACK_ALLOCATION;
+      }
       double *tmpB = 0;
       if (q > 0) {
         if (!ALLOC(tmpB, r*r*q)) {
+          FREE(tmpG);
+          FREE(tmpC);
           FREE(tmpS);
           return VARMAPACK_ALLOCATION;
         }
@@ -283,17 +275,21 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
       }
       j = 0;
       while (true) {
-        ok = VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, 0, 0);
+        ok = VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, tmpC, tmpG);
         if (ok) break;
         scal(r*p, 0.5, A, 1);
         j++;
         if (j >= 10) {
           if (q > 0) FREE(tmpB);
+          FREE(tmpG);
+          FREE(tmpC);
           FREE(tmpS);
           return VARMAPACK_INTERNAL;
         }
       }
       if (q > 0) FREE(tmpB);
+      FREE(tmpG);
+      FREE(tmpC);
       FREE(tmpS);
     }
     if (B && q>0) {
