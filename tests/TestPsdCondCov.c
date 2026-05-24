@@ -9,56 +9,6 @@
 #include "varmapack.h"
 #include "xCheck.h"
 
-static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,
-                    int r, int n) {
-  int iScol = n*r;
-  for (int j=0; j<p+1; j++) {
-    lacpy("All", r, r, S + j*r*r, r, Scol + j*r, iScol);
-  }
-  for (int j=p+1; j<n; j++) {
-    double *Scolj = Scol + j*r;
-    if (j <= q) {
-      lacpy("All", r, r, G + j*r*r, r, Scolj, iScol);
-    }
-    for (int i=0; i<p; i++) {
-      gemm("N", "N", r, r, r, 1, A + i*r*r, r, Scolj - (i+1)*r, iScol, 1, Scolj, iScol);
-    }
-  }
-}
-
-static bool SBuild(double S[], double A[], double G[], int p, int q, int r, int n,
-                   double SS[]) {
-  if (n == 0) return true;
-  int m = imax(p+1, n);
-  double *Scol = 0;
-  if (!ALLOC(Scol, r*m*r)) return false;
-  SExtend(A, G, S, Scol, p, q, r, m);
-  for (int j=0; j<n; j++) {
-    double *SSj = SS + j*r*n*r + j*r;
-    double *SSi = SSj + r*n*r;
-    lacpy("All", r*(n-j), r, Scol, r*m, SSj, r*n);
-    if (j < n-1) copytranspose(r*(n-j-1), r, Scol + r, r*m, SSi, r*n);
-  }
-  FREE(Scol);
-  return true;
-}
-
-static void CCBuild(double A[], double C[], int p, int q, int r, int n, double CC[]) {
-  setzero(r*n*r*n, CC);
-  for (int j=0; j<=q && j<n; j++) {
-    lacpy("All", r, r, C + j*r*r, r, CC + j*r, r*n);
-  }
-  for (int j=q+1; j<n; j++) {
-    double *CCj = CC + j*r;
-    for (int i=1; i<=j && i<=p; i++) {
-      gemm("N", "N", r, r, r, 1, A + (i-1)*r*r, r, CC + (j-i)*r, r*n, 1, CCj, r*n);
-    }
-  }
-  for (int j=1; j<n; j++) {
-    lacpy("All", r*(n-j), r, CC, r*n, CC + j*r*n*r + j*r, r*n);
-  }
-}
-
 static void conditional_moments(double A[], double B[], double Sig[], double X0[], int p,
                                 int q, int r, int h, double R[], double e[]) {
   int rh = r*h, r2 = r*r, info;
@@ -69,10 +19,11 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
   xCheck(ALLOC(SS, rh*rh));
   xCheck(ALLOC(CC, rh*rh));
   xCheck(ALLOC(wrk, rh));
-  FindCG(A, B, Sig, p, q, r, C, G);
+  FindC(A, B, Sig, p, q, r, C);
+  FindG(B, C, q, r, G);
   varmapack_error error = varmapack_acvf(A, B, Sig, p, q, r, S, p);
   xCheck(!error);
-  xCheck(SBuild(S, A, G, p, q, r, h, SS));
+  xCheck(SBuild("All", S, A, G, p, q, r, h, SS));
   potrf("Low", rh, SS, rh, &info);
   xCheck(info == 0);
   CCBuild(A, C, p, q, r, h, CC);

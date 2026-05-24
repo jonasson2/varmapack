@@ -16,10 +16,4 @@ HIDDEN bool VYWFactorizeSolve(
   double C[],   // out  r×r×(q+1) buffer for Ci
   double G[]);  // out  r×r×(q+1) buffer for Gi
 
-HIDDEN bool SBuild( char *uplo, double S[], double A[], double G[], int p, int q, int r,
-  int n, double SS[]);
-
-HIDDEN bool VYWSetupSS( double A[], double B[], double Sig[], int p, int q, int r, int h,
-  double SS[]);
-
 #endif

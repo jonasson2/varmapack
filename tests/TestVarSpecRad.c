@@ -14,6 +14,8 @@ static int nearly_one(double x, double tol) { return fabs(x - 1.0) <= tol; }
 static void checkP0(void) {
   double rho = varmapack_specrad(0, 4, 0);
   xCheck(almostSame(rho, 0));
+  rho = varmapack_ma_specrad(0, 4, 0);
+  xCheck(almostSame(rho, 0));
 }
 
 static void checkInvalidInput(void) {
@@ -22,6 +24,10 @@ static void checkInvalidInput(void) {
   xCheck(isnan(varmapack_specrad(A, 0, 1)));
   xCheck(isnan(varmapack_specrad(A, 1, -1)));
   xCheck(isnan(varmapack_specrad(A, 0, 0)));
+  xCheck(isnan(varmapack_ma_specrad(0, 1, 1)));
+  xCheck(isnan(varmapack_ma_specrad(A, 0, 1)));
+  xCheck(isnan(varmapack_ma_specrad(A, 1, -1)));
+  xCheck(isnan(varmapack_ma_specrad(A, 0, 0)));
 }
 
 static void checkScalarAR2ComplexRoots(void) {
@@ -35,6 +41,28 @@ static void checkScalarUnstable(void) {
   double rho = varmapack_specrad(A, 1, 1);
   xCheck(almostSame(rho, 1.25));
   xCheck(rho > 1);
+}
+
+static void checkScalarMA(void) {
+  double B1[] = {0.7};
+  double B2[] = {-1.2};
+  double Bma2[] = {0.4, -0.12};
+  double rho = varmapack_ma_specrad(B1, 1, 1);
+  xCheck(almostSame(rho, 0.7));
+  rho = varmapack_ma_specrad(B2, 1, 1);
+  xCheck(almostSame(rho, 1.2));
+  rho = varmapack_ma_specrad(Bma2, 1, 2);
+  xCheck(fabs(rho - 0.6) < 1e-14);
+}
+
+static void checkDiagonalMA(void) {
+  int r = 2, q = 1;
+  double B[] = {
+    0.3, 0,
+    0, -0.8
+  };
+  double rho = varmapack_ma_specrad(B, r, q);
+  xCheck(almostSame(rho, 0.8));
 }
 
 static void check2x2(void) {
@@ -88,11 +116,13 @@ static void checkAllNamedStationary(void) {
     error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
     xCheck(!error);
     double rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
+    double maRho = q == 0 ? 0 : varmapack_ma_specrad(B, r, q);
     if (!(rho < 1 - strict_tol)) {
       fprintf(stderr, "[Testvarmapack_specrad] Nonstationary/borderline: case %d (%s), "
               "rho=%.15g (p=%d, q=%d, r=%d)\n", icase, name, rho, p, q, r);
     }
     xCheck(rho < 1 - strict_tol);
+    xCheck(isfinite(maRho) && maRho >= 0);
     FREE(A);
     FREE(B);
     FREE(Sig);
@@ -104,6 +134,8 @@ void Testvarmapack_specrad(void) {
   checkInvalidInput();
   checkScalarAR2ComplexRoots();
   checkScalarUnstable();
+  checkScalarMA();
+  checkDiagonalMA();
   check2x2();
   checkScaling();
   checkZero();

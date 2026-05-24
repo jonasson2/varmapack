@@ -1,6 +1,13 @@
 function test_ref_vyw
   fprintf('TESTING VYW_FACTORIZE AND VYW_SOLVE... ');
-  cases = {1, 3, 5, 7, 12, [1 1 2], [2 1 2], [2 3 2]};
+  cases = num2cell(1:ref_varma_testcase('count'));
+  for p = 0:3
+    for q = 0:3
+      for r = 1:3
+        cases{end+1} = [p q r];
+      end
+    end
+  end
   for i = 1:length(cases)
     if isscalar(cases{i})
       [A, B, Sig] = ref_varma_testcase(cases{i});

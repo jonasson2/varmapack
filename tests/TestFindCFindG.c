@@ -6,7 +6,7 @@
 #include "VarmaPackUtil.h"
 #include "ExtraUtil.h"
 
-void TestFindCG(void) {
+void TestFindCFindG(void) {
   // Just a rudimentary test. Tested thoroughly by Testvarmapack_sim.
   int p, q, r, icase;
   char name[16] = "";
@@ -31,7 +31,8 @@ void TestFindCG(void) {
 
   error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
   xCheck(!error);
-  FindCG(A, B, Sig, p, q, r, C, G);
+  FindC(A, B, Sig, p, q, r, C);
+  FindG(B, C, q, r, G);
 
   // Expected values from MATLAB for smallARMA1.
   // [ 2.0  1.0  1.4  1.3

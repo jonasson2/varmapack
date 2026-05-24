@@ -17,14 +17,15 @@ endif
 
 test_sources = files( 'RunTests.c', 'FromMatlab.c', 'TestExtraUtil.c',
   'TestAcvf.c', 'TestAutocov.c', 'TestAutocovEdgeCases.c', 'TestSimEdgeCases.c',
-  'TestTestcase.c', 'TestVarSpecRad.c', 'TestAgainstMatlab.c', 'TestFromMatlab.c',
-  'TestFindCG.c', 'TestPsdCondCov.c', 'TestPsi.c', )
+  'TestSimxEdgeCases.c', 'TestTestcase.c', 'TestVarSpecRad.c', 'TestAgainstMatlab.c',
+  'TestFromMatlab.c', 'TestFindCFindG.c', 'TestPsdCondCov.c', 'TestPsi.c', )
 
 extra_util = files( 'ExtraUtil.c', 'xCheck.c', )
 
 run_tests = executable( 'RunTests',
   test_sources + extra_util + files( '../examples/getopt.c',
-    '../src/FindW.c', '../src/printX.c', '../src/VarmaPackUtil.c', '../src/VYW.c', ),
+    '../src/FindW.c', '../src/printX.c', '../src/VarmaPackUtil.c', '../src/VYW.c',
+    '../src/Lyapunov.c', '../src/sb03mdGateway.c', ) + sb03md_fortran_files,
   include_directories : include_directories('../examples'),
   dependencies : [varmapack_dep], c_args : debug_print_args, )
 

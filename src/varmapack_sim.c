@@ -88,10 +88,7 @@
 #include "VarmaPackUtil.h"
 #include "randompack.h"
 #include "varmapack.h"
-#include "Lyapunov.h"
-#include "VYW.h"
 
-static void CCBuild(double A[], double C[], int p, int q, int r, int n, double CC[]);
 static void addMean(double X[], double mu[], int nmu, int r, int n, int M);
 static void subtractMean(double X[], double mu[], int nmu, int r, int n, int M, int ldX);
 static varmapack_error buildStartupCovar(double A[], double B[], double Sig[], int p,
@@ -108,7 +105,6 @@ static varmapack_error startFromX0(double A[], double Sig[], double X0[], double
 static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[], bool
                          rollingE, int ldE, double X[], int p, int q, int r,
                          int n, int M, int h, randompack_rng *rng);
-static int slicotCutoff(int p, int q);
 
 varmapack_error varmapack_sim(double A[], double B[], double Sig[], double mu[],
                               int nmu, int p, int q, int r, int n, int M, double X0[],
@@ -209,17 +205,9 @@ static varmapack_error buildStartupCovar(double A[], double B[], double Sig[], i
                                          int q, int r, int h, double C[], double SS[]) {
   double *G = 0;
   double *S = 0;
-  int rc;
-  bool useSlicot;
-  bool ok;
   if (!ALLOC(G, r*r*(q+1))) goto alloc_fail;
   if (!ALLOC(S, r*r*(p+1))) goto alloc_fail;
-  rc = slicotCutoff(p, q);
-  useSlicot = rc > 0 && r >= rc;
-  ok = useSlicot ?
-   LyapunovFactorizeSolve(A, B, Sig, p, q, r, S, C, G) :
-   VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G);
-  if (!ok) {
+  if (!FindS(A, B, Sig, p, q, r, S, C, G)) {
     FREE(S); FREE(G);
     return VARMAPACK_INTERNAL;
   }
@@ -369,60 +357,4 @@ static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[],
       gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0, X + iX, rn);
   }
   return true;
-}
-
-static int slicotCutoff(int p, int q) {
-  int pc, qc;
-  // Average break-even r for choosing SLICOT over VYW; 0 means always use VYW.
-  // The numbers are averages across Mac, XEON, Ubuntu; OpenBLAS, Accelerate, MKL.
-  int rc[7][8] = {
-    {16, 26, 0, 0, 0, 0, 0, 0}, {10, 13, 18, 21, 24, 24, 26, 28},
-    {9, 13, 15, 17, 19, 21, 22, 23}, {11, 13, 14, 15, 16, 18, 18, 19},
-    {11, 13, 14, 15, 15, 16, 17, 18}, {11, 13, 13, 14, 14, 15, 15, 16},
-    {12, 13, 13, 13, 14, 14, 14, 15}
-  };
-  if (p <= 0 || q < 0) return 0;
-  pc = p < 7 ? p : 7;
-  qc = q < 7 ? q : 7;
-  return rc[pc-1][qc];
-}
-
-static void CCBuild( // Build covariance between terms and shocks of VARMA time series
-  double A[],  // in   r × r × p, A=[A1...Ap], autoregressive parameter matrices
-  double C[],  // in   r × r·(q+1), = [C0...Cq], Ci = cov(x(t),eps(t-i))
-  int p,       // in   number of autoregressive terms
-  int q,       // in   number of moving average terms
-  int r,       // in   dimension of xt
-  int n,       // in   length of series
-  double CC[]) // out  r·n × r·n, cov(x1'...xn',eps1'...epsn')
-{
-  //  DESCRIPTION: The time series is as shown in SBuild (e.g.). The CC-matrix
-  //  is:
-  //                   C0  0 ...... 0 
-  //                   C1 C0  0 ... 0
-  //                   :  C1  .     :
-  //                   :         .  0
-  //                   C(n-1).. C1 C0
-  //
-  //  For q < j <= p, Cj is found with the recurrence relation:
-  //
-  //      Cj = A1*C(j-1) + A2*C(j-2) + ........ + Aj*C0   (*)
-  //
-  int i,j;
-  double *CCj;
-  // Fill CC with zeros:
-  setzero(r*n*r*n, CC);
-  // Copy C0..Cq to first q+1 block-rows in first block-column:
-  for (j=0; j<=q && j<n; j++) lacpy("All", r, r, C+j*r*r, r, CC + j*r, r*n);
-  // Calculate rest of first block-column using (*):
-  for (j=q+1; j<n; j++) {
-    CCj = CC + j*r;
-    for (i=1; i<=j && i<=p; i++)  // (using that CC was set to 0)
-      gemm("N", "N", r, r, r, 1.0, A+(i-1)*r*r, r, CC+(j-i)*r, r*n,1.0,CCj,r*n);
-  }
-  // Copy head of first block-column to other columns
-  for (j=1; j<n; j++) {
-    CCj = CC + j*r*n*r + j*r;
-    lacpy("All", r*(n-j), r, CC, r*n, CCj, r*n);
-  }
 }

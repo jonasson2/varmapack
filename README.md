@@ -25,8 +25,8 @@ x_t - \mu = \sum_{i=1}^{p} A_i (x_{t-i} - \mu)
 \varepsilon_t \sim \mathcal{N}(0, \Sigma).
 $$
 
-- \(x_t\) is an \(r\)-dimensional time series.  
-- The innovations \(\varepsilon_t\) are uncorrelated in time and have covariance \(\Sigma\).  
+- $x_t$ is an $r$-dimensional time series.  
+- The innovations $\varepsilon_t$ are uncorrelated in time and have covariance \(\Sigma\).  
 - When \(r = 1\) the model reduces to an **ARMA(p, q)** series.  
 - When \(q = 0\) and \(r > 1\) it becomes a **VAR(p)** model.  
 - When \(q = 0\) and \(r = 1\) it is a simple **AR(p)** model.

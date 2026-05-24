@@ -7,7 +7,4 @@
 HIDDEN bool LyapunovFactorizeSolve( double A[], double B[], double Sig[],
   int p, int q, int r, double S[], double C[], double G[]);
 
-HIDDEN bool LyapunovSetupSS( double A[], double B[], double Sig[],
-  int p, int q, int r, int h, double SS[]);
-
 #endif

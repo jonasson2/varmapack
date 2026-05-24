@@ -1,7 +1,7 @@
 src_files = files( 'FindW.c', 'VarmaPackUtil.c', 'error.c', 'exog.c', 'sb03mdGateway.c',
-  'Lyapunov.c', 'VYW.c', 'varmapack_sim.c', 'varmapack_acvf.c',
-  'varmapack_autocov.c', 'varmapack_psi.c', 'varmapack_specrad.c', 'varmapack_testcase.c',
-  'rp_dpstrf.c', )
+  'Lyapunov.c', 'VYW.c', 'varmapack_sim.c', 'varmapack_simx.c', 'varmapack_acvf.c',
+  'varmapack_autocov.c', 'varmapack_psi.c', 'varmapack_specrad.c',
+  'varmapack_ma_specrad.c', 'varmapack_testcase.c', 'rp_dpstrf.c', )
 
 sb03md_fortran_files = files( 'sb03md-complete.f', )
 

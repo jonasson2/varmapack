@@ -83,23 +83,30 @@
 %   (C) Kristján Jónasson, Dept. of Computer Science, University of Iceland,
 %   2025. jonasson@hi.is.
 
-function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
+function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
   [~, p, q, h] = getdims(A, B, Sig);
   Aflp = flipmat(A);
   Bflp = flipmat(B);
+  if nargin < 4, mu = []; end
+  if nargin < 5 || isempty(n), error('n must be specified'); end
   if n<h, error('Too short series'); end
-  if nargin < 5 || isempty(mu)
-    mu = zeros(r,1); 
-  else
-    if isscalar(mu), mu = repmat(mu, r, 1); end
-    mu = mu(:); 
+  if isempty(mu)
+    mu = zeros(r,0);
+  elseif isscalar(mu)
+    mu = repmat(mu, r, 1);
+  elseif isvector(mu) && r > 1 && numel(mu) == r
+    mu = mu(:);
+  elseif size(mu, 1) ~= r
+    error('mu must have r rows')
   end
+  if size(mu, 2) > n, error('mu cannot have more columns than n'); end
   if nargin < 6 || isempty(M), M=1; end
   if nargin < 7, x0 = []; end
-  if nargin < 8, rng = []; end
+  if nargin < 8, e0 = []; end
+  if nargin < 9, rng = []; end
   if isempty(x0) && ref_varma_specrad(A) >= 1
     error("Cannot run varma_sim with unspecified x0 and rho(A) ≥ 1");
   end
@@ -110,13 +117,21 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   assert(isempty(PLU) || isempty(PLU{1}) || PLU{1}(1) ~= 0)  % vyw_factorize ok
   S = vyw_solve(A, PLU, G);
 
-  % Check size of provided start vector, set h to its size if ok
+  % Check size of provided start vectors, set h to their size if ok
   if ~isempty(x0)
     nx0 = size(x0, 2);
-    x0 = x0(:);
     assert(h <= nx0 && nx0 <= n)
     h = nx0;
   end
+  if ~isempty(e0)
+    ne0 = size(e0, 2);
+    assert(size(e0, 1) == r)
+    assert(max(p, q) <= ne0 && ne0 <= n)
+    if ~isempty(x0), assert(nx0 == ne0); end
+    h = ne0;
+  end
+  x0 = x0(:);
+  e0 = e0(:);
 
   SS = S_build(S, A, G, h);
   if rollingE
@@ -126,19 +141,27 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   end
 
   % Build theoretical covariance of xt
-  if isempty(x0)  % Generate x{1:h}
-    for j = 1:M
-      E(1:r*h,j) = reshape(randnm(h, Sig, "T", rng), r*h, 1);
+  if isempty(x0)  % Generate x{1:h} or draw x{1:h}|eps{1:h}
+    if isempty(e0)
+      for j = 1:M
+        E(1:r*h,j) = reshape(randnm(h, Sig, "T", rng), r*h, 1);
+      end
+    else
+      E(1:r*h,:) = repmat(e0, 1, M);
     end
-    Psi = find_Psi(A, B);
+    Psi = find_Psi(A, B, h);
     Psi_hat = find_Psi_hat(Psi, Sig);
     R = SS - Psi_hat*Psi_hat';
     e = Psi*E(1:r*h, :);
     Wrk = randnm(M, R, "T", rng);
     X1 = e + Wrk;
     h = h;
+  elseif ~isempty(e0)  % Fixed x{1:h} and eps{1:h}
+    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    E(1:r*h,:) = repmat(e0, 1, M);
+    X1 = repmat(x0bar,1,M);
   elseif q == 0 && ref_varma_specrad(A) >= 1  % Fixed-history pure AR path.
-    x0bar = x0(:) - repmat(mu, h, 1);
+    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
     X1 = repmat(x0bar,1,M);
     R = Sig;
   else  % x0 given
@@ -147,7 +170,7 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
     CC = CC_build(A, C, h);
     LS = chol(SS, 'lower'); % TODO: Check this
     Chat = LS\CC;
-    x0bar = x0(:) - repmat(mu, h, 1);
+    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
     e = Chat'*(LS\x0bar);
     R = -Chat'*Chat;
     J = 1:r;
@@ -160,10 +183,6 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
     E(1:r*h, :) = e + randnm(M, R, "T", rng);
     X1 = repmat(x0bar,1,M);
   end
-  condR = cond(R);
-  condSig = cond(Sig);
-  rho = ref_varma_specrad(A);
-  % fprintf("cond(R) = %.2e, cond(Sig) = %.2e, rho = %.4f\n", condR, condSig, rho);
   X2 = zeros(n*r - h*r, M);
   X = [X1; X2];
 
@@ -211,16 +230,32 @@ function [X, E, condR] = ref_varma_sim(A, B, Sig, n, mu, M, x0, rng)
   end
 
   % Reshape as appropriate for ARMA or VARMA
+  Mu = meanpath(mu, r, n);
   if r==1 && M==1  %  one ARMA sequence:
-    X = reshape(X,1,n) + mu;
+    X = reshape(X,1,n) + Mu;
     if returnE, E = reshape(E,1,n); end
   elseif r==1      %  several ARMA sequences:
-    X = reshape(X,n,M) + mu;
+    X = reshape(X,n,M) + repmat(Mu', 1, M);
     if returnE, E = reshape(E,n,M); end
   else             %   one or more VARMA sequences in r×n×M array:
-    X = reshape(X,r,n,M) + repmat(mu,[1,n,M]);
+    X = reshape(X,r,n,M) + repmat(Mu, [1,1,M]);
     if returnE, E = reshape(E,r,n,M); end
   end
+end
+
+function Mu = meanpath(mu, r, n)
+  if isempty(mu)
+    Mu = zeros(r, n);
+    return
+  end
+  nmu = size(mu, 2);
+  Mu = zeros(r, n);
+  if nmu >= n
+    Mu = mu(:, 1:n);
+    return
+  end
+  Mu(:, 1:nmu) = mu;
+  Mu(:, nmu+1:n) = repmat(mu(:, nmu), 1, n - nmu);
 end
 
 function x = randnm(n, Sig, transpose, rng)

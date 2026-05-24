@@ -38,10 +38,34 @@ varmapack_error varmapack_sim ( // Simulate VARMA time series
   randompack_rng *rng // in/out  random number generator
   );
 
+varmapack_error varmapack_simx ( // Simulate VARMAX time series
+  double A[],   // in      r×r×p autoregressive parameter matrices
+  double B[],   // in      r×r×q moving-average parameter matrices
+  double C[],   // in      r×s exogenous coefficient vectors
+  double Sig[], // in      r×r covariance of shock terms eps(t)
+  double z[],   // in      length-n exogenous scalar sequence
+  int p,        // in      number of autoregressive terms
+  int q,        // in      number of moving-average terms
+  int s,        // in      number of exogenous terms
+  int r,        // in      dimension of each x(t)
+  int n,        // in      length of each generated series
+  int M,        // in      number of replicates to generate
+  double X0[],  // in      r×h fixed startup values x(0),...,x(h-1)
+  int h,        // in      number of fixed startup values
+  double X[],   // out     r×n×M generated series
+  double E[],   // out     r×n×M shock series (or NULL to skip)
+  randompack_rng *rng // in/out  random number generator
+  );
+
 double varmapack_specrad( // Spectral radius of model companion matrix
   double A[],   // in   r×r×p, autoregressive parameter matrices
   int r,        // in   dimension of each x(t), row count of A
   int p);       // in   number of autoregressive terms
+
+double varmapack_ma_specrad( // Spectral radius of moving-average companion matrix
+  double B[],   // in   r×r×q, moving-average parameter matrices
+  int r,        // in   dimension of each shock, row count of B
+  int q);       // in   number of moving-average terms
 
 varmapack_error varmapack_acvf( // Theoretical autocovariance function of VARMA model
   double A[],    // in   r×r×p autoregressive matrices

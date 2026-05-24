@@ -9,7 +9,6 @@
 #include "printX.h"
 #define DEBUG
 #include "debugprint.h"
-#include "VYW.h"
 
 static void flipud(int m, int n, double src[], double dst[]);
 static void hilb(double A[], int m);
@@ -194,7 +193,6 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
   double *Sigv[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
   int i, j;
-  bool ok;
   // Finish defining the starting matrices:
   Av[0]=A1; Av[2]=A3; Av[3]=A4; Av[4]=A5; Av[7]=A8; Av[8]=A9;
   Av[9]=A10; Av[11]=A12; Av[12]=A13; Av[14]=A15;
@@ -250,47 +248,12 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
     if (A && p>0) {
       if (!randompack_u01(A, r*r*p, rng)) return VARMAPACK_INTERNAL;
       scal(r*r*p, 0.5/(p*r), A, 1); 
-      double *tmpS = 0;
-      if (!ALLOC(tmpS, r*r*(p+1))) return VARMAPACK_ALLOCATION;
-      double *tmpC = 0;
-      if (!ALLOC(tmpC, r*r*(q+1))) {
-        FREE(tmpS);
-        return VARMAPACK_ALLOCATION;
-      }
-      double *tmpG = 0;
-      if (!ALLOC(tmpG, r*r*(q+1))) {
-        FREE(tmpC);
-        FREE(tmpS);
-        return VARMAPACK_ALLOCATION;
-      }
-      double *tmpB = 0;
-      if (q > 0) {
-        if (!ALLOC(tmpB, r*r*q)) {
-          FREE(tmpG);
-          FREE(tmpC);
-          FREE(tmpS);
-          return VARMAPACK_ALLOCATION;
-        }
-        setzero(r*r*q, tmpB);
-      }
       j = 0;
-      while (true) {
-        ok = VYWFactorizeSolve(A, q > 0 ? tmpB : 0, Sig, p, q, r, tmpS, tmpC, tmpG);
-        if (ok) break;
-        scal(r*p, 0.5, A, 1);
+      while (varmapack_specrad(A, r, p) >= 1) {
+        scal(r*r*p, 0.5, A, 1);
         j++;
-        if (j >= 10) {
-          if (q > 0) FREE(tmpB);
-          FREE(tmpG);
-          FREE(tmpC);
-          FREE(tmpS);
-          return VARMAPACK_INTERNAL;
-        }
+        if (j >= 10) return VARMAPACK_INTERNAL;
       }
-      if (q > 0) FREE(tmpB);
-      FREE(tmpG);
-      FREE(tmpC);
-      FREE(tmpS);
     }
     if (B && q>0) {
       if (!randompack_u01(B, r*r*q, rng)) return VARMAPACK_INTERNAL;

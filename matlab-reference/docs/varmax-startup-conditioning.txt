@@ -1,0 +1,72 @@
+For the VARMAX model
+
+  xt = epst + sum{i=1:p} Ai*x{t-i}
+            + sum{i=1:q} Bi*eps{t-i}
+            + sum{i=1:s} Ci*z{t-i+1},
+
+where s is the number of Ci matrices, z is known, and epst is N(0,Sigma),
+suppose that x0,...,x{h-1} are observed.
+
+The residual equation can first be written down at
+
+  t0 = max(p,s-1),
+
+since before that some x or z index would be negative. For t=t0,...,h-1,
+
+  rt = xt - sum{i=1:p} Ai*x{t-i} - sum{i=1:s} Ci*z{t-i+1}
+
+and the model implies
+
+  rt = epst + sum{i=1:q} Bi*eps{t-i}.                       (*)
+
+If t0 < q, the first residual equations involve pre-zero shocks. Instead of
+dropping those equations, include the needed pre-zero shocks in the latent
+vector. Let
+
+  a = min(t0 - q,0),
+
+and stack
+
+  Estar = [epsa; eps{a+1}; ...; eps{h-1}].
+
+Then all equations (*) for t=t0,...,h-1 can be written as
+
+  H*Estar = r,
+
+where r = [r{t0}; ...; r{h-1}]. The block row for time t contains:
+
+  I  in the block column for epst,
+  Bi in the block column for eps{t-i}, i=1,...,q.
+
+If the block columns are numbered by shock time k=a,...,h-1, the block
+column for eps{k} is k-a+1.
+
+The prior distribution is
+
+  Estar ~ N(0,D),   D = eye(h-a) kron Sigma,
+
+since shocks at different times are independent. Thus
+
+  Y = H*Estar
+
+is Gaussian with covariance
+
+  W = H*D*H'.
+
+The joint covariance of Estar and Y is
+
+     D    D*H'
+    H*D     W
+
+and conditioning on the observed value Y = r gives
+
+  Ehat   = D*H'*(W\r),
+  Sigma0 = D - D*H'*(W\H*D).
+
+Thus
+
+  Estar | H*Estar=r ~ N(Ehat,Sigma0).
+
+To simulate the returned startup shocks, draw Estar from this conditional
+distribution and copy out eps0,...,eps{h-1}. If a<=0, eps0 is block
+1-a of Estar.

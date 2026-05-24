@@ -1,41 +1,53 @@
 #include "BlasGateway.h"
+#include "Lyapunov.h"
 #include "error.h"
 #include "printX.h"
 #include "varmapack.h"
 #include "VarmaPackUtil.h"
 #include "varmapack_config.h"
 #include "VarmaUtilities.h"
+#include "VYW.h"
 
-HIDDEN void FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
+static int slicotCutoff(int p, int q);
+static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,
+                    int r, int n);
+
+HIDDEN void FindC( // Calculate Ci = cov(x(t), eps(t-i))
   double A[],   // in   r×r×p, autoregressive parameter matrices
   double B[],   // in   r×r×q, moving average parameter matrices
   double Sig[], // in   r×r, covariance of the shock terms eps(t)
   int p,        // in   number of autoregressive terms
   int q,        // in   number of moving average terms
   int r,        // in   dimension of each x(t)
-  double C[],   // out  r×r×(q+1) with C0, C1...Cq where Ci = cov(x(t),eps(t-i))
-  double G[])   // out  r×r×(q+1) with G0, G1...Gq where Gi = cov(y(t),x(t-i))
+  double C[])   // out  r×r×(q+1) with C0, C1...Cq
 {
   int i, j, rr = r*r;
-  double *Bj, *Cj, *Gj, *Ai, *Bi, *Cimj, *Cjmi;
-  //
-  // CALCULATE C0,... Cq:
+  double *Bj, *Cj, *Ai, *Cjmi;
   copy(rr, Sig, 1, C, 1);
   for (j=1; j<=q; j++) {
     Cj = C + j*rr;
     Bj = B + (j-1)*rr;
-    gemm("NoT", "NoT", r, r, r, 1.0, Bj, r, Sig, r, 0.0, Cj, r);
+    gemm("NoT", "NoT", r, r, r, 1, Bj, r, Sig, r, 0, Cj, r);
     for (i=1; i<=p && i<=j; i++) {
       Cjmi = C + (j-i)*rr;
       Ai = A + (i-1)*rr;
-      gemm("NoT", "NoT", r, r, r, 1.0, Ai, r, Cjmi, r, 1.0, Cj, r);
+      gemm("NoT", "NoT", r, r, r, 1, Ai, r, Cjmi, r, 1, Cj, r);
     }
   }
-  // NOW TURN ATTENTION TO THE Gj-MATRICES:
+}
+
+HIDDEN void FindG( // Calculate Gi = cov(y(t), x(t-i))
+  double B[],   // in   r×r×q, moving average parameter matrices
+  double C[],   // in   r×r×(q+1), Ci = cov(x(t), eps(t-i))
+  int q,        // in   number of moving average terms
+  int r,        // in   dimension of each x(t)
+  double G[])   // out  r×r×(q+1) with G0, G1...Gq
+{
+  int i, j, rr = r*r;
+  double *Bi, *Cimj, *Gj;
   setzero(rr*(q+1), G);
   for (j=0; j<=q; j++) {
     Gj = G + j*rr;
-    Cj = C + j*rr;
     for (i=j; i<=q; i++) {
       Cimj = C + (i-j)*rr;
       if (i==0) {
@@ -43,8 +55,102 @@ HIDDEN void FindCG ( // Calculate the Ci and Gi matrices for VARMASIM
       }
       else {
         Bi = B + (i-1)*rr;
-        gemm("NoT", "T", r, r, r, 1.0, Bi, r, Cimj, r, 1.0, Gj, r);
+        gemm("NoT", "T", r, r, r, 1, Bi, r, Cimj, r, 1, Gj, r);
       }
+    }
+  }
+}
+
+HIDDEN bool FindS(double A[], double B[], double Sig[], int p, int q, int r,
+                  double S[], double C[], double G[]) {
+  int rc = slicotCutoff(p, q);
+  if (rc > 0 && r >= rc) return LyapunovFactorizeSolve(A, B, Sig, p, q, r, S, C, G);
+  return VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G);
+}
+
+HIDDEN bool SBuild(char *uplo, double S[], double A[], double G[], int p, int q, int r,
+                   int n, double SS[]) {
+  double *Scol = 0;
+  double *SSj, *SSi;
+  int j, m;
+  if (n == 0) return true;
+  m = imax(p+1, n);
+  if (!ALLOC(Scol, (r*m)*r)) return false;
+  SExtend(A, G, S, Scol, p, q, r, m);
+  for (j = 0; j < n; j++) {
+    SSj = SS + j*r*n*r + j*r;
+    if (uplo[0] == 'A') {
+      SSi = SSj + r*n*r;
+      lacpy("All", r*(n-j), r, Scol, r*m, SSj, r*n);
+      if (j < n-1) copytranspose(r*(n-j-1), r, Scol+r, r*m, SSi, r*n);
+    }
+    else {
+      lacpy("Low", r*(n-j), r, Scol, r*m, SSj, r*n);
+    }
+  }
+  FREE(Scol);
+  return true;
+}
+
+HIDDEN void CCBuild( // Build covariance between terms and shocks
+  double A[],  // in   r × r × p, A=[A1...Ap], autoregressive parameter matrices
+  double C[],  // in   r × r·(q+1), [C0...Cq], Ci = cov(x(t),eps(t-i))
+  int p,       // in   number of autoregressive terms
+  int q,       // in   number of moving average terms
+  int r,       // in   dimension of xt
+  int n,       // in   length of series
+  double CC[]) // out  r·n × r·n, cov(x1'...xn',eps1'...epsn')
+{
+  int i, j;
+  double *CCj;
+  setzero(r*n*r*n, CC);
+  for (j=0; j<=q && j<n; j++) {
+    lacpy("All", r, r, C+j*r*r, r, CC + j*r, r*n);
+  }
+  for (j=q+1; j<n; j++) {
+    CCj = CC + j*r;
+    for (i=1; i<=j && i<=p; i++) {
+      gemm("N", "N", r, r, r, 1, A+(i-1)*r*r, r, CC+(j-i)*r, r*n, 1, CCj, r*n);
+    }
+  }
+  for (j=1; j<n; j++) {
+    CCj = CC + j*r*n*r + j*r;
+    lacpy("All", r*(n-j), r, CC, r*n, CCj, r*n);
+  }
+}
+
+static int slicotCutoff(int p, int q) {
+  int pc, qc;
+  // Average break-even r for choosing SLICOT over VYW; 0 means always use VYW.
+  // The numbers are averages across Mac, XEON, Ubuntu; OpenBLAS, Accelerate, MKL.
+  int rc[7][8] = {
+    {16, 26, 0, 0, 0, 0, 0, 0}, {10, 13, 18, 21, 24, 24, 26, 28},
+    {9, 13, 15, 17, 19, 21, 22, 23}, {11, 13, 14, 15, 16, 18, 18, 19},
+    {11, 13, 14, 15, 15, 16, 17, 18}, {11, 13, 13, 14, 14, 15, 15, 16},
+    {12, 13, 13, 13, 14, 14, 14, 15}
+  };
+  if (p <= 0 || q < 0) return 0;
+  pc = p < 7 ? p : 7;
+  qc = q < 7 ? q : 7;
+  return rc[pc-1][qc];
+}
+
+static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,
+                    int r, int n) {
+  int iScol = n*r, i, j;
+  double *Scolj, *Ai, *Scoli;
+  for (j = 0; j < p+1; j++) {
+    lacpy("All", r, r, S + j*r*r, r, Scol + j*r, iScol);
+  }
+  for (j = p+1; j < n; j++) {
+    Scolj = Scol + j*r;
+    if (j <= q) {
+      lacpy("All", r, r, G + j*r*r, r, Scolj, iScol);
+    }
+    for (i = 0; i < p; i++) {
+      Ai = A+i*r*r;
+      Scoli = Scolj - (i+1)*r;
+      gemm("N", "N", r, r, r, 1, Ai, r, Scoli, iScol, 1, Scolj, iScol);
     }
   }
 }

@@ -3,8 +3,10 @@ EXPORTS
   varmapack_acvf
   varmapack_autocov
   varmapack_irf
+  varmapack_ma_specrad
   varmapack_psi
   varmapack_sim
+  varmapack_simx
   varmapack_specrad
   varmapack_strerror
   varmapack_testcase

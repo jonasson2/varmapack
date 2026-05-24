@@ -1,4 +1,4 @@
-// varmapack_acvf — compute the theoretical autocovariance function (varmapack_acvf) of the stationary
+// varmapack_acvf computes the theoretical autocovariance function of the stationary
 // time-series process {x_t} defined by a VARMA(p,q) model, using the vector Yule–Walker
 // (VYW) equations.
 //
@@ -20,7 +20,6 @@
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "VYW.h"
 
 varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
                                int q, int r, double Gamma[], int maxlag) {
@@ -44,7 +43,7 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
     FREE(C);
     return VARMAPACK_ALLOCATION;
   }
-  if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
+  if (!FindS(A, B, Sig, p, q, r, S, C, G)) {
     FREE(C);
     FREE(G);
     return VARMAPACK_INTERNAL;

@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
   run_test("FromMatlab helpers", TestFromMatlab);
   run_bool_test("AgainstMatlab", TestAgainstMatlab);
-  run_test("TestFindCG",         TestFindCG);
+  run_test("FindC/FindG",        TestFindCFindG);
   run_test("ExtraUtil",          TestExtraUtil);
   run_test("varmapack_testcase", TestTestcase);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
   run_test("varmapack_autocov",  TestAutocov);
   run_test("autocov edge cases", TestAutocovEdgeCases);
   run_test("sim edge cases",     TestSimEdgeCases);
+  run_test("simx edge cases",    TestSimxEdgeCases);
   run_test("PSD cond covariance", TestPsdCondCov);
   run_test("Psi functions",      TestPsi);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);

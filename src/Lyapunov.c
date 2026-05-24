@@ -2,8 +2,8 @@
 
 #include "BlasGateway.h"
 #include "sb03mdGateway.h"
+#include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
-#include "VYW.h"
 #include "error.h"
 
 static double *block(double X[], int ld, int r, int i, int j) {
@@ -34,23 +34,6 @@ static void build_state_matrices(double A[], double B[], double Sig[], int p, in
   lacpy("All", r, r, Sig, r, block(Q, nstate, r, nx, nx), nstate);
 }
 
-static void compute_G(double B[], double C[], int q, int r, double G[]) {
-  int rr = r*r;
-  setzero(rr*(q+1), G);
-  for (int j=0; j<=q; j++) {
-    double *Gj = G + j*rr;
-    for (int i=j; i<=q; i++) {
-      double *Cimj = C + (i-j)*rr;
-      if (i == 0) {
-        addmat("All", r, r, Cimj, r, Gj, r);
-      }
-      else {
-        gemm("NoT", "T", r, r, r, 1, B + (i-1)*rr, r, Cimj, r, 1, Gj, r);
-      }
-    }
-  }
-}
-
 HIDDEN bool LyapunovFactorizeSolve(double A[], double B[], double Sig[],
                                    int p, int q, int r,
                                    double S[], double C[], double G[]) {
@@ -78,30 +61,11 @@ HIDDEN bool LyapunovFactorizeSolve(double A[], double B[], double Sig[],
   for (int i=0; i<=q; i++) {
     lacpy("All", r, r, block(P, nstate, r, 0, nx+i), nstate, C + i*rr, r);
   }
-  compute_G(B, C, q, r, G);
+  FindG(B, C, q, r, G);
   ok = true;
 done:
   FREE(P);
   FREE(Q);
   FREE(F);
-  return ok;
-}
-
-HIDDEN bool LyapunovSetupSS(double A[], double B[], double Sig[], int p, int q,
-                            int r, int h, double SS[]) {
-  int rr = r*r;
-  double *C = 0;
-  double *G = 0;
-  double *S = 0;
-  bool ok = false;
-  if (!ALLOC(C, rr*(q+1))) goto done;
-  if (!ALLOC(G, rr*(q+1))) goto done;
-  if (!ALLOC(S, rr*(p+1))) goto done;
-  if (!LyapunovFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) goto done;
-  ok = SBuild("Low", S, A, G, p, q, r, h, SS);
-done:
-  FREE(S);
-  FREE(G);
-  FREE(C);
   return ok;
 }

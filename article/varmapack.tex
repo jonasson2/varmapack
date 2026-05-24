@@ -201,7 +201,7 @@ $\mathrm{VARMAX}(p,q,s)$ extension
 \begin{equation}
   x_t
   = \sum_{j=1}^{p} A_j x_{t-j}
-  + \sum_{j=0}^{s} D_j u_{t-j}
+  + \sum_{j=1}^{s} D_j u_{t-j+1}
   + \varepsilon_t
   + \sum_{j=1}^{q} B_j \varepsilon_{t-j}.
 \end{equation}
@@ -222,128 +222,42 @@ estimated VARMA models can outperform higher-order VAR alternatives in
 predictive accuracy, especially when moving-average effects are present. Use
 r=16, 17, and 168 in their examples.
 
-\section{Exogeneous terms}
-For a VARMAX model
-$$
-x_t
-=
-\varepsilon_t
-+\sum_{i=1}^p A_i x_{t-i}
-+\sum_{i=1}^q B_i\varepsilon_{t-i}
-+\sum_{i=0}^s C_i z_{t-i},
-$$
-where the covariates $z_t$ are known and
-$$
-\varepsilon_t \sim N(0,\Sigma),
-$$
-suppose that observations
-$$
-x_0,\ldots,x_{h-1}
-$$
-are available and that $h$ is the first prediction time. Assume also that
-$h>\max(p,s)$, so that at least one residual equation is available. The startup shocks
-$$
-E_0=(\varepsilon_0',\ldots,\varepsilon_{h-1}')'
-$$
-are then estimated conditionally on the observed startup segment.
+\section{VARMAX simulation}
+The same startup idea also applies when a fixed exogenous sequence is included.
+Consider the model
+%
+\begin{equation}
+  x_t =
+  \varepsilon_t
+  + \sum_{i=1}^p A_i x_{t-i}
+  + \sum_{i=1}^q B_i \varepsilon_{t-i}
+  + \sum_{i=1}^s C_i z_{t-i+1},
+  \qquad
+  \varepsilon_t \sim N(0,\Sigma),
+\end{equation}
+%
+where $z_t$ is known. Given a startup segment $x_0,\ldots,x_{h-1}$, let
+$t_0=\max(p,s-1)$ and define, for $t=t_0,\ldots,h-1$,
+%
+\begin{equation}
+  r_t =
+  x_t
+  - \sum_{i=1}^p A_i x_{t-i}
+  - \sum_{i=1}^s C_i z_{t-i+1}.
+\end{equation}
+%
+Then $r_t=\varepsilon_t+\sum_{i=1}^q B_i\varepsilon_{t-i}$ is an MA($q$)
+process. The startup shocks are drawn from the conditional Gaussian
+distribution implied by these residual equations.
 
-The first usable equation is at time
-$$
-t_0=\max(p,s),
-$$
-and for $t=t_0,\ldots,h-1$ define
-$$
-r_t
-=
-x_t
--\sum_{i=1}^p A_i x_{t-i}
--\sum_{i=0}^s C_i z_{t-i}.
-$$
-Then
-$$
-r_t
-=
-\varepsilon_t
-+\sum_{i=1}^q B_i\varepsilon_{t-i}.
-$$
-
-Stacking these equations gives
-$$
-H E_0 = r,
-$$
-where
-$$
-r=(r_{t_0}',\ldots,r_{h-1}')'
-$$
-and $H$ is the block lower-triangular matrix with block entries
-$$
-H_{t,j}
-=
-\begin{cases}
-I_r, & j=t,\\
-B_{t-j}, & 1\le t-j\le q,\\
-0, & \text{otherwise},
-\end{cases}
-$$
-for $t=t_0,\ldots,h-1$ and $j=0,\ldots,h-1$.
-
-The stacked startup shocks satisfy
-$$
-E_0 \sim N(0,\Sigma'),
-$$
-where
-$$
-\Sigma' = I_h \otimes \Sigma.
-$$
-
-Let
-$$
-W = H \Sigma' H',
-$$
-which is the block Toeplitz covariance matrix of the MA($q$) process
-$$
-r_t
-=
-\varepsilon_t
-+\sum_{i=1}^q B_i\varepsilon_{t-i}.
-$$
-Using the lower-triangular convention of Section~2, $W$ is a block Toeplitz
-matrix whose $(i,j)$ lower block is $W_{i-j}$. The lag-$k$ covariance blocks are
-$$
-W_k
-=
-\operatorname{cov}(r_t,r_{t-k})
-=
-\sum_{i=0}^{q-k} B_{i+k} \Sigma B_i',
-\qquad
-k=0,\ldots,q,
-$$
-where $B_0=I_r$, and $W_k=0$ for $k>q$.
-
-Let $L_W$ denote the Cholesky factor of $W$, so that $W=L_WL_W'$.
-
-The conditional mean and covariance of the startup shocks are therefore
-$$
-\hat E_0
-=
-\Sigma' H' W^{-1} r
-$$
-and
-$$
-\Sigma_0
-=
-\Sigma'
--
-\Sigma' H' W^{-1} H \Sigma',
-$$
-respectively. Hence
-$$
-E_0 \mid H E_0=r
-\sim
-N(\hat E_0,\Sigma_0).
-$$
-
-The startup shocks are drawn from this distribution and simulation then proceeds recursively from time $t=h$.
+In the implementation the first active shock time is $t_0-q$. Shocks before
+this time do not enter the residual equations and are drawn directly from
+$N(0,\Sigma)$, while the remaining startup shocks are drawn conditionally. If
+$q=0$, the active shocks are determined exactly by the residual equations. The
+covariance matrix of the stacked residuals is the block Toeplitz covariance
+matrix of an MA($q$) process, so the full block diagonal covariance matrix of
+the startup shocks need not be formed explicitly. After drawing the startup
+shocks, the rest of the series is obtained by the usual forward recursion.
 \bibliographystyle{plainnat}   % or "apalike" if you prefer
 \bibliography{varmapack}
 

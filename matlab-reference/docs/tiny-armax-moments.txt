@@ -1,0 +1,65 @@
+The tinyARMAX testcase is given by:
+  xt = a*x{t-1} + epst + b*eps{t-1} + c*zt
+with
+  a = 0.6, b = 0.2, c = 0.8, zt = (-1)^t.
+
+Note that
+
+  E(x|y) = Cov(x,y)/Var(y)*y                     (*)
+
+for jointly normal zero-mean x, y.
+
+xt is given for t=0,1 and simulated for t>1, with zt specified for t=0..9.
+Thus t0=1, h=2 and n=10 and there is one residual constraint:
+
+  eps1 + 0.2*eps0 = r1                           (**)
+
+where r1 = x1 - 0.6*x0 - 0.8*z1 = 0.8.
+
+Consider two cases for setting x0 and x1: (A) x0 and x1 drawn from their
+stationary distribution, and (B) fixed x0 = x1 = 0, and compute the resulting
+expected means and covariances of xt.
+
+CASE (A) x0 and x1 drawn from the stationary distribution
+=========================================================
+The fixed exogenous term only changes the mean. Hence
+  E(xt) = 0.5*(-1)^t
+and the covariance is the stationary ARMA(1,1) covariance
+  Var(xt) = 2
+  Cov(xt,x{t+1}) = 1.4
+for all t.
+
+CASE (B) x0 = x1 = 0
+====================
+E(x0) = E(x1) = 0 (they are fixed).
+E(x2) = 0.6*E(x1) + E(eps2) + 0.2*E(eps1|r1) + 0.8
+      = 0.2*E(eps1|r1) + 0.8
+      = 0.2*Cov(eps1,r1)/Var(r1)*r1 + 0.8
+      = 0.2*Cov(eps1,eps1+0.2*eps0)/Var(eps1+0.2*eps0)*0.8 + 0.8
+      = 0.2*1.0/1.04*0.8 + 0.8 = 62/65
+E(xt) = 0.6*E(x{t-1}) + 0.8*zt
+      = 0.6*E(x{t-1}) + 0.8*(-1)^t
+      = ...
+      = 0.5*(-1)^t + (59/130)*0.6^{t-2}
+      for t >= 3.
+
+Similar computations give:
+Var(x0) = Var(x1) = 0
+Var(x2) = 651/650 ~= 1.001538
+Var(xt) = 2 - 649/650*0.36^{t-2}, for t > 2 (also valid for t = 2)
+
+Cov(x0,x1) = Cov(x1,x2) = 0
+Cov(xt,x{t+1}) = 1.4 - 1947/3250*0.36^{t-2} for t >= 2
+
+t  Var(xt)  Cov(xt,x{t+1})
+--------------------------
+0  0.000000    0.000000
+1  0.000000    0.000000
+2  1.001538    0.800923
+3  1.640554    1.184332
+4  1.870599    1.322360
+5  1.953416    1.372049
+6  1.983230    1.389938
+7  1.993963    1.396378
+8  1.997827    1.398696
+9  1.999218
