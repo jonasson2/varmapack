@@ -1,4 +1,4 @@
-project('varmapack', 'c', 'fortran', version : '1.0', default_options : [
+project('varmapack', 'c', 'fortran', version : '0.1.0', default_options : [
     'c_std=c11', 'warning_level=3', 'buildtype=debug', ]
 )
 
@@ -32,6 +32,7 @@ debug_print_args = buildtype.startswith('debug') ? ['-DDEBUG_PRINT'] : []
 
 # Common detection function for all platforms
 cc = meson.get_compiler('c')
+pkg = import('pkgconfig')
 blas_dep = disabler()
 blas_found = 'none'
 foreach blas_name : blas_search_order
@@ -91,6 +92,6 @@ subdir('src')
 subdir('tests')
 subdir('examples')
 subdir('benchmark')
-if get_option('build_python')
-  subdir('python')
-endif
+
+install_data('LICENSE', install_dir: join_paths(get_option('datadir'), 'licenses',
+  'varmapack'))

@@ -61,7 +61,7 @@ static bool compare_reduced_m(FILE *fid, int n) {
     int label = icase + 1;
     int p = 0, q = 0, r = 0;
     int h, r2;
-    double *A = 0, *B = 0, *Sig = 0, *mu = 0, *x0 = 0;
+    double *A = 0, *B = 0, *Sig = 0, *mu = 0, *StartX0 = 0;
     double *X = 0, *E = 0, *X0 = 0, *E0 = 0;
     double *Xmu = 0, *Emu = 0, *X0mu = 0, *E0mu = 0;
     double *XT = 0, *AutoMLT = 0, *AutoCT = 0;
@@ -78,13 +78,13 @@ static bool compare_reduced_m(FILE *fid, int n) {
     ASSERT(ALLOC(A, r2*(p > 0 ? p : 1)), "allocation failed");
     ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
-    ASSERT(ALLOC(x0, r*h > 0 ? r*h : 1), "allocation failed");
+    ASSERT(ALLOC(StartX0, r*h > 0 ? r*h : 1), "allocation failed");
     ASSERT(ALLOC(mu, r), "allocation failed");
     STRSET(name, "");
     error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
     xCheck(!error);
-    STRSETF(name, "x0%d", label);
-    ok = MatrixFromMatlab(fid, name, x0, r, h);
+    STRSETF(name, "X0%d", label);
+    ok = MatrixFromMatlab(fid, name, StartX0, r, h);
     STRSETF(name, "mu%d", label);
     ok &= MatrixFromMatlab(fid, name, mu, r, 1);
     xCheck(ok);
@@ -101,16 +101,16 @@ static bool compare_reduced_m(FILE *fid, int n) {
     ASSERT(ALLOC(AutoCT, r2*n), "allocation failed");
     rng = randompack_create(0);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, 0, 0, X, E, rng);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, 0, 0, 1, X, E, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, x0, h, X0, E0, rng);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, reducedM, StartX0, h, 1, X0, E0, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, 0, 0, Xmu, Emu, rng);
+    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, 0, 0, 1, Xmu, Emu, rng);
     xCheck(!error);
     randompack_seed(42, 0, 0, rng);
-    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, x0, h, X0mu, E0mu, rng);
+    error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, reducedM, StartX0, h, 1, X0mu, E0mu, rng);
     xCheck(!error);
     copytranspose(r, n, X + r*n, r, XT, n);
     error = varmapack_autocov("T", "ML", r, n, XT, n-1, AutoMLT);
@@ -165,7 +165,7 @@ static bool compare_reduced_m(FILE *fid, int n) {
     FREE(E);
     FREE(X);
     FREE(mu);
-    FREE(x0);
+    FREE(StartX0);
     FREE(Sig);
     FREE(B);
     FREE(A);
@@ -179,7 +179,7 @@ static bool compare_reduced_m(FILE *fid, int n) {
 static bool compare_rolling_matlab(void) {
   int n, p, q, r, h, ncases, nMs;
   double *cases = 0, *Ms = 0;
-  double *A = 0, *B = 0, *Sig = 0, *mu = 0, *x0 = 0;
+  double *A = 0, *B = 0, *Sig = 0, *mu = 0, *StartX0 = 0;
   bool ok;
   varmapack_error error;
   char name[64] = {0};
@@ -208,14 +208,14 @@ static bool compare_rolling_matlab(void) {
     ASSERT(ALLOC(A, r2*(p > 0 ? p : 1)), "allocation failed");
     ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
-    ASSERT(ALLOC(x0, r*h > 0 ? r*h : 1), "allocation failed");
+    ASSERT(ALLOC(StartX0, r*h > 0 ? r*h : 1), "allocation failed");
     ASSERT(ALLOC(mu, r), "allocation failed");
     STRSET(name, "");
     error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
     xCheck(!error);
     rhoC = varmapack_specrad(A, r, p);
-    STRSETF(name, "x0%d", label);
-    ok = MatrixFromMatlab(fid, name, x0, r, h);
+    STRSETF(name, "X0%d", label);
+    ok = MatrixFromMatlab(fid, name, StartX0, r, h);
     STRSETF(name, "mu%d", label);
     ok &= MatrixFromMatlab(fid, name, mu, r, 1);
     xCheck(ok);
@@ -231,16 +231,16 @@ static bool compare_rolling_matlab(void) {
       ASSERT(ALLOC(Xmu, r*n*M), "allocation failed");
       ASSERT(ALLOC(X0mu, r*n*M), "allocation failed");
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, x0, h, X0, 0, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, StartX0, h, 1, X0, 0, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, Xmu, 0, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, 1, Xmu, 0, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, x0, h, X0mu, 0, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, StartX0, h, 1, X0mu, 0, rng);
       xCheck(!error);
       STRSETF(name, "X%d-%d", M, icase);
       ok = CompareWithMatlab(fid, name, X, r*n, M, &diffX);
@@ -264,7 +264,7 @@ static bool compare_rolling_matlab(void) {
       randompack_free(rng);
     }
     FREE(mu);
-    FREE(x0);
+    FREE(StartX0);
     FREE(Sig);
     FREE(B);
     FREE(A);
@@ -276,12 +276,13 @@ static bool compare_rolling_matlab(void) {
 }
 
 static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
-  int ncases;
+  int ncases, xMultiM;
   double *cases = 0;
   bool ok;
   varmapack_error error;
   char name[64] = {0};
   ok = IntFromMatlab(fid, "#xcases", &ncases);
+  ok &= IntFromMatlab(fid, "xMultiM", &xMultiM);
   xCheck(ok && ncases > 0 && ncases < 1000);
   ASSERT(ALLOC(cases, ncases), "allocation failed");
   ok = MatrixFromMatlab(fid, "xcases", cases, 1, ncases);
@@ -289,7 +290,8 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
   for (int k=0; k<ncases; k++) {
     int icase = cases[k];
     int p, q, s, r, h, r2;
-    double *A = 0, *B = 0, *C = 0, *Sig = 0, *z = 0, *x0 = 0;
+    double *A = 0, *B = 0, *C = 0, *Sig = 0, *z = 0, *StartX0 = 0;
+    double *zM = 0, *StartX0M = 0;
     double rhoC;
     STRSETF(name, "VARMAX testcase number %2d", icase);
     xCheckAddMsg(name);
@@ -305,13 +307,19 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
     ASSERT(ALLOC(C, r*(s > 0 ? s : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
     ASSERT(ALLOC(z, n), "allocation failed");
-    ASSERT(ALLOC(x0, r*h), "allocation failed");
+    ASSERT(ALLOC(StartX0, r*h), "allocation failed");
+    ASSERT(ALLOC(zM, n*xMultiM), "allocation failed");
+    ASSERT(ALLOC(StartX0M, r*h*xMultiM), "allocation failed");
     STRSETF(name, "xA%d", icase); ok = MatrixFromMatlab(fid, name, A, r, r*p);
     STRSETF(name, "xB%d", icase); ok &= MatrixFromMatlab(fid, name, B, r, r*q);
     STRSETF(name, "xC%d", icase); ok &= MatrixFromMatlab(fid, name, C, r, s);
     STRSETF(name, "xSig%d", icase); ok &= MatrixFromMatlab(fid, name, Sig, r, r);
     STRSETF(name, "xz%d", icase); ok &= MatrixFromMatlab(fid, name, z, 1, n);
-    STRSETF(name, "xx0%d", icase); ok &= MatrixFromMatlab(fid, name, x0, r, h);
+    STRSETF(name, "xStartX0%d", icase); ok &= MatrixFromMatlab(fid, name, StartX0, r, h);
+    STRSETF(name, "xzM%d-%d", xMultiM, icase);
+    ok &= MatrixFromMatlab(fid, name, zM, n, xMultiM);
+    STRSETF(name, "xStartX0M%d-%d", xMultiM, icase);
+    ok &= MatrixFromMatlab(fid, name, StartX0M, r*h, xMultiM);
     xCheck(ok);
     rhoC = varmapack_specrad(A, r, p);
     for (int j=0; j<nMs; j++) {
@@ -324,10 +332,11 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
       ASSERT(ALLOC(E, r*n*M), "allocation failed");
       ASSERT(ALLOC(XnoE, r*n*M), "allocation failed");
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_simx(A, B, C, Sig, z, p, q, s, r, n, M, x0, h, X, E, rng);
+      error = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, StartX0, h, 1,
+                             X, E, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_simx(A, B, C, Sig, z, p, q, s, r, n, M, x0, h,
+      error = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, StartX0, h, 1,
                              XnoE, 0, rng);
       xCheck(!error);
       STRSETF(name, "Xx%d-%d", M, icase);
@@ -345,7 +354,30 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
       FREE(X);
       randompack_free(rng);
     }
-    FREE(x0);
+    int M = xMultiM;
+    double *X = 0, *E = 0;
+    double diffX, diffE;
+    double simTol = sim_tol(r*n*M, rhoC);
+    randompack_rng *rng = randompack_create(0);
+    ASSERT(ALLOC(X, r*n*M), "allocation failed");
+    ASSERT(ALLOC(E, r*n*M), "allocation failed");
+    randompack_seed(42, 0, 0, rng);
+    error = varmapack_simx(A, B, C, Sig, zM, M, p, q, s, r, n, M, StartX0M, h, M,
+                           X, E, rng);
+    xCheck(!error);
+    STRSETF(name, "XxM%d-%d", M, icase);
+    ok = CompareWithMatlab(fid, name, X, r*n, M, &diffX);
+    STRSETF(name, "ExM%d-%d", M, icase);
+    ok &= CompareWithMatlab(fid, name, E, r*n, M, &diffE);
+    ASSERT(ok, "error comparing VARMAX multipath with Matlab");
+    check_norm_relative("XxM", icase, diffX, simTol);
+    check_norm_relative("ExM", icase, diffE, simTol);
+    FREE(E);
+    FREE(X);
+    randompack_free(rng);
+    FREE(StartX0M);
+    FREE(zM);
+    FREE(StartX0);
     FREE(z);
     FREE(Sig);
     FREE(C);
@@ -361,7 +393,7 @@ bool TestAgainstMatlab(void) {
   // Bring in MATLAB reference data
   int n, p, q, r, pk, qk, rk, h, ncases, nMs, acvfMaxlag;
   double *cases = 0, *Ms = 0, *A = 0, *B = 0, *Sig = 0, *mu = 0, *muPath = 0;
-  double *x0 = 0, *Gamma = 0, *Psi = 0, *Theta = 0;
+  double *StartX0 = 0, *Gamma = 0, *Psi = 0, *Theta = 0;
   double tol, rhoMatlab, maRhoMatlab, rhoC, maRhoC;
   bool ok;
   varmapack_error error;
@@ -395,9 +427,9 @@ bool TestAgainstMatlab(void) {
     tol = 5e-16;
 
     // Get starting vector
-    ASSERT(ALLOC(x0, r*h > 0 ? r*h : 1), "allocation failed");
-    STRSETF(name, "x0%d", label);
-    ok = MatrixFromMatlab(fid, name, x0, r, h);
+    ASSERT(ALLOC(StartX0, r*h > 0 ? r*h : 1), "allocation failed");
+    STRSETF(name, "X0%d", label);
+    ok = MatrixFromMatlab(fid, name, StartX0, r, h);
     xCheck(ok);
     ASSERT(ALLOC(mu, r), "allocation failed");
     STRSETF(name, "mu%d", label);
@@ -497,19 +529,19 @@ bool TestAgainstMatlab(void) {
       printM("B", B, r, r*q);
       printM("Sig", Sig, r, r);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, x0, h, X0, E0, rng);
+      error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, StartX0, h, 1, X0, E0, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, Xmu, Emu, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, 0, 0, 1, Xmu, Emu, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, x0, h, X0mu, E0mu, rng);
+      error = varmapack_sim(A, B, Sig, mu, 1, p, q, r, n, M, StartX0, h, 1, X0mu, E0mu, rng);
       xCheck(!error);
       randompack_seed(42, 0, 0, rng);
-      error = varmapack_sim(A, B, Sig, muPath, 3, p, q, r, n, M, 0, 0, Xpath, Epath, rng);
+      error = varmapack_sim(A, B, Sig, muPath, 3, p, q, r, n, M, 0, 0, 1, Xpath, Epath, rng);
       xCheck(!error);
       error = varmapack_autocov("N", "ML", r, n, X, n-1, AutoML);
       xCheck(!error);
@@ -597,7 +629,7 @@ bool TestAgainstMatlab(void) {
     FREE(Gamma);
     FREE(muPath);
     FREE(mu);
-    FREE(x0);
+    FREE(StartX0);
     xCheckAddMsg("");
   }
   ok = compare_reduced_m(fid, n);

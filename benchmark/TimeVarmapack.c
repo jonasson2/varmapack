@@ -234,7 +234,7 @@ static double time_case(bench_case c, double target, randompack_rng *rng) {
   start = clock_nsec();
   t = start;
   while ((t - start)*1e-9 < target) {
-    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
+    error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
     if (error) {
       fprintf(stderr, "varmapack_sim failed: %s\n", varmapack_strerror(error));
       exit(1);

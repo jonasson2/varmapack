@@ -83,7 +83,7 @@
 %   (C) Kristján Jónasson, Dept. of Computer Science, University of Iceland,
 %   2025. jonasson@hi.is.
 
-function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
+function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
@@ -104,11 +104,11 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
   end
   if size(mu, 2) > n, error('mu cannot have more columns than n'); end
   if nargin < 6 || isempty(M), M=1; end
-  if nargin < 7, x0 = []; end
+  if nargin < 7, X0 = []; end
   if nargin < 8, e0 = []; end
   if nargin < 9, rng = []; end
-  if isempty(x0) && ref_varma_specrad(A) >= 1
-    error("Cannot run varma_sim with unspecified x0 and rho(A) ≥ 1");
+  if isempty(X0) && ref_varma_specrad(A) >= 1
+    error("Cannot run varma_sim with unspecified X0 and rho(A) ≥ 1");
   end
   returnE = nargout >= 2;
   rollingE = ~returnE;
@@ -118,19 +118,19 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
   S = vyw_solve(A, PLU, G);
 
   % Check size of provided start vectors, set h to their size if ok
-  if ~isempty(x0)
-    nx0 = size(x0, 2);
-    assert(h <= nx0 && nx0 <= n)
-    h = nx0;
+  if ~isempty(X0)
+    nX0 = size(X0, 2);
+    assert(h <= nX0 && nX0 <= n)
+    h = nX0;
   end
   if ~isempty(e0)
     ne0 = size(e0, 2);
     assert(size(e0, 1) == r)
     assert(max(p, q) <= ne0 && ne0 <= n)
-    if ~isempty(x0), assert(nx0 == ne0); end
+    if ~isempty(X0), assert(nX0 == ne0); end
     h = ne0;
   end
-  x0 = x0(:);
+  X0 = X0(:);
   e0 = e0(:);
 
   SS = S_build(S, A, G, h);
@@ -141,7 +141,7 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
   end
 
   % Build theoretical covariance of xt
-  if isempty(x0)  % Generate x{1:h} or draw x{1:h}|eps{1:h}
+  if isempty(X0)  % Generate x{1:h} or draw x{1:h}|eps{1:h}
     if isempty(e0)
       for j = 1:M
         E(1:r*h,j) = reshape(randnm(h, Sig, "T", rng), r*h, 1);
@@ -157,21 +157,21 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
     X1 = e + Wrk;
     h = h;
   elseif ~isempty(e0)  % Fixed x{1:h} and eps{1:h}
-    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
     E(1:r*h,:) = repmat(e0, 1, M);
-    X1 = repmat(x0bar,1,M);
+    X1 = repmat(X0bar,1,M);
   elseif q == 0 && ref_varma_specrad(A) >= 1  % Fixed-history pure AR path.
-    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
-    X1 = repmat(x0bar,1,M);
+    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    X1 = repmat(X0bar,1,M);
     R = Sig;
-  else  % x0 given
+  else  % X0 given
     SS = S_build(S, A, G, h);
     C = find_C(A, B, Sig, h);
     CC = CC_build(A, C, h);
     LS = chol(SS, 'lower'); % TODO: Check this
     Chat = LS\CC;
-    x0bar = x0(:) - reshape(meanpath(mu, r, h), r*h, 1);
-    e = Chat'*(LS\x0bar);
+    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    e = Chat'*(LS\X0bar);
     R = -Chat'*Chat;
     J = 1:r;
     for j = 1:h
@@ -181,7 +181,7 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng)
 
     % Draw eps{1:h} and fill x{1:h}
     E(1:r*h, :) = e + randnm(M, R, "T", rng);
-    X1 = repmat(x0bar,1,M);
+    X1 = repmat(X0bar,1,M);
   end
   X2 = zeros(n*r - h*r, M);
   X = [X1; X2];

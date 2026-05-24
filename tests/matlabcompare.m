@@ -39,7 +39,7 @@ function matlabcompare(cases, Ms, n)
   for k = cases
     icase = k + 1;
     [A, B, Sig, p, q, r] = ref_varma_testcase(k);    
-    x0 = startmat(r, max(p,q));
+    StartX0 = startmat(r, max(p,q));
     mu = (1:r)'/10;
     muPath = [mu, 2*mu, 3*mu];
     mat2file(fid, p, "p" + icase);
@@ -48,10 +48,10 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, A, "A" + icase);
     mat2file(fid, B, "B" + icase);
     mat2file(fid, Sig, "Sig" + icase);
-    mat2file(fid, x0, "x0" + icase);
+    mat2file(fid, StartX0, "X0" + icase);
     mat2file(fid, mu, "mu" + icase);
     mat2file(fid, muPath, "muPath" + icase);
-    mat2file(fidRolling, x0, "x0" + icase);
+    mat2file(fidRolling, StartX0, "X0" + icase);
     mat2file(fidRolling, mu, "mu" + icase);
     if p == 0
       rho = 0;
@@ -75,11 +75,11 @@ function matlabcompare(cases, Ms, n)
       randompack_seed(rng, 42);
       [X, E]        = ref_varma_sim(A, B, Sig, 0, n, M, [], [], rng);
       randompack_seed(rng, 42);
-      [X0, E0]      = ref_varma_sim(A, B, Sig, 0, n, M, x0, [], rng);
+      [X0, E0]      = ref_varma_sim(A, B, Sig, 0, n, M, StartX0, [], rng);
       randompack_seed(rng, 42);
       [Xmu, Emu]    = ref_varma_sim(A, B, Sig, mu, n, M, [], [], rng);
       randompack_seed(rng, 42);
-      [X0mu, E0mu]  = ref_varma_sim(A, B, Sig, mu, n, M, x0, [], rng);
+      [X0mu, E0mu]  = ref_varma_sim(A, B, Sig, mu, n, M, StartX0, [], rng);
       randompack_seed(rng, 42);
       [Xpath, Epath] = ref_varma_sim(A, B, Sig, muPath, n, M, [], [], rng);
       Cml = ref_varma_autocov(X(:, :, 1), n - 1, "ML");
@@ -99,11 +99,11 @@ function matlabcompare(cases, Ms, n)
       randompack_seed(rng, 42);
       Xroll = ref_varma_sim(A, B, Sig, 0, n, M, [], [], rng);
       randompack_seed(rng, 42);
-      X0roll = ref_varma_sim(A, B, Sig, 0, n, M, x0, [], rng);
+      X0roll = ref_varma_sim(A, B, Sig, 0, n, M, StartX0, [], rng);
       randompack_seed(rng, 42);
       Xmuroll = ref_varma_sim(A, B, Sig, mu, n, M, [], [], rng);
       randompack_seed(rng, 42);
-      X0muroll = ref_varma_sim(A, B, Sig, mu, n, M, x0, [], rng);
+      X0muroll = ref_varma_sim(A, B, Sig, mu, n, M, StartX0, [], rng);
       mat2file(fidRolling, Xroll, "X" + M + "-" + k);
       mat2file(fidRolling, X0roll, "X0" + M + "-" + k);
       mat2file(fidRolling, Xmuroll, "Xmu" + M + "-" + k);
@@ -112,7 +112,7 @@ function matlabcompare(cases, Ms, n)
   end
   for k = reducedCases
     [A, B, Sig, p, q, r] = ref_varma_testcase(k);
-    x0 = startmat(r, max(p,q));
+    StartX0 = startmat(r, max(p,q));
     mu = (1:r)'/10;
     M = reducedM;
     rng = randompack_create();
@@ -120,11 +120,11 @@ function matlabcompare(cases, Ms, n)
     randompack_seed(rng, 42);
     [X, E] = ref_varma_sim(A, B, Sig, 0, n, M, [], [], rng);
     randompack_seed(rng, 42);
-    [X0, E0] = ref_varma_sim(A, B, Sig, 0, n, M, x0, [], rng);
+    [X0, E0] = ref_varma_sim(A, B, Sig, 0, n, M, StartX0, [], rng);
     randompack_seed(rng, 42);
     [Xmu, Emu] = ref_varma_sim(A, B, Sig, mu, n, M, [], [], rng);
     randompack_seed(rng, 42);
-    [X0mu, E0mu] = ref_varma_sim(A, B, Sig, mu, n, M, x0, [], rng);
+    [X0mu, E0mu] = ref_varma_sim(A, B, Sig, mu, n, M, StartX0, [], rng);
     if r == 1
       Xrep2 = X(:, 2)';
     else
@@ -144,12 +144,14 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, E0mu, "RedE0mu" + M + "-" + k);
   end
   xcases = 1:ref_varma_testcasex('count');
+  xMultiM = 3;
   mat2file(fid, length(xcases), "#xcases");
+  mat2file(fid, xMultiM, "xMultiM");
   mat2file(fid, xcases, "xcases");
   for k = xcases
     [A, B, C, Sig, z, p, q, s, r] = ref_varma_testcasex(k, n);
     h = max([p, q, s]) + 1;
-    x0 = startmat(r, h);
+    StartX0 = startmat(r, h);
     mat2file(fid, p, "xp" + k);
     mat2file(fid, q, "xq" + k);
     mat2file(fid, s, "xs" + k);
@@ -160,24 +162,50 @@ function matlabcompare(cases, Ms, n)
     mat2file(fid, C, "xC" + k);
     mat2file(fid, Sig, "xSig" + k);
     mat2file(fid, z, "xz" + k);
-    mat2file(fid, x0, "xx0" + k);
+    mat2file(fid, StartX0, "xStartX0" + k);
+    zM = zpaths(z, xMultiM);
+    StartX0M = startpaths(r, h, xMultiM);
+    mat2file(fid, zM', "xzM" + xMultiM + "-" + k);
+    mat2file(fid, StartX0M, "xStartX0M" + xMultiM + "-" + k);
     for M = Ms
       rng = randompack_create();
       cleanup = onCleanup(@() randompack_free(rng));
       randompack_seed(rng, 42);
-      [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, [], rng);
+      [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, StartX0, h, [], rng);
       randompack_seed(rng, 42);
-      XnoE = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, [], rng);
+      XnoE = ref_varma_simx(A, B, C, z, Sig, n, M, StartX0, h, [], rng);
       mat2file(fid, X, "Xx" + M + "-" + k);
       mat2file(fid, E, "Ex" + M + "-" + k);
       mat2file(fid, XnoE, "XxNoE" + M + "-" + k);
     end
+    rng = randompack_create();
+    cleanup = onCleanup(@() randompack_free(rng));
+    randompack_seed(rng, 42);
+    [X, E] = ref_varma_simx(A, B, C, zM, Sig, n, xMultiM, StartX0M, h, [], rng);
+    mat2file(fid, X, "XxM" + xMultiM + "-" + k);
+    mat2file(fid, E, "ExM" + xMultiM + "-" + k);
   end
   fclose(fid);
   fclose(fidRolling);
 end
 
-function x0 = startmat(r, h)
-  x0 = repmat([-2,-1,0,1,2], 1, ceil(r*h/5));
-  x0 = reshape(x0(1:r*h), r, h);
+function X0 = startmat(r, h)
+  X0 = repmat([-2,-1,0,1,2], 1, ceil(r*h/5));
+  X0 = reshape(X0(1:r*h), r, h);
+end
+
+function X0 = startpaths(r, h, M)
+  X0 = zeros(r, h, M);
+  base = startmat(r, h);
+  for j = 1:M
+    X0(:,:,j) = base + (j - 1)/10;
+  end
+end
+
+function zM = zpaths(z, M)
+  n = length(z);
+  zM = zeros(M, n);
+  for j = 1:M
+    zM(j,:) = z + (j - 1)/20;
+  end
 end

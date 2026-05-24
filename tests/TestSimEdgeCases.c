@@ -13,7 +13,7 @@ static void check_white_noise(void) {
   double X[8], E[8];
   varmapack_error error;
   randompack_rng *rng = seededRng(7);
-  error = varmapack_sim(0, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(0, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(!error);
   checkArraySame(X, E, r*n*M);
   randompack_free(rng);
@@ -28,7 +28,7 @@ static void check_time_dependent_mean(void) {
   double X[10], E[10];
   varmapack_error error;
   randompack_rng *rng = seededRng(8);
-  error = varmapack_sim(0, 0, Sig, mu, 3, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(0, 0, Sig, mu, 3, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(!error);
   for (int t=0; t<n; t++) {
     int imu = t < 3 ? t : 2;
@@ -47,7 +47,7 @@ static void check_minimal_length(void) {
   double X[2], E[2];
   varmapack_error error;
   randompack_rng *rng = seededRng(11);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(!error);
   checkArrayFinite(X, n);
   checkArrayFinite(E, n);
@@ -61,7 +61,7 @@ static void check_null_E(void) {
   double X[5];
   varmapack_error error;
   randompack_rng *rng = seededRng(13);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
   xCheck(!error);
   checkArrayFinite(X, n);
   randompack_free(rng);
@@ -81,10 +81,10 @@ static void check_null_E_reproducible_with_ma(void) {
   double X1[18], X2[18];
   varmapack_error error;
   randompack_rng *rng = seededRng(41);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X1, 0, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, 0, rng);
   xCheck(!error);
   xCheck(randompack_seed(41, 0, 0, rng));
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X2, 0, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, 0, rng);
   xCheck(!error);
   checkArraySame(X1, X2, r*n*M);
   randompack_free(rng);
@@ -104,7 +104,7 @@ static void check_null_E_multiple_replicates(void) {
   double X[54];
   varmapack_error error;
   randompack_rng *rng = seededRng(43);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, 0, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
   xCheck(!error);
   checkArrayFinite(X, r*n*M);
   randompack_free(rng);
@@ -119,7 +119,7 @@ static void check_conditional_ma_recursion(void) {
   double X[8], E[8];
   varmapack_error error;
   randompack_rng *rng = seededRng(37);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   xCheck(!error);
   for (int t=3; t<n; t++) {
     double expected = A[0]*X[t-1] + E[t];
@@ -143,7 +143,7 @@ static void check_singular_sigma(void) {
   double X[28], E[28];
   varmapack_error error;
   randompack_rng *rng = seededRng(47);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(!error);
   checkArrayFinite(X, r*n*M);
   checkArrayFinite(E, r*n*M);
@@ -155,12 +155,12 @@ static void check_singular_sigma(void) {
     for (int t=1; t<n; t++) {
       int i = j*r*n + t*r;
       int im1 = j*r*n + (t-1)*r;
-      double x0 = E[i] + A[0]*X[im1] + A[2]*X[im1+1] + B[0]*E[im1]
-                  + B[2]*E[im1+1];
-      double x1 = E[i+1] + A[1]*X[im1] + A[3]*X[im1+1] + B[1]*E[im1]
-                  + B[3]*E[im1+1];
-      xCheck(fabs(X[i] - x0) < 1e-12);
-      xCheck(fabs(X[i+1] - x1) < 1e-12);
+      double xPred0 = E[i] + A[0]*X[im1] + A[2]*X[im1+1] + B[0]*E[im1]
+                      + B[2]*E[im1+1];
+      double xPred1 = E[i+1] + A[1]*X[im1] + A[3]*X[im1+1] + B[1]*E[im1]
+                      + B[3]*E[im1+1];
+      xCheck(fabs(X[i] - xPred0) < 1e-12);
+      xCheck(fabs(X[i+1] - xPred1) < 1e-12);
     }
   }
   randompack_free(rng);
@@ -173,7 +173,7 @@ static void check_nonstationary_without_X0(void) {
   double X[5], E[5];
   varmapack_error error;
   randompack_rng *rng = seededRng(17);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_NONSTATIONARY);
   randompack_free(rng);
 }
@@ -188,35 +188,35 @@ static void check_invalid_input(void) {
   randompack_rng *rng = randompack_create(0);
   varmapack_error error;
   xCheck(rng != 0);
-  error = varmapack_sim(0, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(0, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, 0, 0, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, 0, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 0, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, 0, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X, E, 0);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, 0);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, -1, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, -1, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, -1, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, -1, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, 0, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, 0, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, 0, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, 0, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, 0, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, 0, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 1, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 1, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, 0, 1, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 1, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, Sig, n + 1, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, Sig, n + 1, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_sim(A, B, Sig, Sig, 0, p, q, r, n, M, 0, 0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, Sig, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   xCheck(!error);
   randompack_free(rng);
 }
@@ -229,12 +229,28 @@ static void check_nonstationary_with_X0(void) {
   double X[5], E[5];
   varmapack_error error;
   randompack_rng *rng = seededRng(19);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1, X, E, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1, 1, X, E, rng);
   xCheck(!error);
   xCheck(fabs(X[0] - X0[0]) < 1e-15);
   for (int t=1; t<n; t++) {
     xCheck(fabs(X[t] - (A[0]*X[t-1] + E[t])) < 1e-12);
   }
+  randompack_free(rng);
+}
+
+static void check_multipath_X0(void) {
+  int p = 1, q = 0, r = 1, n = 3, M = 2;
+  double A[] = {1.2};
+  double Sig[] = {1};
+  double X0[] = {2, 4};
+  double X[6], E[6];
+  randompack_rng *rng = randompack_create(0);
+  xCheck(rng != 0);
+  varmapack_error error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1,
+                                        M, X, E, rng);
+  xCheck(!error);
+  xCheck(fabs(X[0] - X0[0]) < 1e-15);
+  xCheck(fabs(X[n] - X0[1]) < 1e-15);
   randompack_free(rng);
 }
 
@@ -247,7 +263,7 @@ static void check_nonstationary_arma_with_X0(void) {
   double X[6], E[6];
   varmapack_error error;
   randompack_rng *rng = seededRng(21);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 1, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 1, 1, X, E, rng);
   xCheck(error == VARMAPACK_NONSTATIONARY_MA);
   randompack_free(rng);
 }
@@ -260,10 +276,10 @@ static void check_reproducibility(void) {
   double X1[12], E1[12], X2[12], E2[12];
   varmapack_error error;
   randompack_rng *rng = seededRng(23);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X1, E1, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, E1, rng);
   xCheck(!error);
   xCheck(randompack_seed(23, 0, 0, rng));
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, X2, E2, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, E2, rng);
   xCheck(!error);
   checkArraySame(X1, X2, n*M);
   checkArraySame(E1, E2, n*M);
@@ -278,9 +294,9 @@ static void check_rng_state_advances(void) {
   varmapack_error error;
   int different = 0;
   randompack_rng *rng = seededRng(29);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X1, E1, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, E1, rng);
   xCheck(!error);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, X2, E2, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, E2, rng);
   xCheck(!error);
   for (int i=0; i<n; i++) {
     if (fabs(X1[i] - X2[i]) > 1e-15 || fabs(E1[i] - E2[i]) > 1e-15) different = 1;
@@ -297,7 +313,7 @@ static void check_nX0_longer_than_h(void) {
   double X[5], E[5];
   varmapack_error error;
   randompack_rng *rng = seededRng(31);
-  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 3, X, E, rng);
+  error = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   xCheck(!error);
   checkArraySame(X, X0, 3);
   for (int t=3; t<n; t++) {
@@ -315,7 +331,7 @@ static void check_nX0_longer_than_h_with_ma(void) {
   double X[6], E[6];
   varmapack_error error;
   randompack_rng *rng = seededRng(33);
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   xCheck(!error);
   checkArraySame(X, X0, 3);
   for (int t=3; t<n; t++) {
@@ -336,6 +352,7 @@ void TestSimEdgeCases(void) {
   check_singular_sigma();
   check_nonstationary_without_X0();
   check_nonstationary_with_X0();
+  check_multipath_X0();
   check_nonstationary_arma_with_X0();
   check_reproducibility();
   check_rng_state_advances();

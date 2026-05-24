@@ -17,8 +17,9 @@ function mat2file(fid, A, name)
     fprintf(fid, " %d", dims(i));
   end
   fprintf(fid, "\n");
-  for i=1:numel(A)
-    fprintf(fid, "%.17g ", A(i));
+  for i = 1:numel(A)
+    if i > 1, fprintf(fid, " "); end
+    fprintf(fid, "%.17g", A(i));
   end
   fprintf(fid, "\n");
 end

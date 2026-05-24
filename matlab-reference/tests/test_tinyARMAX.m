@@ -32,12 +32,12 @@ function maxAbsRel = check_simx_sim_agreement(A, B, C, z, Sig, n, h, rng)
     mu(t) = A*mu(t-1) + C*z(t);
   end
   y0 = [0.2 -0.4];
-  x0 = y0 + mu(1:h);
+  X0 = y0 + mu(1:h);
   e0 = [-0.7 0.4];
   randompack_seed(rng, 41);
-  [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, e0, rng);
+  [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng);
   randompack_seed(rng, 41);
-  [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, x0, e0, rng);
+  [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng);
   maxX = absrel_difference(Xx, Xs);
   maxE = absrel_difference(Ex, Es);
   maxAbsRel = max(maxX, maxE);
@@ -58,8 +58,8 @@ function check_stationary_start(A, B, C, z, Sig, n, h, M, rng, showTable)
   V0 = [2 1.4; 1.4 2];
   X = zeros(M, n);
   for j = 1:M
-    x0 = randompack_mvn(rng, V0, 1, mu0')';
-    X(j, :) = ref_varma_simx(A, B, C, z, Sig, n, 1, x0, h, [], rng);
+    X0 = randompack_mvn(rng, V0, 1, mu0')';
+    X(j, :) = ref_varma_simx(A, B, C, z, Sig, n, 1, X0, h, [], rng);
   end
   mu = 0.5*(-1).^(0:n-1);
   V = 2*ones(1, n);
@@ -68,8 +68,8 @@ function check_stationary_start(A, B, C, z, Sig, n, h, M, rng, showTable)
 end
 
 function check_fixed_zero_start(A, B, C, z, Sig, n, h, M, rng, showTable)
-  x0 = zeros(1, h);
-  X = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, [], rng)';
+  X0 = zeros(1, h);
+  X = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, [], rng)';
   mu = [0 0 62/65 zeros(1, n-3)];
   for t = 4:n
     mu(t) = 0.6*mu(t-1) + 0.8*(-1)^(t-1);

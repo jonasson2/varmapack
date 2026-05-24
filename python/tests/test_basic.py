@@ -23,6 +23,8 @@ Sig1 = np.array([[1.0]])
 model = varmapack.Model(A=A, Sig=Sig1)
 assert model.order == (1, 0)
 assert model.dimension == 1
+assert np.isclose(model.specrad(), 0.4)
+assert np.isclose(model.ma_specrad(), 0.0)
 X1 = model.sim(5, rng=rng)
 assert X1.shape == (1, 5, 1)
 assert np.isfinite(X1).all()
@@ -33,6 +35,10 @@ assert np.allclose(X1, X2)
 
 X3 = model.sim(length=5, nrep=3, rng=rng)
 assert X3.shape == (3, 5, 1)
+X0multi = np.array([[[2.0]], [[4.0]], [[6.0]]])
+X3start = model.sim(length=5, nrep=3, X0=X0multi, rng=rng)
+assert X3start.shape == (3, 5, 1)
+assert np.allclose(X3start[:, 0, :], X0multi[:, 0, :])
 
 G = white.acvf(2)
 assert G.shape == (3, 2, 2)
@@ -52,6 +58,11 @@ model2 = varmapack.Model(A=A2, B=B2, Sig=Sig)
 assert np.allclose(model2.A, A2)
 assert np.allclose(model2.B, B2)
 assert np.allclose(model2.Sig, Sig)
+assert model2.specrad() > 0
+assert model2.ma_specrad() > 0
+X0shared = np.array([[1.0, 2.0], [3.0, 4.0]])
+Xshared = model2.sim(4, nrep=2, X0=X0shared, rng=rng)
+assert np.allclose(Xshared[:, :2, :], X0shared)
 Psi2 = model2.psi(2)
 Psi2_expected = np.array([
     [[1.0, 0.0], [0.0, 1.0]], [[0.6, 0.8], [1.0, 1.2]], [[0.26, 0.32], [0.58, 0.72]], ])
@@ -69,6 +80,17 @@ model4 = varmapack.Model(A=A2, B=B2, Sig=np.array([[1.0, 1.0], [1.0, 1.0]]))
 Theta4 = model4.irf(2)
 assert np.allclose(Theta4[0] @ Theta4[0].T, model4.Sig)
 
+C1 = np.array([[0.8]])
+varmax = varmapack.Model(A=A, B=np.array([[[0.2]]]), C=C1, Sig=Sig1)
+assert varmax.exog_order == 1
+assert np.allclose(varmax.C, C1)
+z = np.array([[1.0, -1.0, 1.0, -1.0], [1.5, -0.5, 1.5, -0.5]])
+X0x = np.array([[[0.25], [0.5]], [[-0.25], [-0.5]]])
+Xx, Ex = varmax.sim(4, nrep=2, X0=X0x, z=z, rng=rng, return_shocks=True)
+assert Xx.shape == (2, 4, 1)
+assert Ex.shape == (2, 4, 1)
+assert np.allclose(Xx[:, :2, :], X0x)
+
 tc = varmapack.testcase("tinyAR")
 assert tc.order == (1, 0)
 assert tc.dimension == 1
@@ -76,6 +98,7 @@ assert tc.A.shape == (1, 1, 1)
 assert tc.B is None
 assert tc.Sig.shape == (1, 1)
 assert np.isclose(tc.A[0, 0, 0], 0.5)
+assert np.isclose(tc.specrad(), 0.5)
 
 tc2 = varmapack.testcase(8)
 assert tc2.order == (1, 1)

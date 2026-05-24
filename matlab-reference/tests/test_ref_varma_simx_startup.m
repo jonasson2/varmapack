@@ -11,13 +11,13 @@ function zmax = test_ref_varma_simx_startup(cases, M, n, seed)
     [A, B, C, Sig, z, p, q, s, r, name] = ref_varma_testcasex(icase, n);
     h = max([p, q, s]) + 2;
     if n < h, error('n must be at least h'); end
-    x0 = startup_values(r, h, icase);
-    [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, x0);
+    StartX0 = startup_values(r, h, icase);
+    [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, StartX0);
     randompack_seed(rng, seed + icase);
-    [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, [], rng);
+    [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, StartX0, h, [], rng);
     E0 = reshape_startup_shocks(E, r, h, M);
-    X0 = reshape_startup_values(X, r, h, M);
-    ascertain(almostequal(X0, repmat(x0(:), 1, M), 1e-12), ...
+    X0drawn = reshape_startup_values(X, r, h, M);
+    ascertain(almostequal(X0drawn, repmat(StartX0(:), 1, M), 1e-12), ...
               ['simx startup X mismatch in ' name]);
     z = max(startup_zscores(E0, muE, covE, M));
     zmax = max(zmax, z);
@@ -26,7 +26,7 @@ function zmax = test_ref_varma_simx_startup(cases, M, n, seed)
   fprintf('OK\n');
 end
 
-function [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, x0)
+function [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, X0)
   t0 = max(p, s - 1);
   a = min(t0 - q, 0);
   mE = h - a;
@@ -35,9 +35,9 @@ function [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, x0)
   rho = zeros(r*mR, 1);
   for t = t0:h-1
     I = r*(t - t0) + (1:r);
-    rt = x0(:, t+1);
+    rt = X0(:, t+1);
     for i = 1:p
-      rt = rt - A(:, r*(i-1)+(1:r))*x0(:, t-i+1);
+      rt = rt - A(:, r*(i-1)+(1:r))*X0(:, t-i+1);
     end
     for i = 1:s
       rt = rt - C(:, i)*z(t-i+2);
@@ -62,10 +62,10 @@ function [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, x0)
   covE = covStar(I0, I0);
 end
 
-function x0 = startup_values(r, h, icase)
-  x0 = zeros(r, h);
+function X0 = startup_values(r, h, icase)
+  X0 = zeros(r, h);
   for t = 0:h-1
-    x0(:, t+1) = 0.07*icase + 0.20*(1:r)' - 0.11*t;
+    X0(:, t+1) = 0.07*icase + 0.20*(1:r)' - 0.11*t;
   end
 end
 

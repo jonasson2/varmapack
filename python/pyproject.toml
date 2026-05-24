@@ -1,0 +1,26 @@
+[build-system]
+requires = [
+  "meson-python>=0.16",
+  "meson>=1.3",
+  "ninja",
+  "numpy>=1.22",
+  "cython",
+]
+build-backend = "mesonpy"
+
+[project]
+name = "varmapack"
+version = "0.1.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.22",
+  "randompack>=0.1.6",
+]
+readme = { file = "README.md", content-type = "text/markdown" }
+description = "VARMA time-series simulation library"
+
+[tool.cibuildwheel]
+skip = "*t-*"
+test-requires = ["numpy", "randompack"]
+test-command = "python -c \"import varmapack; print('varmapack wheel smoke test OK')\""

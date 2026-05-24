@@ -80,7 +80,7 @@ static void check_case7_support(void) {
   xCheck(nulls > 0 && nulls < rh);
   randompack_rng *rng = randompack_create(0);
   xCheck(randompack_seed(42, 0, 0, rng));
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, X, E, rng);
+  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, 1, X, E, rng);
   xCheck(!error);
   for (int k=0; k<nulls; k++) {
     double nr = 0;

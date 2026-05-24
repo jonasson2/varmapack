@@ -1,14 +1,14 @@
 %REF_VARMA_SIMX  Reference simulation of a VARMAX model with fixed exogenous data
 %
-%  [X,E] = REF_VARMA_SIMX(A,B,C,z,Sig,n,M,x0,h,e0,rng) simulates
+%  [X,E] = REF_VARMA_SIMX(A,B,C,z,Sig,n,M,X0,h,e0,rng) simulates
 %
 %    x(t) = eps(t) + sum Ai*x(t-i) + sum Bi*eps(t-i) + sum Ci*z(t-i+1),
 %
-%  using x0 as a known startup segment. The exogenous sequence z is scalar in
-%  this first reference version. It is M by n for replicate-specific data, or
-%  1 by n to broadcast the same sequence to all replicates.
+%  using X0 as a known startup segment. The exogenous sequence z is M by n for
+%  replicate-specific data, or 1 by n to broadcast the same sequence to all
+%  replicates. The startup segment X0 is r by h, or r by h by M.
 %
-%  The formula time axis is zero-based: x0(:,1) is x(0), and z(:,1) is z(0).
+%  The formula time axis is zero-based: X0(:,1) is x(0), and z(:,1) is z(0).
 %  MATLAB column h+1 is therefore formula time h.
 %
 %  The number of exogenous terms is s = size(C,2), with s = 0 when C is empty.
@@ -16,17 +16,20 @@
 %  The e0 parameter exists to test ref_varma_simx against ref_varma_sim. It is
 %  not present in the corresponding varmapack_simx C function.
 
-function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, e0, rng)
+function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
   if nargin < 7 || isempty(M), M = 1; end
-  if nargin < 8 || isempty(x0), error('x0 must be specified'); end
-  if nargin < 9 || isempty(h), h = size(x0, 2); end
+  if nargin < 8 || isempty(X0), error('X0 must be specified'); end
+  if nargin < 9 || isempty(h), h = size(X0, 2); end
   if nargin < 10, e0 = []; end
   if nargin < 11, rng = []; end
   [p, q, r] = get_dimensions(A, B, Sig);
-  if size(x0, 1) ~= r || size(x0, 2) ~= h, error('x0 must be r by h'); end
+  if size(X0, 1) ~= r || size(X0, 2) ~= h || ...
+      (ndims(X0) == 3 && size(X0, 3) ~= M) || ndims(X0) > 3
+    error('X0 must be r by h or r by h by M');
+  end
   if n < h, error('n must be at least h'); end
   if isempty(C)
     s = 0;
@@ -60,13 +63,14 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, e0, rng)
   Eall = zeros(r*(n - first_shock_time), M);
   X = zeros(r*n, M);
   if isempty(e0)
-    Eall(1:r*he,:) = startup_shocks(A, B, Cc, z, Sig, x0, p, q, s, r, h, ...
+    Eall(1:r*he,:) = startup_shocks(A, B, Cc, z, Sig, X0, p, q, s, r, h, ...
       t0, first_shock_time, first_active_shock, M, rng);
   else
     Eall(1:r*he,:) = repmat(e0(:), 1, M);
   end
   for j = 1:M
-    X(1:r*h,j) = x0(:);
+    X0j = X0rep(X0, j);
+    X(1:r*h,j) = X0j(:);
   end
   for j = 1:M
     zj = zrep(z, j);
@@ -101,7 +105,7 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, x0, h, e0, rng)
   end
 end
 
-function E0 = startup_shocks(A, B, C, z, Sig, x0, p, q, s, r, h, t0, ...
+function E0 = startup_shocks(A, B, C, z, Sig, X0, p, q, s, r, h, t0, ...
                              first_shock_time, first_active_shock, M, rng)
   he = h - first_shock_time;
   E0 = zeros(r*he, M);
@@ -114,7 +118,8 @@ function E0 = startup_shocks(A, B, C, z, Sig, x0, p, q, s, r, h, t0, ...
   activeOffset = r*(first_active_shock - first_shock_time);
   if q == 0
     for j = 1:M
-      E0(activeOffset+1:end,j) = startup_residual(A, C, zrep(z, j), x0, p, s, r, h, t0);
+      E0(activeOffset+1:end,j) = startup_residual(A, C, zrep(z, j), X0rep(X0, j), ...
+        p, s, r, h, t0);
     end
     return
   end
@@ -127,7 +132,7 @@ function E0 = startup_shocks(A, B, C, z, Sig, x0, p, q, s, r, h, t0, ...
   K = W\HD;
   R = blockdiag_sig(Sig, na) - HD'*K;
   for j = 1:M
-    rvec = startup_residual(A, C, zrep(z, j), x0, p, s, r, h, t0);
+    rvec = startup_residual(A, C, zrep(z, j), X0rep(X0, j), p, s, r, h, t0);
     Ehat = HD'*(W\rvec);
     E0(activeOffset+1:end,j) = Ehat + randnm(1, R, "T", rng);
   end
@@ -169,13 +174,13 @@ function D = blockdiag_sig(Sig, nblocks)
   end
 end
 
-function rvec = startup_residual(A, C, z, x0, p, s, r, h, t0)
+function rvec = startup_residual(A, C, z, X0, p, s, r, h, t0)
   m = h - t0;
   rvec = zeros(r*m, 1);
   for t = t0:h-1
-    rt = x0(:, t+1);
+    rt = X0(:, t+1);
     for i = 1:p
-      rt = rt - A{i}*x0(:, t+1-i);
+      rt = rt - A{i}*X0(:, t+1-i);
     end
     for i = 1:s
       rt = rt - C{i}*z(t+2-i);
@@ -189,6 +194,14 @@ function zj = zrep(z, j)
     zj = z(1,:);
   else
     zj = z(j,:);
+  end
+end
+
+function X0j = X0rep(X0, j)
+  if ndims(X0) < 3
+    X0j = X0;
+  else
+    X0j = X0(:,:,j);
   end
 end
 

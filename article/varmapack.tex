@@ -195,6 +195,15 @@ a pivoted Cholesky factorization of $R$ and use that to draw $x_{1:h}$ from
 the conditional distribution. When using Matlab, such a factorization may be
 obtained via eigenvalue computation for $R$.
 
+\paragraph{Moving-average spectral radius}
+The spectral radius of the autoregressive companion matrix determines
+stationarity of the VARMA model. The corresponding spectral radius for the
+moving-average polynomial plays a different role: it is an invertibility
+diagnostic. A finite VMA part can always be simulated, but if the moving-average
+companion radius is less than one, the shocks are recoverable from the observed
+series by a stable inverse filter. The software therefore reports this quantity
+separately from the autoregressive spectral radius.
+
 \paragraph{VARMAX}
 The inclusion of deterministic or fixed exogenous variables $u_t$ leads to the
 $\mathrm{VARMAX}(p,q,s)$ extension

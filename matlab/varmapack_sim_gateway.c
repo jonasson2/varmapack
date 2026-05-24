@@ -53,7 +53,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   X = mxGetPr(plhs[0]);
   E = Eout ? mxGetPr(Eout) : 0;
-  error = varmapack_sim(A, B, Sig, mu, nmu, p, q, r, n, M, X0, nX0, X, E, rng);
+  error = varmapack_sim(A, B, Sig, mu, nmu, p, q, r, n, M, X0, nX0, 1, X, E, rng);
   check_varmapack_error(error);
 }
 

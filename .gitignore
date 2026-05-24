@@ -41,6 +41,15 @@ compile_commands.json
 *.tar.gz
 *.tgz
 
+# Python generated files
+dist/
+*.egg-info/
+.mesonpy-*/
+.pytest_cache/
+__pycache__/
+.ipynb_checkpoints/
+.virtual_documents/
+
 # Local/editor files
 .DS_Store
 *~

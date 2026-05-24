@@ -1,0 +1,5 @@
+option('blas_order',
+  type: 'string',
+  value: 'auto',
+  description: 'Comma-separated BLAS search order, or "auto" for platform default'
+)
