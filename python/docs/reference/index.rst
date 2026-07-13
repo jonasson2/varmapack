@@ -45,9 +45,10 @@ Model Attributes
    :toctree: generated
    :nosignatures:
 
-   Model.order
-   Model.exog_order
-   Model.dimension
+   Model.p
+   Model.q
+   Model.r
+   Model.s
    Model.A
    Model.B
    Model.C

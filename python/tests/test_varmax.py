@@ -9,8 +9,9 @@ B = np.array([[[0.2]]])
 C = np.array([[0.8]])
 Sig = np.array([[1.0]])
 model = varmapack.Model(A=A, B=B, C=C, Sig=Sig)
-assert model.order == (1, 1)
-assert model.exog_order == 1
+assert model.p == 1
+assert model.q == 1
+assert model.s == 1
 assert np.allclose(model.C, C)
 
 length = 5

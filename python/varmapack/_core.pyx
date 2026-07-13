@@ -80,8 +80,12 @@ cdef np.ndarray _cube_to_c(object x, int r, str name):
     if x is None:
         return None
     arr = np.asarray(x, dtype=DTYPE_F64)
+    if arr.ndim == 2:
+        if arr.shape[0] != r or arr.shape[1] != r:
+            raise ValueError(f"{name} must have shape (r, r)")
+        arr = arr.reshape((1, r, r))
     if arr.ndim != 3:
-        raise ValueError(f"{name} must have 3 dimensions")
+        raise ValueError(f"{name} must have shape (order, r, r)")
     if arr.shape[1] != r or arr.shape[2] != r:
         raise ValueError(f"{name} must have shape (order, r, r)")
     return arr.transpose(0, 2, 1).copy()
@@ -282,10 +286,10 @@ cdef Model _make_model_internal(np.ndarray A, np.ndarray B, np.ndarray Sig,
     model.Carr = None
     model.Sigarr = Sig
     model.muarr = mu
-    model.p = p
-    model.q = q
-    model.s = 0
-    model.r = r
+    model.pval = p
+    model.qval = q
+    model.sval = 0
+    model.rval = r
     model.nmu = 0
     return model
 
@@ -296,19 +300,19 @@ cdef class Model:
 
     Parameters
     ----------
-    A : array_like, shape (p, r, r), optional
+    A : array_like, shape (p, r, r) or (r, r), optional
         Autoregressive coefficient matrices.
-    B : array_like, shape (q, r, r), optional
+    B : array_like, shape (q, r, r) or (r, r), optional
         Moving-average coefficient matrices.
+    C : array_like, shape (s, r), optional
+        Exogenous coefficient vectors. Supplying ``C`` creates a VARMAX
+        model and requires ``z`` and ``X0`` when simulating.
     Sig : array_like, shape (r, r)
         Innovation covariance matrix.
     mu : array_like, shape (r,) or (nmu, r), optional
         Time series means for VARMA simulation. If more than one mean vector
         is supplied, the last supplied mean repeats to the end of the series.
         ``mu`` is not supported for VARMAX models.
-    C : array_like, shape (s, r), optional
-        Exogenous coefficient vectors. Supplying ``C`` creates a VARMAX
-        model and requires ``z`` and ``X0`` when simulating.
 
     Notes
     -----
@@ -330,46 +334,46 @@ cdef class Model:
     cdef np.ndarray Carr
     cdef np.ndarray Sigarr
     cdef np.ndarray muarr
-    cdef int p
-    cdef int q
-    cdef int s
-    cdef int r
+    cdef int pval
+    cdef int qval
+    cdef int sval
+    cdef int rval
     cdef int nmu
 
-    def __init__(self, object A=None, object B=None, object Sig=None,
-                 object mu=None, object C=None):
+    def __init__(self, *, object A=None, object B=None, object C=None,
+                 object Sig=None, object mu=None):
         cdef np.ndarray muarr
         self.Sigarr = _matrix_to_c(Sig, "Sig")
         self.muarr = None
         self.nmu = 0
-        self.p = 0
-        self.q = 0
-        self.s = 0
+        self.pval = 0
+        self.qval = 0
+        self.sval = 0
         if self.Sigarr is None:
             raise ValueError("Sig must be supplied")
         if self.Sigarr.shape[0] != self.Sigarr.shape[1]:
             raise ValueError("Sig must be square")
-        self.r = self.Sigarr.shape[0]
-        self.Aarr = _cube_to_c(A, self.r, "A")
-        self.Barr = _cube_to_c(B, self.r, "B")
-        self.Carr = _exog_to_c(C, self.r, "C")
+        self.rval = self.Sigarr.shape[0]
+        self.Aarr = _cube_to_c(A, self.rval, "A")
+        self.Barr = _cube_to_c(B, self.rval, "B")
+        self.Carr = _exog_to_c(C, self.rval, "C")
         if self.Aarr is not None:
-            self.p = self.Aarr.shape[0]
+            self.pval = self.Aarr.shape[0]
         if self.Barr is not None:
-            self.q = self.Barr.shape[0]
+            self.qval = self.Barr.shape[0]
         if self.Carr is not None:
-            self.s = self.Carr.shape[0]
+            self.sval = self.Carr.shape[0]
             if mu is not None:
                 raise ValueError("mu is not supported for VARMAX models")
         if mu is not None:
             muarr = np.asarray(mu, dtype=DTYPE_F64)
             if muarr.ndim == 1:
-                if muarr.shape[0] != self.r:
+                if muarr.shape[0] != self.rval:
                     raise ValueError("mu must have length r")
                 self.muarr = muarr.copy()
                 self.nmu = 1
             elif muarr.ndim == 2:
-                if muarr.shape[1] != self.r:
+                if muarr.shape[1] != self.rval:
                     raise ValueError("mu must have shape (nmu, r)")
                 self.muarr = muarr.copy()
                 self.nmu = muarr.shape[0]
@@ -377,19 +381,24 @@ cdef class Model:
                 raise ValueError("mu must have 1 or 2 dimensions")
 
     @property
-    def order(self):
-        """VARMA order ``(p, q)``."""
-        return self.p, self.q
+    def p(self):
+        """Number of autoregressive coefficient matrices."""
+        return self.pval
 
     @property
-    def exog_order(self):
+    def q(self):
+        """Number of moving-average coefficient matrices."""
+        return self.qval
+
+    @property
+    def r(self):
+        """Dimension of each observation vector."""
+        return self.rval
+
+    @property
+    def s(self):
         """Number of exogenous coefficient vectors."""
-        return self.s
-
-    @property
-    def dimension(self):
-        """Dimension ``r`` of each observation vector."""
-        return self.r
+        return self.sval
 
     @property
     def A(self):
@@ -544,8 +553,8 @@ cdef object _acvf_model(Model model, int maxlag):
     cdef int call_maxlag = maxlag
     if maxlag < 0:
         raise ValueError("maxlag must be nonnegative")
-    if call_maxlag < model.p:
-        call_maxlag = model.p
+    if call_maxlag < model.pval:
+        call_maxlag = model.pval
     if model.Aarr is not None:
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
     else:
@@ -554,9 +563,10 @@ cdef object _acvf_model(Model model, int maxlag):
         Bptr = <double *>np.PyArray_DATA(model.Barr)
     else:
         Bptr = &dummy
-    Gamma = np.empty((call_maxlag + 1, model.r, model.r), dtype=DTYPE_F64)
-    error = varmapack_acvf( Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr), model.p,
-        model.q, model.r, <double *>np.PyArray_DATA(Gamma), call_maxlag)
+    Gamma = np.empty((call_maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
+    error = varmapack_acvf( Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
+        model.pval, model.qval, model.rval, <double *>np.PyArray_DATA(Gamma),
+        call_maxlag)
     if error != VARMAPACK_OK:
         raise VarmapackError(_error_message(error))
     return Gamma[:maxlag + 1].transpose(0, 2, 1).copy()
@@ -573,8 +583,8 @@ cdef object _psi_model(Model model, int maxlag):
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
-    Psi = np.empty((maxlag + 1, model.r, model.r), dtype=DTYPE_F64)
-    error = varmapack_psi(Aptr, Bptr, model.p, model.q, model.r, maxlag,
+    Psi = np.empty((maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
+    error = varmapack_psi(Aptr, Bptr, model.pval, model.qval, model.rval, maxlag,
                           <double *>np.PyArray_DATA(Psi))
     if error != VARMAPACK_OK:
         raise VarmapackError(_error_message(error))
@@ -592,9 +602,9 @@ cdef object _irf_model(Model model, int maxlag):
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
-    Theta = np.empty((maxlag + 1, model.r, model.r), dtype=DTYPE_F64)
+    Theta = np.empty((maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
     error = varmapack_irf(Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
-                          model.p, model.q, model.r, maxlag,
+                          model.pval, model.qval, model.rval, maxlag,
                           <double *>np.PyArray_DATA(Theta))
     if error != VARMAPACK_OK:
         raise VarmapackError(_error_message(error))
@@ -605,14 +615,14 @@ cdef double _specrad_model(Model model):
     cdef double *Aptr = NULL
     if model.Aarr is not None:
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
-    return varmapack_specrad(Aptr, model.r, model.p)
+    return varmapack_specrad(Aptr, model.rval, model.pval)
 
 
 cdef double _ma_specrad_model(Model model):
     cdef double *Bptr = NULL
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
-    return varmapack_ma_specrad(Bptr, model.r, model.q)
+    return varmapack_ma_specrad(Bptr, model.rval, model.qval)
 
 
 cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
@@ -650,12 +660,12 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
     if X0 is not None:
         X0public = np.asarray(X0, dtype=DTYPE_F64)
         if X0public.ndim == 2:
-            if X0public.shape[1] != model.r:
+            if X0public.shape[1] != model.rval:
                 raise ValueError("X0 must have shape (nX0, r)")
             nX0 = X0public.shape[0]
             X0arr = X0public.copy()
         elif X0public.ndim == 3:
-            if X0public.shape[0] != nrep or X0public.shape[2] != model.r:
+            if X0public.shape[0] != nrep or X0public.shape[2] != model.rval:
                 raise ValueError("X0 must have shape (nrep, nX0, r)")
             nX0 = X0public.shape[1]
             MX0 = nrep
@@ -684,9 +694,9 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
             raise ValueError("X0 must be supplied for VARMAX simulation")
     elif zptr != NULL:
         raise ValueError("z can only be supplied when C is present")
-    X = np.empty((nrep, length, model.r), dtype=DTYPE_F64, order="C")
+    X = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")
     if return_shocks:
-        E = np.empty((nrep, length, model.r), dtype=DTYPE_F64, order="C")
+        E = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")
         Eptr = <double *>np.PyArray_DATA(E)
     else:
         E = None
@@ -696,14 +706,14 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
             h = nX0
             error = varmapack_simx(Aptr, Bptr, Cptr,
                                    <double *>np.PyArray_DATA(model.Sigarr),
-                                   zptr, Mz, model.p, model.q, model.s, model.r,
-                                   length, nrep, X0ptr, h, MX0,
+                                   zptr, Mz, model.pval, model.qval, model.sval,
+                                   model.rval, length, nrep, X0ptr, h, MX0,
                                    <double *>np.PyArray_DATA(X), Eptr, rngptr)
         else:
             error = varmapack_sim(Aptr, Bptr,
                                   <double *>np.PyArray_DATA(model.Sigarr), muptr,
-                                  nmu, model.p, model.q, model.r, length, nrep,
-                                  X0ptr, nX0, MX0,
+                                  nmu, model.pval, model.qval, model.rval, length,
+                                  nrep, X0ptr, nX0, MX0,
                                   <double *>np.PyArray_DATA(X), Eptr, rngptr)
         if error != VARMAPACK_OK:
             raise VarmapackError(_error_message(error))

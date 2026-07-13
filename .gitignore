@@ -47,6 +47,8 @@ dist/
 .mesonpy-*/
 .pytest_cache/
 __pycache__/
+*.pyc
+_build/
 .ipynb_checkpoints/
 .virtual_documents/
 

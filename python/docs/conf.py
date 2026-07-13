@@ -13,11 +13,22 @@ release = data["project"]["version"]
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
     "numpydoc",
 ]
+
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "eps": r"\varepsilon",
+            "Cov": r"\operatorname{Cov}",
+            "Var": r"\operatorname{Var}",
+        }
+    }
+}
 
 autosummary_generate = True
 autosummary_imported_members = True
