@@ -48,10 +48,10 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
 
 static void check_case7_support(void) {
   int p = 0, q = 0, r = 0, icase = 7, h, rh, n = 5, M = 1, info, nulls = 0;
-  char name[32] = "";
+  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A = 0, *B = 0, *Sig = 0, *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
   double *work = 0, *X = 0, *E = 0;
-  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  varmapack_error error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
   xCheck(!error);
   h = imax(p, q);
   rh = r*h;
@@ -66,7 +66,7 @@ static void check_case7_support(void) {
   xCheck(ALLOC(work, 3*rh));
   xCheck(ALLOC(X, r*n*M));
   xCheck(ALLOC(E, r*n*M));
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
   for (int i=0; i<rh; i++) X0[i] = (i + 1)/10.0;
   conditional_moments(A, B, Sig, X0, p, q, r, h, R, e);

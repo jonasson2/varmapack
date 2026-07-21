@@ -17,7 +17,8 @@ py_dep = py.dependency()
 
 numpy_inc = run_command(py, ['-c', 'import numpy; print(numpy.get_include())'],
   check: true).stdout().strip()
-inc = include_directories('src', numpy_inc)
+inc = include_directories('src')
+numpy_dep = declare_dependency(compile_args: ['-I' + numpy_inc])
 
 cython = find_program('cython', required: true)
 randompack_dep = dependency('randompack', required : true)

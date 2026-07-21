@@ -106,6 +106,12 @@ assert tc.B is None
 assert tc.Sig.shape == (1, 1)
 assert np.isclose(tc.A[0, 0, 0], 0.5)
 assert np.isclose(tc.specrad(), 0.5)
+cases = varmapack.testcases()
+assert isinstance(cases, dict)
+assert len(cases) == 15
+assert cases["tinyAR"] == {"index": 1, "p": 1, "q": 0, "r": 1}
+assert cases["largeAR"] == {"index": 15, "p": 4, "q": 0, "r": 5}
+assert "tinyAR" in repr(cases)
 
 tc2 = varmapack.testcase(8)
 assert tc2.p == 1

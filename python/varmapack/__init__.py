@@ -45,11 +45,12 @@ try:
 except ImportError:  # pragma: no cover
     from importlib_metadata import version as _version
 
-from ._core import Model, VarmapackError, autocov, testcase
+from ._core import Model, VarmapackError, autocov, testcase, testcases
 
 try:
     __version__ = _version("varmapack")
 except Exception:  # pragma: no cover
     __version__ = "unknown"
 
-__all__ = ["Model", "VarmapackError", "__version__", "autocov", "testcase"]
+__all__ = ["Model", "VarmapackError", "__version__", "autocov", "testcase",
+           "testcases"]

@@ -18,16 +18,16 @@ static varmapack_error scale_to_rho(double A[], int p, int r, double rho);
 static double scaled_specrad(double A[], double scale, int p, int r);
 
 varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood calculation
-  double A[],    // out     r×r×p, autoregressive parameter matrices (or null)
-  double B[],    // out     r×r×q, moving average parameter matrices (or null)
-  double Sig[],  // out     r×r, covariance of the shock terms eps(t) (or null)
-  char *name,    // out     string w. length >= 12, name of testcase, or "" for unnamed
+  char *name,    // in/out  testcase name or output buffer
+  int *index,    // in/out  named testcase index, or 0/-1 to use p,q,r
+  double rho,    // in      target spectral radius when name is "rho"
   int *pp,       // in/out  Number of autoregressive terms (or null)
   int *qp,       // in/out  Number of moving avg. terms (or null)
   int *rp,       // in/out  dimension of each x(t) (or null)
-  int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
-  double rho,    // in      target spectral radius when name is "rho"
-  randompack_rng *rng)  // in      random number generator
+  double A[],    // out     r×r×p, autoregressive parameter matrices (or null)
+  double B[],    // out     r×r×q, moving average parameter matrices (or null)
+  double Sig[],  // out     r×r, covariance of the shock terms eps(t) (or null)
+  randompack_rng *rng) // in      random number generator
 {
   // TESTCASE CREATION
   // The following kinds of testcases, suitable for testing or timing various components
@@ -52,13 +52,14 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
   // INQUIRY
   // 1. Dimensions. To inquire about the dimensions of a testcase, A, B and Sig may be
   //    null and either name or icase may be specified. The dimensions of the
-  //    corresponding case are put in p, q and r. If name is specified icase is assigned
-  //    to, and if icase is specified and name is not null, it is assigned to. varmapack_testcase(0,
-  //    0, 0, "smallAR1", &p, &q, &r, &icase, 0) will thus set p, q, r, icase to 1, 0, 2,
-  //    4.
+  //    corresponding case are put in p, q and r. If name is specified index is assigned
+  //    to, and if index is specified and name is not null, it is assigned to.
+  //    varmapack_testcase("smallAR1", &index, 0, &p, &q, &r, 0, 0, 0, 0)
+  //    will thus set p, q, r, index to 1, 0, 2, 4.
   //
-  // 2. Count + max dimensions. varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &icase, 0) sets p, q,
-  //    r to the maximum dimensions over all testcases and icase to the number of named
+  // 2. Count + max dimensions. varmapack_testcase("max", &index, 0, &p, &q,
+  //    &r, 0, 0, 0, 0) sets p, q, r to the maximum dimensions and index to the
+  //    number of named
   //    testcases.
   //
   // SUMMARY: When icase is 0 or -1 a model with dimensions p, q, r is created; when -1
@@ -97,6 +98,7 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
   //double *Av[]   = {A1,  0, A3, A4, A5,  0,  0, A8, A9,A10,  0, A12, A13,   0, A15};
   //double *Bv[]   = { 0, B2, B3,  0,   0, B6, B7, B8, B9,  0,B11, B12, B13, B14,   0};
   //double *Sigv[] = {S1, S1, S1, S2,  S2, S3, S3, S3, S3, S4, S4,  S4,  S4,  S4,  S6};
+  int *icase = index;
   int p, q, r, Ncase = sizeof(namev)/sizeof(char*);
   // SANITY CHECKS:
   if (icase == 0) return VARMAPACK_INVALID_ARGUMENT;
@@ -149,7 +151,7 @@ varmapack_error varmapack_testcase( // Create a testcase for VARMA likelihood ca
       *icase = find_named_case(namev, name, Ncase);
     }
     else if (name) {
-      snprintf(name, 12, "%s", namev[*icase - 1]);
+      snprintf(name, VARMAPACK_TESTCASE_NAME_LEN, "%s", namev[*icase - 1]);
     }
     int k = *icase - 1;
     if (pp) *pp = pv[k];
@@ -341,7 +343,7 @@ static varmapack_error scale_to_rho(double A[], int p, int r, double rho) {
     mid = (lo + hi)/2;
     midrho = scaled_specrad(A, mid, p, r);
     if (isnan(midrho)) return VARMAPACK_INTERNAL;
-    if (fabs(midrho - rho) < 1e-4) {
+    if (fabs(midrho - rho) < 1e-6) {
       scal(r*r*p, mid, A, 1);
       return VARMAPACK_OK;
     }

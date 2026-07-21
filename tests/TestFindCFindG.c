@@ -9,13 +9,13 @@
 void TestFindCFindG(void) {
   // Just a rudimentary test. Tested thoroughly by Testvarmapack_sim.
   int p, q, r, icase;
-  char name[16] = "";
+  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A, *B, *Sig, *C, *G, *W;
   varmapack_error error;
 
   // First call: query dimensions for smallARMA1
   icase = 8;
-  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
   xCheck(!error);
   xCheck(p == 1);
   xCheck(q == 1);
@@ -29,7 +29,7 @@ void TestFindCFindG(void) {
   xCheck(ALLOC(G, r*r*(q + 1)));
   xCheck(ALLOC(W, r*r*(q + 1)));
 
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
   FindC(A, B, Sig, p, q, r, C);
   FindG(B, C, q, r, G);

@@ -3,31 +3,34 @@ API Reference
 
 .. currentmodule:: varmapack
 
+The public Python objects exposed by ``varmapack`` are listed below.
+
 Classes
 -------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: reference/generated
    :nosignatures:
 
    Model
    VarmapackError
 
-Functions
----------
+Top-level functions
+-------------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: reference/generated
    :nosignatures:
 
    autocov
    testcase
+   testcases
 
-Model Methods
+Model methods
 -------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: reference/generated
    :template: method.rst
    :nosignatures:
 
@@ -38,11 +41,11 @@ Model Methods
    Model.specrad
    Model.ma_specrad
 
-Model Attributes
+Model attributes
 ----------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: reference/generated
    :nosignatures:
 
    Model.p

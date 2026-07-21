@@ -21,7 +21,7 @@ static void check_case(char name[]) {
   double *Cl = 0;
   double *Gl = 0;
   randompack_rng *rng = randompack_create(0);
-  varmapack_error error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, rng);
+  varmapack_error error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, rng);
   int rr = r*r;
   xCheck(!error);
   xCheck(ALLOC(A, rr*(p > 0 ? p : 1)));
@@ -33,7 +33,7 @@ static void check_case(char name[]) {
   xCheck(ALLOC(Sl, rr*(p+1)));
   xCheck(ALLOC(Cl, rr*(q+1)));
   xCheck(ALLOC(Gl, rr*(q+1)));
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, rng);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, rng);
   xCheck(!error);
   xCheck(VYWFactorizeSolve(A, B, Sig, p, q, r, Sv, Cv, Gv));
   xCheck(LyapunovFactorizeSolve(A, B, Sig, p, q, r, Sl, Cl, Gl));

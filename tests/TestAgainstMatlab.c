@@ -69,7 +69,7 @@ static bool compare_reduced_m(FILE *fid, int n) {
     double diffAutoMLT, diffAutoCT, rhoC, simTol, autoTol;
     randompack_rng *rng = 0;
     STRSET(name, "");
-    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
     xCheck(!error);
     h = imax(p, q);
     r2 = r*r;
@@ -81,7 +81,7 @@ static bool compare_reduced_m(FILE *fid, int n) {
     ASSERT(ALLOC(StartX0, r*h > 0 ? r*h : 1), "allocation failed");
     ASSERT(ALLOC(mu, r), "allocation failed");
     STRSET(name, "");
-    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
     xCheck(!error);
     STRSETF(name, "X0%d", label);
     ok = MatrixFromMatlab(fid, name, StartX0, r, h);
@@ -201,7 +201,7 @@ static bool compare_rolling_matlab(void) {
     int r2;
     double rhoC;
     STRSET(name, "");
-    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
     xCheck(!error);
     h = imax(p, q);
     r2 = r*r;
@@ -211,7 +211,7 @@ static bool compare_rolling_matlab(void) {
     ASSERT(ALLOC(StartX0, r*h > 0 ? r*h : 1), "allocation failed");
     ASSERT(ALLOC(mu, r), "allocation failed");
     STRSET(name, "");
-    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
     xCheck(!error);
     rhoC = varmapack_specrad(A, r, p);
     STRSETF(name, "X0%d", label);
@@ -457,7 +457,7 @@ bool TestAgainstMatlab(void) {
 
     // Query testcase dimensions and check them
     STRSET(name, "");
-    error = varmapack_testcase(0, 0, 0, name, &pk, &qk, &rk, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &pk, &qk, &rk, 0, 0, 0, 0);
     xCheck(!error);
     xCheck(pk == p);
     xCheck(qk == q);
@@ -470,7 +470,7 @@ bool TestAgainstMatlab(void) {
     ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
     STRSET(name, "");
-    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
     xCheck(!error);
     rhoC = varmapack_specrad(A, r, p);
     maRhoC = varmapack_ma_specrad(B, r, q);

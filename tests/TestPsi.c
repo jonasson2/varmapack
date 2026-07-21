@@ -10,13 +10,13 @@
 
 static void TestFindPsi(void) {
   int p, q, r, n, icase, h;
-  char name[16] = "";
+  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   varmapack_error error;
   double *A, *B, *Sig, *Psi;
 
   // Query dimensions for mediumARMA1
   icase = 12;
-  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
   xCheck(!error);
   xCheck(r == 3 && p == 3 && q == 3);
   h = imax(p, q);
@@ -27,7 +27,7 @@ static void TestFindPsi(void) {
   xCheck(ALLOC(Sig, r*r));
   xCheck(ALLOC(Psi, r*h*r*h));
 
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
 
   FindPsi(A, B, Psi, p, q, r);
@@ -53,12 +53,12 @@ static void TestFindPsi(void) {
 
 static void TestFindPsiHat(void) {
   int p, q, r, h, icase;
-  char name[16] = "";
+  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A, *B, *Sig, *Psi, *Psi_hat;
   varmapack_error error;
   
   icase = 12;
-  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
   xCheck(!error);
   h = imax(p, q);
   
@@ -68,7 +68,7 @@ static void TestFindPsiHat(void) {
   xCheck(ALLOC(Psi, r*h*r*h));
   xCheck(ALLOC(Psi_hat, r*h*r*h));
 
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
   FindPsi(A, B, Psi, p, q, r);
   double Sig_mod[] = {
@@ -98,7 +98,7 @@ static void TestPsiTinyAR(void) {
   double A[1], B[1], Sig[1], Psi[1], PsiHat[1];
   int p=1, q=0, r=1, icase, h=imax(p, q);
   varmapack_error error;
-  error = varmapack_testcase(A, B, Sig, "tinyAR", &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase("tinyAR", &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
   FindPsi(A, B, Psi, p, q, r);
   FindPsiHat(Psi, PsiHat, Sig, r, h);
@@ -109,13 +109,13 @@ static void TestPsiTinyAR(void) {
 static void TestPsiSimple(void) {
   // Another Matlab comparison
   int p, q, r, icase, h;
-  char name[16] = "";
+  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   varmapack_error error;
   double *A, *B, *Sig, *Psi, *Psi_hat;
   double A2[] = {0.1, 0.3, 0.2, 0.4};
 
   icase = 9;
-  error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
   xCheck(!error);
   xCheck(r == 2);
   h = imax(p, q);
@@ -126,7 +126,7 @@ static void TestPsiSimple(void) {
   xCheck(ALLOC(Psi, r*h*r*h));
   xCheck(ALLOC(Psi_hat, r*h*r*h));
 
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
   xCheck(!error);
   xCheck(r == 2);
 

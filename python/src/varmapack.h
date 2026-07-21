@@ -12,6 +12,7 @@ extern "C" {
 #include <stdio.h>
 
 #define VARMAPACK_VERSION "0.1.0"
+#define VARMAPACK_TESTCASE_NAME_LEN 32
 
 typedef enum {
   VARMAPACK_OK = 0, VARMAPACK_INVALID_ARGUMENT, VARMAPACK_DIMENSION, VARMAPACK_ALLOCATION,
@@ -111,15 +112,15 @@ varmapack_error varmapack_autocov( // Sample autocovariance of observed data
   double C[]);        // out  r×r×(maxlag+1) array of lag-k covariance matrices
 
 varmapack_error varmapack_testcase( // Create testcase for VARMA calculation
+  char *name,    // in/out  testcase name or output buffer
+  int *index,    // in/out  named testcase index, or 0/-1 to use p,q,r
+  double rho,    // in      target spectral radius when name is "rho"
+  int *pp,       // in/out  number of autoregressive terms
+  int *qp,       // in/out  number of moving-average terms
+  int *rp,       // in/out  dimension of each x(t)
   double A[],    // out     r×r×p, autoregressive parameter matrices, or 0
   double B[],    // out     r×r×q, moving average parameter matrices, or 0
   double Sig[],  // out     r×r, covariance of the shock terms eps(t), or 0
-  char *name,    // out     string w. length >= 12, name of testcase, or ""
-  int *pp,       // in/out  Number of autoregressive terms
-  int *qp,       // in/out  Number of moving avg. terms
-  int *rp,       // in/out  dimension of each x(t)
-  int *icase,    // in/out  index of named testcase to create or 0 or -1 to use p,q,r
-  double rho,    // in      target spectral radius when name is "rho"
   randompack_rng *rng); // in      random number generator
 
 #ifdef __cplusplus

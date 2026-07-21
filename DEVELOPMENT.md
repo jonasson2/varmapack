@@ -26,16 +26,34 @@ meson test -C release RunTests --print-errorlogs
 
 ## Python package
 
-The Python interface is built from the `python/` subtree.
+Use a virtual environment in the repository root for Python development.
 
 ```sh
-cd python
-python -m pip install -e . --no-build-isolation
+uv venv
+uvactivate
+uv pip install meson-python meson ninja cython pytest numpy
+uv pip install -r python/docs/requirements.txt
+uv pip install /Users/jonasson/randompack/python
+uv pip install -e python --no-build-isolation
 python -c "import varmapack; print(varmapack.__file__)"
 ```
 
-The editable install assumes the C Randompack library and the Python
-`randompack` package are both available in the active environment.
+The editable install assumes the C Randompack library is installed so that
+`pkg-config` can find `randompack`. The Python `randompack` package should be
+installed in the same virtual environment.
+
+Run the Python smoke tests directly:
+
+```sh
+for t in python/tests/test_*.py; do python "$t" || exit 1; done
+```
+
+Build the Python documentation with:
+
+```sh
+cd python/docs
+make html
+```
 
 ## Source synchronization
 

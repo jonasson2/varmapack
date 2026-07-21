@@ -5,5 +5,5 @@ wrap_sources = [custom_target( 'cython_varmapack_core',
   command: [cython, '-3', '@INPUT@', '-o', '@OUTPUT@'], )]
 
 py.extension_module( '_core', sources: wrap_sources + core_sources, include_directories: inc,
-  dependencies: [py_dep, blas_dep, randompack_dep], c_args: local_dpstrf_args,
+  dependencies: [py_dep, numpy_dep, blas_dep, randompack_dep], c_args: local_dpstrf_args,
   install: true, subdir: 'varmapack', )

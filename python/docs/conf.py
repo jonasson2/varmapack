@@ -7,7 +7,8 @@ author = "Kristján Jónasson"
 import pathlib
 import tomllib
 
-pyproject = pathlib.Path(__file__).parent.parent / "pyproject.toml"
+python_dir = pathlib.Path(__file__).parent.parent
+pyproject = python_dir / "pyproject.toml"
 data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
 release = data["project"]["version"]
 

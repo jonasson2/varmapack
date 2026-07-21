@@ -95,13 +95,13 @@ static void checkZero(void) {
 static void checkAllNamedStationary(void) {
   const double strict_tol = 1e-12;
   int pmax = 0, qmax = 0, rmax = 0, maxcase = 0;
-  varmapack_error error = varmapack_testcase(0, 0, 0, "max", &pmax, &qmax,
-                                               &rmax, &maxcase, 0, 0);
+  varmapack_error error = varmapack_testcase("max", &maxcase, 0, &pmax, &qmax,
+                                             &rmax, 0, 0, 0, 0);
   xCheck(!error);
   for (int icase = 1; icase <= maxcase; ++icase) {
     int p = 0, q = 0, r = 0;
-    char name[32] = {0};
-    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    char name[VARMAPACK_TESTCASE_NAME_LEN] = {0};
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
     xCheck(!error);
     xCheck(r > 0);
     xCheck(p >= 0);
@@ -113,7 +113,7 @@ static void checkAllNamedStationary(void) {
     xCheck(ALLOC(A, nA));
     xCheck(ALLOC(B, nB));
     xCheck(ALLOC(Sig, nS));
-    error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
     xCheck(!error);
     double rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
     double maRho = q == 0 ? 0 : varmapack_ma_specrad(B, r, q);

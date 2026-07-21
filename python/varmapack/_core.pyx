@@ -14,6 +14,8 @@ cdef extern from "randompack.h":
     void randompack_free(randompack_rng *rng)
 
 cdef extern from "varmapack.h":
+    enum:
+        VARMAPACK_TESTCASE_NAME_LEN
     ctypedef enum varmapack_error:
         VARMAPACK_OK
         VARMAPACK_INVALID_ARGUMENT
@@ -36,9 +38,10 @@ cdef extern from "varmapack.h":
                                    int r, int n, int M, double *X0, int h,
                                    int MX0, double *X, double *E,
                                    randompack_rng *rng)
-    varmapack_error varmapack_testcase(double *A, double *B, double *Sig,
-                                       char *name, int *pp, int *qp, int *rp,
-                                       int *icase, double rho, randompack_rng *rng)
+    varmapack_error varmapack_testcase(char *name, int *icase, double rho,
+                                       int *pp, int *qp, int *rp, double *A,
+                                       double *B, double *Sig,
+                                       randompack_rng *rng)
     varmapack_error varmapack_acvf(double *A, double *B, double *Sig,
                                    int p, int q, int r, double *Gamma, int maxlag)
     varmapack_error varmapack_psi(double *A, double *B, int p, int q,
@@ -56,6 +59,19 @@ np.import_array()
 class VarmapackError(RuntimeError):
     """Exception raised when the Varmapack C library reports an error."""
     pass
+
+
+class _TestcaseInfo(dict):
+    def __repr__(self):
+        if not self:
+            return "{}"
+        width = max(max(len(name) for name in self), len("name"))
+        lines = [f"{'index':>5}  {'name':<{width}}  {'p':>2}  {'q':>2}  {'r':>2}"]
+        for name, row in self.items():
+            lines.append(
+                f"{row['index']:5d}  {name:<{width}}  "
+                f"{row['p']:2d}  {row['q']:2d}  {row['r']:2d}")
+        return "\n".join(lines)
 
 
 cdef str _error_message(varmapack_error error):
@@ -139,7 +155,8 @@ def testcase(object which="random", *, object p=None, object q=None,
         AR order, MA order, and series dimension. These are required for
         random, deterministic, and rho-controlled testcases.
     rho : float, optional
-        Target autoregressive spectral radius when ``which="rho"``.
+        Target autoregressive spectral radius when ``which="rho"``. The
+        constructed spectral radius is within about ``1e-6`` of this value.
     rng : randompack.Rng, optional
         Randompack generator used for random testcases.
 
@@ -149,6 +166,20 @@ def testcase(object which="random", *, object p=None, object q=None,
         Model containing the generated VARMA testcase.
     """
     return _testcase(which, p, q, r, rho, rng)
+
+
+def testcases():
+    """
+    List named VARMA testcases.
+
+    Returns
+    -------
+    dict
+        A dictionary-like object mapping testcase names to dictionaries with
+        fields ``index``, ``p``, ``q``, and ``r``. When printed, it is displayed
+        as a compact table.
+    """
+    return _testcases()
 
 
 def autocov(object X, int maxlag, str norm="ML"):
@@ -172,6 +203,44 @@ def autocov(object X, int maxlag, str norm="ML"):
         ``Cov(X[t], X[t-k])``.
     """
     return _autocov(X, maxlag, norm)
+
+
+cdef object _testcases():
+    cdef int p = 0
+    cdef int q = 0
+    cdef int r = 0
+    cdef int icase = 0
+    cdef int ncase
+    cdef int k
+    cdef char namebuf[VARMAPACK_TESTCASE_NAME_LEN]
+    cdef varmapack_error error
+    cdef bytes raw
+    cdef str name
+    namebuf[0] = 0
+    namebuf[0] = ord("m")
+    namebuf[1] = ord("a")
+    namebuf[2] = ord("x")
+    namebuf[3] = 0
+    error = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
+                               NULL, NULL, NULL, NULL)
+    if error != VARMAPACK_OK:
+        raise VarmapackError(_error_message(error))
+    ncase = icase
+    out = _TestcaseInfo()
+    for k in range(1, ncase + 1):
+        p = 0
+        q = 0
+        r = 0
+        icase = k
+        namebuf[0] = 0
+        error = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
+                                   NULL, NULL, NULL, NULL)
+        if error != VARMAPACK_OK:
+            raise VarmapackError(_error_message(error))
+        raw = bytes(namebuf).split(b"\0", 1)[0]
+        name = raw.decode("utf-8", "replace")
+        out[name] = {"index": k, "p": p, "q": q, "r": r}
+    return out
 
 
 cdef object _autocov(object X0, int maxlag, str norm):
@@ -249,8 +318,8 @@ cdef object _testcase(object which, object p0, object q0, object r0,
         if p0 is None or q0 is None or r0 is None:
             raise ValueError("p, q, and r are required for this testcase")
     else:
-        error = varmapack_testcase(NULL, NULL, NULL, nameptr, &p, &q, &r,
-                                   &icase, rho, NULL)
+        error = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
+                                   NULL, NULL, NULL, NULL)
         if error != VARMAPACK_OK:
             raise VarmapackError(_error_message(error))
     A = None
@@ -268,8 +337,9 @@ cdef object _testcase(object which, object p0, object q0, object r0,
     Sig = np.empty((r, r), dtype=DTYPE_F64)
     rngptr = _rng_from_object(rng, &owned)
     try:
-        error = varmapack_testcase(Aptr, Bptr, <double *>np.PyArray_DATA(Sig),
-                                   nameptr, &p, &q, &r, &icase, rho, rngptr)
+        error = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
+                                   Aptr, Bptr,
+                                   <double *>np.PyArray_DATA(Sig), rngptr)
         if error != VARMAPACK_OK:
             raise VarmapackError(_error_message(error))
     finally:
