@@ -7,43 +7,6 @@ typedef long int fstrlen;
 typedef int fstrlen;
 #endif
 
-#define BLAS_JOIN2(a, b) a##b
-#define BLAS_JOIN(a, b) BLAS_JOIN2(a, b)
-#if defined(BLAS_SYMBOL_PREFIX)
-#define daxpy_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, daxpy_)
-#define dcopy_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dcopy_)
-#define ddot_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, ddot_)
-#define dgeev_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dgeev_)
-#define dgemm_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dgemm_)
-#define dgemv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dgemv_)
-#define dger_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dger_)
-#define dgetrf_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dgetrf_)
-#define dgetrs_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dgetrs_)
-#define dlacpy_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dlacpy_)
-#define dlaset_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dlaset_)
-#define dlamch_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dlamch_)
-#define dnrm2_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dnrm2_)
-#define dpotrf_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dpotrf_)
-#define dpstrf_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dpstrf_)
-#define dposv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dposv_)
-#define dscal_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dscal_)
-#define dswap_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dswap_)
-#define dspr_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dspr_)
-#define dspr2_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dspr2_)
-#define dsyev_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsyev_)
-#define dsymm_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsymm_)
-#define dsymv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsymv_)
-#define dsyr_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsyr_)
-#define dsyr2k_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsyr2k_)
-#define dsyrk_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dsyrk_)
-#define dtrmm_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dtrmm_)
-#define dtrmv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dtrmv_)
-#define dtrsm_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dtrsm_)
-#define dtrsv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, dtrsv_)
-#define idamax_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, idamax_)
-#define ilaenv_ BLAS_JOIN(BLAS_SYMBOL_PREFIX, ilaenv_)
-#endif
-
 void daxpy_(int *n, double *alpha, double x[], int *incx, double y[], int *incy);
 
 void dcopy_(int *n, double x[], int *incx, double y[], int *incy);
