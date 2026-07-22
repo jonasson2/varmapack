@@ -64,6 +64,9 @@ foreach blas_name : blas_search_order
     if not blas_dep.found()
       blas_dep = cc.find_library('openblas', required: false)
     endif
+    if not blas_dep.found()
+      blas_dep = dependency('scipy-openblas', method: 'pkg-config', required: false)
+    endif
     if blas_dep.found()
       blas_found = 'OpenBLAS'
     endif

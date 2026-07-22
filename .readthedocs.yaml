@@ -6,14 +6,10 @@ build:
     python: "3.12"
   apt_packages:
     - gfortran
-    - libopenblas-dev
     - pkg-config
+  jobs:
+    install:
+      - bash python/docs/rtd-install.sh
 
 sphinx:
   configuration: python/docs/conf.py
-
-python:
-  install:
-    - requirements: python/docs/requirements.txt
-    - method: pip
-      path: python

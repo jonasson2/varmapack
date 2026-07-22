@@ -224,7 +224,7 @@ static double time_case(bench_case c, double target, randompack_rng *rng) {
   int reps = 0;
   uint64_t start, t;
   alloc_problem(p, q, r, n, M, &A, &B, &Sig, &X);
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, rho, rng);
+  error = varmapack_testcase(name, &icase, rho, &p, &q, &r, A, B, Sig, rng);
   if (error) {
     fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_strerror(error));
     exit(1);

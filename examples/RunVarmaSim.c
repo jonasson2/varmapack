@@ -18,13 +18,13 @@
 static void print_testcase_table(void) {
   int p, q, r, icase, ncases;
   varmapack_error error;
-  error = varmapack_testcase(0, 0, 0, "max", &p, &q, &r, &ncases, 0, 0);
+  error = varmapack_testcase("max", &ncases, 0, &p, &q, &r, 0, 0, 0, 0);
   xAssert(error == VARMAPACK_OK);
   char name[32];
   printf("No. Name          p  q  r\n");
   for(icase = 1; icase <= ncases; icase++) {
     name[0] = 0;
-    error = varmapack_testcase(0, 0, 0, name, &p, &q, &r, &icase, 0, 0);
+    error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
     xAssert(error == VARMAPACK_OK);
     printf("%2d  %-12s %2d %2d %2d\n", icase, name, p, q, r);
   }
@@ -122,15 +122,15 @@ static bool testcase_dims(char *s, int *p, int *q, int *r, int *icase) {
     char name[16] = "";
     if (!strcmp(s, "")) FAIL("Empty argument");  
     char MAX[TCN + 1] = "max";
-    error = varmapack_testcase(0, 0, 0, MAX, &P, &Q, &R, &ncase, 0, 0);
+    error = varmapack_testcase(MAX, &ncase, 0, &P, &Q, &R, 0, 0, 0, 0);
     if (error != VARMAPACK_OK) FAIL("Internal error");
     if (all_digits(s)) { // Pure digits (indexed testcase) → ask varmapack_testcase() for dimensions
       *icase = atoi(s);
       if (*icase < 1 || *icase > ncase) FAIL("Illegal testcase index");
-      error = varmapack_testcase(0, 0, 0, name, p, q, r, icase, 0, 0);
+      error = varmapack_testcase(name, icase, 0, p, q, r, 0, 0, 0, 0);
     }
     else { // Named testcase → ask varmapack_testcase() for dimensions
-      error = varmapack_testcase(0, 0, 0, s, p, q, r, icase, 0, 0);
+      error = varmapack_testcase(s, icase, 0, p, q, r, 0, 0, 0, 0);
     }
     if (error != VARMAPACK_OK) return false;
   }
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   else
     randompack_seed(seed, 0, 0, rng);
   char name[16] = "";
-  error = varmapack_testcase(A, B, Sig, name, &p, &q, &r, &icase, 0, rng);
+  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, rng);
   if (error != VARMAPACK_OK) goto fail;
   //
   error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, 1, 0, 0, 1, X, 0, rng);

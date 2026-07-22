@@ -200,7 +200,7 @@ static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
   *B = malloc(sizeof(double)*(*r)*(*r)*(*q > 0 ? *q : 1));
   *Sig = malloc(sizeof(double)*(*r)*(*r));
   if (!*A || !*B || !*Sig) die("allocation failed");
-  error = varmapack_testcase(*A, *B, *Sig, name, p, q, r, &icase, rho, rng);
+  error = varmapack_testcase(name, &icase, rho, p, q, r, *A, *B, *Sig, rng);
   if (error) {
     fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_strerror(error));
     exit(1);
