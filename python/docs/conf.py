@@ -4,17 +4,10 @@ project = "Varmapack"
 copyright = "2026, Kristján Jónasson"
 author = "Kristján Jónasson"
 
-import os
 import pathlib
-import sys
 import tomllib
 
-docs_dir = pathlib.Path(__file__).parent
 python_dir = pathlib.Path(__file__).parent.parent
-if os.environ.get("READTHEDOCS") == "True":
-    sys.path.insert(0, str(docs_dir / "_stubs"))
-else:
-    sys.path.insert(0, str(python_dir))
 pyproject = python_dir / "pyproject.toml"
 data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
 release = data["project"]["version"]
