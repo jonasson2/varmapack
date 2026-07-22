@@ -20,6 +20,12 @@ dependencies = [
 readme = { file = "README.md", content-type = "text/markdown" }
 description = "VARMA time-series simulation library"
 
+[project.urls]
+Homepage = "https://github.com/jonasson2/varmapack"
+Documentation = "https://varmapack.readthedocs.io/"
+Repository = "https://github.com/jonasson2/varmapack"
+Issues = "https://github.com/jonasson2/varmapack/issues"
+
 [tool.cibuildwheel]
 skip = "*t-*"
 test-requires = ["numpy", "randompack"]

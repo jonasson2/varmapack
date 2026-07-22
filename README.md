@@ -1,4 +1,21 @@
-# varmapack
+# Varmapack [https://github.com/jonasson2/varmapack]
+
+## Overview
+
+Varmapack is a library for VARMA time series and related models. It's primary
+purpose is to generate simulated series given model parameters, but it also
+provides features for generating data for testcase models, and computing
+autocovariances, spectral radii, and impulse responses. In contrast to some
+other packages, the simulated series have the correct distribution from the
+start; they are burn-in (or spin-up) free.
+
+The package uses Randompack (https://github.com/jonasson2/randompack) to
+generate random numbers for the simulation.
+
+The public header file `varmapack.h` serves as a compact reference for the C
+API: all user-facing functions are declared there, with comments describing the
+role of each parameter.
+
 
 **VARMA time-series simulation library** — intended for CRAN submission but also usable as
 a standalone C program.
