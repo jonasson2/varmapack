@@ -157,12 +157,14 @@ function matlabcompare(cases, Ms, n)
   for k = xcases
     [A, B, Sig, p, q, r] = ref_varma_testcase(k);
     s = 1 + mod(k - 1, 3);
-    [C, z] = ref_varma_testcasex(s, r, n);
+    d = 1 + mod(k, 2);
+    [C, z] = ref_varma_testcasex(s, d, r, n);
     h = max([p, q, s]) + 1;
     StartX0 = startmat(r, h);
     mat2file(fid, p, "xp" + k);
     mat2file(fid, q, "xq" + k);
     mat2file(fid, s, "xs" + k);
+    mat2file(fid, d, "xd" + k);
     mat2file(fid, r, "xr" + k);
     mat2file(fid, h, "xh" + k);
     mat2file(fid, A, "xA" + k);
@@ -211,9 +213,9 @@ function X0 = startpaths(r, h, M)
 end
 
 function zM = zpaths(z, M)
-  n = length(z);
-  zM = zeros(n, M);
+  [d, n] = size(z);
+  zM = zeros(d, n, M);
   for j = 1:M
-    zM(:,j) = z + (j - 1)/20;
+    zM(:,:,j) = z + (j - 1)/20;
   end
 end

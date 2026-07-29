@@ -1,4 +1,8 @@
-time_varmapack = executable( 'TimeVarmapack', ['TimeVarmapack.c', '../examples/getopt.c'],
+time_scalability = executable( 'TimeScalability', ['TimeScalability.c', '../examples/getopt.c'],
+  include_directories : [inc, include_directories('../examples')],
+  dependencies : [varmapack_dep], )
+
+time_simulate = executable( 'TimeSimulate', ['TimeSimulate.c', '../examples/getopt.c'],
   include_directories : [inc, include_directories('../examples')],
   dependencies : [varmapack_dep], )
 

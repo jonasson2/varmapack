@@ -37,12 +37,12 @@ fprintf("VAR, VMA, VARMA, and shock sizes: %s, %s, %s, %s\n", ...
         mat2str(size(X1)), mat2str(size(X2)), mat2str(size(X3)), ...
         mat2str(size(E)));
 
-% VARMAX simulation with common and replicate-specific exogenous inputs
-C = [0.8; 0.2];
-z = cos((1:n)'/10);
-zmulti = z + (1:M)/100;
+% VARMAX simulation with common and replicate-specific vector exogenous inputs
+C = [0.8, -0.3; 0.2, 0.4];
+z = [cos((1:n)/10); sin((1:n)/10)];
+zmulti = cat(3, z, z + 0.01);
 [X4, E4] = varmapack.simx(A1, B1, C, z, Sig, n, M, zeros(2), 2, vrng);
-X5 = varmapack.simx(A1, B1, C, zmulti, Sig, n, M, zeros(2), 2, vrng);
+X5 = varmapack.simx(A1, B1, C, zmulti, Sig, n, 2, zeros(2), 2, vrng);
 fprintf("VARMAX and shock sizes: %s, %s, %s\n", ...
         mat2str(size(X4)), mat2str(size(E4)), mat2str(size(X5)));
 

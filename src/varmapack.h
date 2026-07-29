@@ -40,13 +40,14 @@ bool varmapack_sim ( // Simulate VARMA time series
 bool varmapack_simx ( // Simulate VARMAX time series
   double A[],   // in      r×r×p autoregressive parameter matrices
   double B[],   // in      r×r×q moving-average parameter matrices
-  double C[],   // in      r×s exogenous coefficient vectors
+  double C[],   // in      r×d×s exogenous coefficient matrices C1,...,Cs
   double Sig[], // in      r×r covariance of shock terms eps(t)
-  double z[],   // in      n×Mz exogenous input sequences, or 0 when s is 0
+  double z[],   // in      d×n×Mz exogenous input sequences, or 0 when s is 0
   int Mz,       // in      number of z input sequences, must be 1 or M
   int p,        // in      number of autoregressive terms
   int q,        // in      number of moving-average terms
   int s,        // in      number of exogenous terms
+  int d,        // in      dimension of each exogenous input vector
   int r,        // in      dimension of each x(t)
   int n,        // in      length of each generated series
   int M,        // in      number of replicates to generate
@@ -127,7 +128,13 @@ bool varmapack_testcase( // Create testcase for VARMA calculation
   // VARMAPACK_TESTCASE_NAME_LEN characters.
   // For details see varmapack_testcase.c
 
-bool varmapack_testcasex(int s, int r, int n, double C[], double z[]);
+bool varmapack_testcasex( // Create deterministic exogenous testcase data
+  int s,        // in   number of exogenous terms
+  int d,        // in   dimension of each exogenous input vector
+  int r,        // in   dimension of each x(t)
+  int n,        // in   number of exogenous values to create
+  double C[],   // out  r×d×s exogenous coefficient matrices
+  double z[]);  // out  d×n exogenous input sequence
 
 #ifdef __cplusplus
 }

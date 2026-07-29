@@ -5,6 +5,7 @@ analysis of Gaussian VAR, VMA, VARMA, and VARMAX time-series models.
 
 It supports burn-in-free simulation, model testcases, theoretical and sample
 autocovariances, spectral radii, and impulse response functions.
+VARMAX models support scalar or vector-valued exogenous inputs.
 
 ## Quick Example
 
@@ -17,6 +18,21 @@ model = varmapack.Model(
 X = model.sim(200)
 print(X.shape)
 ```
+
+## Timing
+
+`examples/TimeSimulate.py` measures Varmapack simulation for all named
+testcases and an unnamed `(p,q,r,rho)=(3,3,10,.98)` model. It uses length 100,
+1000 replicates, and a 0.1-second timing target per testcase by default. Its
+output can be compared with the C and MATLAB `TimeSimulate` benchmarks. It is
+a source-tree benchmark and requires the optional `statsmodels` package:
+
+```sh
+    python -m pip install statsmodels
+    python examples/TimeSimulate.py
+```
+
+Use `-h` to list its timing and workload options.
 
 ## Documentation
 

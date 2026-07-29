@@ -10,7 +10,7 @@ function maxAbsRel = test_ref_varma_simx_forward(cases, n, M, tol)
   for icase = cases
     [A, B, Sig, p, q, r, name] = ref_varma_testcase(icase);
     s = 1 + mod(icase - 1, 3);
-    [C, z] = ref_varma_testcasex(s, r, n);
+    [C, z] = ref_varma_testcasex(s, 1, r, n);
     h = max([p, q, s]) + 2;
     if n < h, error('n must be at least h'); end
     [mu, X0, e0x, e0] = fixed_start(A, B, C, z, p, q, s, r, h, n, icase);

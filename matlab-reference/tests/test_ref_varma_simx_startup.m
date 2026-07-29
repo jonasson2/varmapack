@@ -10,7 +10,7 @@ function zmax = test_ref_varma_simx_startup(cases, M, n, seed)
   for icase = cases
     [A, B, Sig, p, q, r, name] = ref_varma_testcase(icase);
     s = 1 + mod(icase - 1, 3);
-    [C, z] = ref_varma_testcasex(s, r, n);
+    [C, z] = ref_varma_testcasex(s, 1, r, n);
     h = max([p, q, s]) + 2;
     if n < h, error('n must be at least h'); end
     StartX0 = startup_values(r, h, icase);

@@ -8,7 +8,8 @@ testcases, theoretical and sample autocovariances, spectral radii, and impulse
 response functions. In contrast to some other packages, the simulated series
 have the correct distribution from the start; they are burn-in (or spin-up)
 free. The numerical work is performed by the Varmapack C library, with random
-number generation provided by the companion library Randompack.
+number generation provided by the companion library Randompack. VARMAX models
+support scalar or vector-valued exogenous inputs.
 
 .. toctree::
    :maxdepth: 2

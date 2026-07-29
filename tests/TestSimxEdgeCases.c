@@ -14,7 +14,7 @@ static void check_white_noise_with_exog(void) {
   double X0[] = {2};
   double X[10], E[10];
   randompack_rng *rng = seededRng(100);
-  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, r, n, M,
+  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                                          X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   for (int j=0; j<M; j++) {
@@ -34,7 +34,7 @@ static void check_arx_recursion(void) {
   double X0[] = {0.5, -0.25};
   double X[6], E[6];
   randompack_rng *rng = seededRng(101);
-  bool ok = varmapack_simx(A, 0, C, Sig, z, 1, p, q, s, r, n, M,
+  bool ok = varmapack_simx(A, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                                          X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   xCheck(fabs(X[0] - X0[0]) < 1e-12);
@@ -54,7 +54,7 @@ static void check_varma_without_exog(void) {
   double X0[] = {0.5, -0.25, 0.1};
   double X[14], E[14];
   randompack_rng *rng = seededRng(105);
-  bool ok = varmapack_simx(A, B, 0, Sig, 0, 1, p, q, s, r, n, M,
+  bool ok = varmapack_simx(A, B, 0, Sig, 0, 1, p, q, s, 0, r, n, M,
                            X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   for (int j=0; j<M; j++) {
@@ -62,6 +62,70 @@ static void check_varma_without_exog(void) {
       int it = j*n + t;
       double prediction = E[it] + A[0]*X[it-1] + A[1]*X[it-2] + B[0]*E[it-1];
       xCheck(fabs(X[it] - prediction) < 1e-12);
+    }
+  }
+  randompack_free(rng);
+}
+
+static void check_vector_exog(void) {
+  int p = 0, q = 0, s = 2, d = 2, r = 2, n = 5, M = 2, h = 2;
+  double C[] = {0.5, -0.2, 0.1, 0.3, -0.4, 0.2, 0.2, 0.1};
+  double Sig[] = {1, 0, 0, 1};
+  double z[] = {1, -1, 2, 1, -2, 0, 1, 2, 0, -1,
+                1.5, -0.5, 2.5, 1.5, -1.5, 0.5, 1.5, 2.5, 0.5, -0.5};
+  double X0[] = {0, 0, 0, 0};
+  double X[20], E[20], Xcommon[20], Ecommon[20];
+  randompack_rng *rng = seededRng(108);
+  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, d, r, n, M,
+                            X0, h, 1, Xcommon, Ecommon, rng);
+  checkVarmapackSuccess(ok);
+  for (int j=0; j<M; j++) {
+    for (int row=0; row<r; row++) {
+      double expected = 0;
+      for (int lag=0; lag<s; lag++) {
+        for (int col=0; col<d; col++) {
+          expected -= C[row + col*r + lag*r*d]*z[col + (1-lag)*d];
+        }
+      }
+      xCheck(fabs(Ecommon[j*r*n + r + row] - expected) < 1e-12);
+    }
+    for (int t=h; t<n; t++) {
+      for (int row=0; row<r; row++) {
+        double expected = Ecommon[j*r*n + t*r + row];
+        for (int lag=0; lag<s; lag++) {
+          for (int col=0; col<d; col++) {
+            expected += C[row + col*r + lag*r*d]*z[col + (t-lag)*d];
+          }
+        }
+        xCheck(fabs(Xcommon[j*r*n + t*r + row] - expected) < 1e-12);
+      }
+    }
+  }
+  randompack_free(rng);
+  rng = seededRng(108);
+  ok = varmapack_simx(0, 0, C, Sig, z, M, p, q, s, d, r, n, M,
+                       X0, h, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  for (int j=0; j<M; j++) {
+    for (int row=0; row<r; row++) {
+      double expected = 0;
+      for (int lag=0; lag<s; lag++) {
+        for (int col=0; col<d; col++) {
+          expected -= C[row + col*r + lag*r*d]*z[j*d*n + col + (1-lag)*d];
+        }
+      }
+      xCheck(fabs(E[j*r*n + r + row] - expected) < 1e-12);
+    }
+    for (int t=h; t<n; t++) {
+      for (int row=0; row<r; row++) {
+        double expected = E[j*r*n + t*r + row];
+        for (int lag=0; lag<s; lag++) {
+          for (int col=0; col<d; col++) {
+            expected += C[row + col*r + lag*r*d]*z[j*d*n + col + (t-lag)*d];
+          }
+        }
+        xCheck(fabs(X[j*r*n + t*r + row] - expected) < 1e-12);
+      }
     }
   }
   randompack_free(rng);
@@ -75,7 +139,7 @@ static void check_singular_sigma(void) {
   double X0[] = {0, 0};
   double X[4];
   randompack_rng *rng = seededRng(107);
-  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, r, n, M,
+  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                             X0, h, 1, X, 0, rng);
   checkVarmapackFailure(ok);
   randompack_free(rng);
@@ -91,12 +155,12 @@ static void check_no_return_shocks_reproducible(void) {
   double X0[] = {0.2, -0.1, 0.4};
   double X1[24], X2[24], E[24];
   randompack_rng *rng = seededRng(102);
-  bool ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M,
+  bool ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M,
                                          X0, h, 1, X1, E, rng);
   checkVarmapackSuccess(ok);
   randompack_free(rng);
   rng = seededRng(102);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, h, 1,
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 1,
                          X2, 0, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X1, X2, n*M);
@@ -111,7 +175,7 @@ static void check_multipath_z_and_X0(void) {
   double X0[] = {0.5, -0.5};
   double X[8], E[8];
   randompack_rng *rng = seededRng(104);
-  bool ok = varmapack_simx(0, 0, C, Sig, z, M, p, q, s, r, n, M,
+  bool ok = varmapack_simx(0, 0, C, Sig, z, M, p, q, s, 1, r, n, M,
                                          X0, h, M, X, E, rng);
   checkVarmapackSuccess(ok);
   for (int j=0; j<M; j++) {
@@ -129,25 +193,31 @@ static void check_invalid_input(void) {
   double X0[] = {0, 0}, X[8], E[8];
   randompack_rng *rng = seededRng(103);
   bool ok;
-  ok = varmapack_simx(0, B, C, Sig, z, 1, p, q, s, r, n, M, X0, h, 1, X, E, rng);
+  ok = varmapack_simx(0, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, 0, Sig, z, 1, p, q, s, r, n, M, X0, h, 1, X, E, rng);
+  ok = varmapack_simx(A, B, 0, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, 0, 1, p, q, s, r, n, M, X0, h, 1, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, 0, 1, p, q, s, 1, r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, 0, h, 1, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 0, r, n, M, X0, h, 1, X, E,
+                       rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, 1, 1, X, E, rng);
+  ok = varmapack_simx(A, B, 0, Sig, 0, 1, p, q, 0, 1, r, n, M, X0, h, 1, X, E,
+                       rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 3, p, q, s, r, n, M, X0, h, 1, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, 0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, h, 3, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, 1, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, 0, Sig, 0, 3, p, q, 0, r, n, M, X0, h, 1, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 3, p, q, s, 1, r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, h, 1, 0, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 3, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, h, 1, X, E, 0);
+  ok = varmapack_simx(A, B, 0, Sig, 0, 3, p, q, 0, 0, r, n, M, X0, h, 1, X, E, rng);
+  checkVarmapackFailure(ok);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 1, 0, E, rng);
+  checkVarmapackFailure(ok);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, h, 1, X, E, 0);
   checkVarmapackFailure(ok);
   randompack_free(rng);
 }
@@ -155,10 +225,10 @@ static void check_invalid_input(void) {
 static void check_oversized_dimensions(void) {
   double Sig[] = {1}, X0[] = {0}, X[] = {0};
   randompack_rng *rng = seededRng(106);
-  bool ok = varmapack_simx(0, 0, 0, Sig, 0, 1, 0, 0, 0, INT_MAX, 2, 1,
+  bool ok = varmapack_simx(0, 0, 0, Sig, 0, 1, 0, 0, 0, 0, INT_MAX, 2, 1,
                            X0, 1, 1, X, 0, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(0, Sig, 0, Sig, 0, 1, 0, INT_MAX, 0, 1, 1, 1,
+  ok = varmapack_simx(0, Sig, 0, Sig, 0, 1, 0, INT_MAX, 0, 0, 1, 1, 1,
                        X0, 1, 1, X, 0, rng);
   checkVarmapackFailure(ok);
   randompack_free(rng);
@@ -171,6 +241,7 @@ void TestSimxEdgeCases(void) {
   check_singular_sigma();
   check_no_return_shocks_reproducible();
   check_multipath_z_and_X0();
+  check_vector_exog();
   check_invalid_input();
   check_oversized_dimensions();
 }

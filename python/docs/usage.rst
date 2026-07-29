@@ -27,10 +27,11 @@ A runnable version of this sequence is available as ``quickstart.py`` in the
     B1 = np.array([[0.4, 0.3], [0.1, 0.2]])
     A2 = 0.2*np.ones((2, 2))
     B2 = 0.5*np.eye(2)
-    z = np.cos(np.arange(200)/10)
+    z = np.column_stack((np.cos(np.arange(200)/10), np.sin(np.arange(200)/10)))
     VARMA_model = varmapack.Model(A=[A1, A2], B=B1, Sig=Sig)
     VMA_model = varmapack.Model(B=[B1, B2], Sig=Sig)
-    VARMAX_model = varmapack.Model(A=A1, B=B1, C=[0.8, 0.2], Sig=Sig)
+    VARMAX_model = varmapack.Model(A=A1, B=B1,
+                                   C=[[[0.8, 0.2], [-0.3, 0.4]]], Sig=Sig)
     rng = randompack.Rng()
     rng.seed(123)
     X1 = VAR_model.sim(200, nrep=100)
@@ -73,7 +74,7 @@ accepted. A model has the following methods:
    ``psi``        Non-orthogonalized impulse response function
 
 Models also expose ``A``, ``B``, ``C``, ``Sig``, ``mu``, ``p``, ``q``, ``r``,
-and ``s`` as read-only properties.
+``s``, and ``d`` as read-only properties.
 
 Top-level functions
 -------------------
@@ -95,11 +96,15 @@ Array shapes
 ------------
 - ``A`` has shape ``(p, r, r)`` or ``(r, r)`` for a single AR matrix.
 - ``B`` has shape ``(q, r, r)`` or ``(r, r)`` for a single MA matrix.
-- ``C`` has shape ``(s, r)`` or ``(r,)`` for VARMAX models.
+- ``C`` has shape ``(s, d, r)`` for VARMAX models: ``C[k, j, i]`` is element
+  ``(i, j)`` of the coefficient matrix at lag ``k+1``. Scalar exogenous input
+  also accepts ``(s, r)`` or ``(r,)`` as ``d=1`` conveniences.
 - ``Sig`` has shape ``(r, r)``.
 - The mean ``mu`` has shape ``(r,)`` or ``(nmu, r)`` where ``nmu`` ≤
   ``length``; the last supplied row repeats to the end.
 - Startup values ``X0`` have shape ``(nX0, r)`` or ``(nrep, nX0, r)``.
-- Exogenous inputs ``z`` have shape ``(length,)`` or ``(nrep, length)``.
+- For scalar exogenous input, ``z`` has shape ``(length,)`` or
+  ``(nrep, length)``. For d-dimensional input, it has shape ``(length, d)``
+  or ``(nrep, length, d)``.
 - Simulated series, and returned shocks, have shape ``(nrep, length, r)``.
 - The ``autocov`` data argument ``X`` has shape ``(n, r)``.

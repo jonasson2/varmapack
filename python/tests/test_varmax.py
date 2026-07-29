@@ -58,3 +58,38 @@ rng.seed(7)
 X5 = model2.sim(4, nrep=2, X0=np.zeros((2, 2)), z=np.arange(4.0), rng=rng)
 assert X5.shape == (2, 4, 2)
 assert np.all(np.isfinite(X5))
+
+C3 = np.array([
+    [[0.5, -0.4], [-0.2, 0.2]],
+    [[0.1, 0.2], [0.3, 0.1]],
+])
+model3 = varmapack.Model(A=np.array([[[0.3, 0.1], [-0.1, 0.2]]]),
+                          B=np.array([[[0.2, 0.0], [0.1, -0.2]]]),
+                          C=C3, Sig=Sig2)
+z_vector = np.array([
+    [0.6, -0.2], [-0.2, 0.8], [0.8, 0.0], [0.0, -1.0], [-1.0, 0.4],
+    [0.4, 0.2],
+])
+z_vector_multi = np.stack([z_vector, z_vector + 0.1])
+X0vector = np.zeros((2, 2, 2))
+rng.seed(7)
+Xcommon, Ecommon = model3.sim(6, nrep=2, X0=X0vector, z=z_vector, rng=rng,
+                              return_shocks=True)
+assert model3.s == 2
+assert model3.d == 2
+assert np.allclose(model3.C, C3)
+for j in range(2):
+    for t in range(2, 6):
+        expected = (Ecommon[j, t] + model3.A[0] @ Xcommon[j, t - 1] +
+                    model3.B[0] @ Ecommon[j, t - 1] + C3[0].T @ z_vector[t] +
+                    C3[1].T @ z_vector[t - 1])
+        assert np.allclose(Xcommon[j, t], expected)
+rng.seed(7)
+X6, E6 = model3.sim(6, nrep=2, X0=X0vector, z=z_vector_multi, rng=rng,
+                     return_shocks=True)
+for j in range(2):
+    for t in range(2, 6):
+        expected = (E6[j, t] + model3.A[0] @ X6[j, t - 1] +
+                    model3.B[0] @ E6[j, t - 1] + C3[0].T @ z_vector_multi[j, t] +
+                    C3[1].T @ z_vector_multi[j, t - 1])
+        assert np.allclose(X6[j, t], expected)

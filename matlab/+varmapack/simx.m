@@ -5,10 +5,11 @@ function [X, E] = simx(A, B, C, z, Sig, n, M, X0, h, rng)
 %
 %     x(t) = eps(t) + sum Ai*x(t-i) + sum Bi*eps(t-i) + sum Ci*z(t-i+1),
 %
-%   using X0 as a known startup segment. C is r-by-s, with C(:,i) multiplying
-%   the scalar sequence z(t-i+1); C=[] specifies no exogenous terms. z has at
-%   least n rows and is either n-by-M for replicate-specific data or n-by-1 to
-%   broadcast the same sequence to all replicates. X0 is r-by-h or r-by-h-by-M.
+%   using X0 as a known startup segment. C consists of r-by-d blocks C_i and
+%   has shape r-by-(d*s). Each z(t) is a d-vector. z has shape d-by-n to
+%   broadcast a common path or d-by-n-by-M for replicate-specific paths. The
+%   historical scalar forms n-by-1 and n-by-M are also accepted. C=[] specifies
+%   no exogenous terms. X0 is r-by-h or r-by-h-by-M.
 %
 %   The formula time axis is zero-based: X0(:,1) is x(0), and z(1,:) is z(0).
 %   MATLAB column h+1 is therefore formula time h.
@@ -31,6 +32,7 @@ function [X, E] = simx(A, B, C, z, Sig, n, M, X0, h, rng)
     error('varmapack_simx: X0 must be specified');
   end
   if nargin < 9 || isempty(h), h = size(X0, 2); end
+  [C, z] = normalize_exogenous(C, z, r, n, M);
   temporary_rng = [];
   if nargin < 10 || isempty(rng)
     temporary_rng = varmapack.Rng();
@@ -56,5 +58,30 @@ function [X, E] = simx(A, B, C, z, Sig, n, M, X0, h, rng)
   else
     X = reshape(X, r, n, M);
     if nargout >= 2, E = reshape(E, r, n, M); end
+  end
+end
+
+function [C, z] = normalize_exogenous(C, z, r, n, M)
+  if isempty(C)
+    C = zeros(r, 0);
+    z = zeros(0, n);
+    return
+  end
+  if size(C, 1) ~= r || ndims(C) ~= 2
+    error('varmapack:simx:C', 'C must be an r-by-(d*s) matrix');
+  end
+  if ndims(z) == 2 && (size(z, 2) == 1 || size(z, 2) == M) && size(z, 1) >= n
+    z = reshape(z, 1, size(z, 1), size(z, 2));
+  elseif ndims(z) == 2
+    z = reshape(z, size(z, 1), size(z, 2), 1);
+  elseif ndims(z) ~= 3
+    error('varmapack:simx:z', 'z must have shape d-by-n or d-by-n-by-M');
+  end
+  d = size(z, 1);
+  if d == 0 || size(z, 2) < n || (size(z, 3) ~= 1 && size(z, 3) ~= M)
+    error('varmapack:simx:z', 'z must have shape d-by-n or d-by-n-by-M');
+  end
+  if mod(size(C, 2), d) ~= 0
+    error('varmapack:simx:C', 'C must have d columns per term');
   end
 end

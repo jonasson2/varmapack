@@ -39,11 +39,11 @@ int main(void) {
   printf("AR spectral radius: %.4f\n", rho);
   printf("MA spectral radius: %.4f\n", rhoMA);
   // Add deterministic exogenous testcase data and simulate a VARMAX model.
-  int s = 1;
-  double C[2];
-  double z[200];
-  varmapack_testcasex(s, r, n, C, z);
-  varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, 2, 1, X, E, rng);
+  int s = 2, d = 2;
+  double C[2*2*2];
+  double z[2*200];
+  varmapack_testcasex(s, d, r, n, C, z);
+  varmapack_simx(A, B, C, Sig, z, 1, p, q, s, d, r, n, M, X0, 2, 1, X, E, rng);
   randompack_free(rng);
   free(Sig);
   free(B);

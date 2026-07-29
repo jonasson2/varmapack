@@ -49,6 +49,7 @@ def time_simulation(fn, values, bench_time):
 def time_model(name, model, length, nrep, bench_time):
   varmax = make_varmax(model)
   params = varmax_params(model)
+  rho = 0 if model.p == 0 else model.specrad()
   values = length*nrep*model.r
   rng = randompack.Rng()
   rng.seed(123)
@@ -57,7 +58,7 @@ def time_model(name, model, length, nrep, bench_time):
   ns_varmax = time_simulation(
       lambda: varmax.simulate(params, nsimulations=length, repetitions=nrep,
                               transformed=True), values, bench_time)
-  print(f"{name:<12} {model.p:>2} {model.q:>2} {model.r:>2} "
+  print(f"{name:<12} {model.p:>2} {model.q:>2} {model.r:>2} {rho:>5.2f} "
         f"{ns_varmapack:>10.1f} {ns_varmax:>7.0f} "
         f"{ns_varmax/ns_varmapack:>6.0f}")
 
@@ -81,7 +82,7 @@ def main():
   print(f"{'replicates per call:':<25}{args.nrep}")
   print(f"{'benchmark time per case:':<25}{args.bench_time:.1f} s")
   print()
-  print(f"{'Testcase':<12} {'p':>2} {'q':>2} {'r':>2} {'Varmapack':>10} "
+  print(f"{'Testcase':<12} {'p':>2} {'q':>2} {'r':>2} {'rho':>5} {'Varmapack':>10} "
         f"{'VARMAX':>7} {'Ratio':>6}")
   for name in [
       "tinyAR", "tinyMA", "tinyARMA", "smallAR1", "smallAR2", "smallMA1",

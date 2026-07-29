@@ -22,7 +22,7 @@ cdef extern from "varmapack.h":
                        int M, double *X0, int nX0, int MX0, double *X,
                        double *E, randompack_rng *rng)
     bint varmapack_simx(double *A, double *B, double *C, double *Sig,
-                        double *z, int Mz, int p, int q, int s, int r, int n,
+                        double *z, int Mz, int p, int q, int s, int d, int r, int n,
                         int M, double *X0, int h, int MX0, double *X,
                         double *E, randompack_rng *rng)
     bint varmapack_testcase(char *name, int *index, double rho, int *p, int *q,
@@ -101,9 +101,13 @@ cdef np.ndarray _exog_to_c(object x, int r, str name):
     if arr.ndim == 1:
         if arr.shape[0] != r:
             raise ValueError(f"{name} must have length r")
-        return arr.reshape((1, r)).copy()
-    if arr.ndim != 2 or arr.shape[1] != r:
-        raise ValueError(f"{name} must have shape (s, r)")
+        return arr.reshape((1, 1, r)).copy()
+    if arr.ndim == 2:
+        if arr.shape[1] != r:
+            raise ValueError(f"{name} must have shape (s, r)")
+        return arr.reshape((arr.shape[0], 1, r)).copy()
+    if arr.ndim != 3 or arr.shape[2] != r:
+        raise ValueError(f"{name} must have shape (s, d, r)")
     return arr.copy()
 
 
@@ -345,6 +349,7 @@ cdef Model _make_model_internal(np.ndarray A, np.ndarray B, np.ndarray Sig,
     model.pval = p
     model.qval = q
     model.sval = 0
+    model.dval = 0
     model.rval = r
     model.nmu = 0
     return model
@@ -360,9 +365,11 @@ cdef class Model:
         Autoregressive coefficient matrices.
     B : array_like, shape (q, r, r) or (r, r), optional
         Moving-average coefficient matrices.
-    C : array_like, shape (s, r), optional
-        Exogenous coefficient vectors. Supplying ``C`` creates a VARMAX
-        model and requires ``z`` and ``X0`` when simulating.
+    C : array_like, shape (s, d, r), optional
+        Exogenous coefficient matrices. ``C[k, j, i]`` is element ``(i, j)``
+        of the r-by-d matrix multiplying the d-vector ``z[t-k]``. Supplying
+        ``C`` creates a VARMAX model and requires ``z`` and ``X0`` when
+        simulating.
     Sig : array_like, shape (r, r)
         Innovation covariance matrix.
     mu : array_like, shape (r,) or (nmu, r), optional
@@ -393,6 +400,7 @@ cdef class Model:
     cdef int pval
     cdef int qval
     cdef int sval
+    cdef int dval
     cdef int rval
     cdef int nmu
 
@@ -405,6 +413,7 @@ cdef class Model:
         self.pval = 0
         self.qval = 0
         self.sval = 0
+        self.dval = 0
         if self.Sigarr is None:
             raise ValueError("Sig must be supplied")
         if self.Sigarr.shape[0] != self.Sigarr.shape[1]:
@@ -419,6 +428,7 @@ cdef class Model:
             self.qval = self.Barr.shape[0]
         if self.Carr is not None:
             self.sval = self.Carr.shape[0]
+            self.dval = self.Carr.shape[1]
             if mu is not None:
                 raise ValueError("mu is not supported for VARMAX models")
         if mu is not None:
@@ -453,8 +463,13 @@ cdef class Model:
 
     @property
     def s(self):
-        """Number of exogenous coefficient vectors."""
+        """Number of exogenous coefficient matrices."""
         return self.sval
+
+    @property
+    def d(self):
+        """Dimension of each exogenous input vector."""
+        return self.dval
 
     @property
     def A(self):
@@ -472,9 +487,11 @@ cdef class Model:
 
     @property
     def C(self):
-        """Exogenous coefficient vectors, or ``None``."""
+        """Exogenous coefficient matrices, or ``None``."""
         if self.Carr is None:
             return None
+        if self.dval == 1:
+            return self.Carr[:, 0, :].copy()
         return self.Carr.copy()
 
     @property
@@ -507,8 +524,9 @@ cdef class Model:
             ``(nrep, nX0, r)`` are accepted. For VARMAX, ``X0`` is required
             and must contain the fixed startup block.
         z : array_like, optional
-            Exogenous input for VARMAX models. Accepted shapes are
-            ``(length,)`` and ``(nrep, length)``.
+            Exogenous input for VARMAX models. Scalar inputs use shapes
+            ``(length,)`` and ``(nrep, length)``. Vector inputs use
+            ``(length, d)`` and ``(nrep, length, d)``.
         rng : randompack.Rng, optional
             Randompack generator. If omitted, a temporary default generator is
             created for the call.
@@ -736,17 +754,27 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
         X0ptr = <double *>np.PyArray_DATA(X0arr)
     if z is not None:
         zpublic = np.asarray(z, dtype=DTYPE_F64)
-        if zpublic.ndim == 1:
+        if model.dval == 1 and zpublic.ndim == 1:
             if zpublic.shape[0] < length:
                 raise ValueError("z must have at least length entries")
             zarr = zpublic[:length].copy()
-        elif zpublic.ndim == 2:
+        elif model.dval == 1 and zpublic.ndim == 2:
             if zpublic.shape[0] != nrep or zpublic.shape[1] < length:
                 raise ValueError("z must have shape (nrep, length)")
             Mz = nrep
             zarr = zpublic[:, :length].copy()
+        elif zpublic.ndim == 2:
+            if zpublic.shape[0] < length or zpublic.shape[1] != model.dval:
+                raise ValueError("z must have shape (length, d)")
+            zarr = zpublic[:length, :].copy()
+        elif zpublic.ndim == 3:
+            if (zpublic.shape[0] != nrep or zpublic.shape[1] < length or
+                    zpublic.shape[2] != model.dval):
+                raise ValueError("z must have shape (nrep, length, d)")
+            Mz = nrep
+            zarr = zpublic[:, :length, :].copy()
         else:
-            raise ValueError("z must have shape (length,) or (nrep, length)")
+            raise ValueError("z has an invalid shape")
         zptr = <double *>np.PyArray_DATA(zarr)
     if model.Carr is not None:
         if zptr == NULL:
@@ -767,7 +795,7 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
             h = nX0
             ok = varmapack_simx(Aptr, Bptr, Cptr,
                                  <double *>np.PyArray_DATA(model.Sigarr),
-                                 zptr, Mz, model.pval, model.qval, model.sval,
+                                 zptr, Mz, model.pval, model.qval, model.sval, model.dval,
                                  model.rval, length, nrep, X0ptr, h, MX0,
                                  <double *>np.PyArray_DATA(X), Eptr, rngptr)
         else:

@@ -6,20 +6,21 @@ static int get_int_scalar(const mxArray *arg, const char *name);
 static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  int s, r, n;
+  int s, d, r, n;
   bool ok;
-  if (nrhs != 3)
+  if (nrhs != 4)
     mexErrMsgIdAndTxt("varmapack:testcasex:nrhs", "Wrong number of input arguments");
   if (nlhs != 2)
     mexErrMsgIdAndTxt("varmapack:testcasex:nlhs", "Two output arguments are required");
   s = get_int_scalar(prhs[0], "s");
-  r = get_int_scalar(prhs[1], "r");
-  n = get_int_scalar(prhs[2], "n");
+  d = get_int_scalar(prhs[1], "d");
+  r = get_int_scalar(prhs[2], "r");
+  n = get_int_scalar(prhs[3], "n");
   if (r == 0)
     mexErrMsgIdAndTxt("varmapack:testcasex:r", "r must be positive");
-  plhs[0] = mxCreateDoubleMatrix(r, s, mxREAL);
-  plhs[1] = mxCreateDoubleMatrix(n, 1, mxREAL);
-  ok = varmapack_testcasex(s, r, n, mxGetPr(plhs[0]), mxGetPr(plhs[1]));
+  plhs[0] = mxCreateDoubleMatrix(r, (mwSize)d*s, mxREAL);
+  plhs[1] = mxCreateDoubleMatrix(d, n, mxREAL);
+  ok = varmapack_testcasex(s, d, r, n, mxGetPr(plhs[0]), mxGetPr(plhs[1]));
   check_varmapack_error(ok);
 }
 

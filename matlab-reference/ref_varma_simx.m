@@ -4,10 +4,11 @@
 %
 %    x(t) = eps(t) + sum Ai*x(t-i) + sum Bi*eps(t-i) + sum Ci*z(t-i+1),
 %
-%  using X0 as a known startup segment. C is r by s, with C(:,i) multiplying
-%  the scalar sequence z(t-i+1); C=[] specifies no exogenous terms. z has at
-%  least n rows and is either n by M for replicate-specific data or n by 1 to
-%  broadcast the same sequence to all replicates. X0 is r by h, or r by h by M.
+%  using X0 as a known startup segment. C consists of r-by-d blocks C_i, one
+%  for each exogenous lag, and has shape r-by-(d*s). z has shape d-by-n or
+%  d-by-n-by-M. Scalar z input in the historical n-by-1 or n-by-M form is
+%  also accepted. C=[] specifies no exogenous terms. X0 is r by h, or r by h
+%  by M.
 %
 %  The formula time axis is zero-based: X0(:,1) is x(0), and z(1,:) is z(0).
 %  MATLAB column h+1 is therefore formula time h.
@@ -40,19 +41,34 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0)
   if n < h, error('n must be at least h'); end
   if isempty(C)
     s = 0;
+    d = 0;
     Cc = {};
-    z = zeros(n, 1);
+    z = zeros(0, n);
   else
     if size(C, 1) ~= r, error('C must have r rows'); end
-    s = size(C, 2);
+    if ndims(z) == 2 && (size(z, 2) == 1 || size(z, 2) == M) && size(z, 1) >= n
+      d = 1;
+      z = reshape(z, 1, size(z, 1), size(z, 2));
+    elseif ndims(z) == 2
+      d = size(z, 1);
+      z = reshape(z, d, size(z, 2), 1);
+    elseif ndims(z) == 3
+      d = size(z, 1);
+    else
+      error('z must have shape d by n or d by n by M');
+    end
+    if d <= 0 || mod(size(C, 2), d) ~= 0
+      error('C must consist of r by d blocks');
+    end
+    s = size(C, 2)/d;
     Cc = cell(1, s);
     for i = 1:s
-      Cc{i} = C(:, i);
+      Cc{i} = C(:, (i - 1)*d + (1:d));
     end
   end
-  if size(z, 1) < n, error('z must have at least n rows'); end
-  if size(z, 2) ~= 1 && size(z, 2) ~= M
-    error('z must be n by 1 or n by M');
+  if s > 0 && size(z, 2) < n, error('z must have at least n columns'); end
+  if s > 0 && size(z, 3) ~= 1 && size(z, 3) ~= M
+    error('z must have one or M paths');
   end
   zlag = max(s - 1, 0);
   t0 = max(p, zlag);
@@ -94,7 +110,7 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0)
         Xt = Xt + B{i}*Eall(r*(t - i - first_shock_time - 1)+(1:r), j);
       end
       for i = 1:s
-        Xt = Xt + Cc{i}*zj(t-i+1);
+        Xt = Xt + Cc{i}*zj(:, t-i+1);
       end
       X(r*(t-1)+(1:r), j) = Xt;
     end
@@ -190,17 +206,17 @@ function rvec = startup_residual(A, C, z, X0, p, s, r, h, t0)
       rt = rt - A{i}*X0(:, t+1-i);
     end
     for i = 1:s
-      rt = rt - C{i}*z(t+2-i);
+      rt = rt - C{i}*z(:, t+2-i);
     end
     rvec(r*(t-t0)+(1:r)) = rt;
   end
 end
 
 function zj = zrep(z, j)
-  if size(z, 2) == 1
-    zj = z(:,1);
+  if size(z, 3) == 1
+    zj = z(:,:,1);
   else
-    zj = z(:,j);
+    zj = z(:,:,j);
   end
 end
 

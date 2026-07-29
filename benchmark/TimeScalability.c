@@ -1,4 +1,4 @@
-// TimeVarmapack.c: time current C varmapack_sim implementation.
+// TimeScalability.c: time varmapack_sim across one-at-a-time model variations.
 
 #include <math.h>
 #include <stdbool.h>
@@ -18,6 +18,7 @@ typedef struct {
   int r;
   int n;
   int M;
+  double rho;
 } bench_case;
 
 typedef struct {
@@ -46,13 +47,19 @@ static void die(char *msg) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.2, .w = 0.1, .d = 2, .returnE = false, .ref = {3, 3, 5, 100, 100}
+    .t = 0.2, .w = 0.1, .d = 2, .returnE = false, .ref = {3, 3, 5, 100, 100, .9}
   };
 }
 
 static void print_help(void) {
-  printf("TimeVarmapack -- time current C varmapack_sim (ns/value)\n");
-  printf("Usage: TimeVarmapack [options]\n\n");
+  printf("TimeScalability -- time varmapack_sim (ns/value)\n");
+  printf("Usage: TimeScalability [options]\n\n");
+  printf("By default, the reference model is p=q=3, r=5, n=M=100, with rho=0.9.\n");
+  printf("The corresponding options replace its individual values. One-at-a-time\n");
+  printf("   variations use p and q=1,3,5; r=2,5,12,32; n and M=5,10,100,10000;\n");
+  printf("   and rho=.5,.9,.99.\n");
+  printf("Rows are sorted by r, n, M, p, q, rho; the reference row is marked ");
+  printf("in the output.\n\n");
   printf("Options:\n");
   printf("  -h          show this help\n");
   printf("  -t seconds  timing target per case (default 0.2)\n");
@@ -64,6 +71,7 @@ static void print_help(void) {
   printf("  -r r        reference r (default 5)\n");
   printf("  -n n        reference n (default 100)\n");
   printf("  -M M        reference M (default 100)\n");
+  printf("  -R rho      reference rho (default 0.9)\n");
 }
 
 static bool get_options(int argc, char **argv, options *opts, bool *help) {
@@ -72,7 +80,7 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   *help = false;
   opterr = 0;
   optind = 1;
-  while ((opt = getopt(argc, argv, "hEt:w:d:p:q:r:n:M:")) != -1) {
+  while ((opt = getopt(argc, argv, "hEt:w:d:p:q:r:n:M:R:")) != -1) {
     switch (opt) {
       case 'h':
         *help = true;
@@ -112,6 +120,10 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
         opts->ref.M = atoi(optarg);
         if (opts->ref.M <= 0) return false;
         break;
+      case 'R':
+        opts->ref.rho = atof(optarg);
+        if (opts->ref.rho < 0 || opts->ref.rho >= 1) return false;
+        break;
       default:
         return false;
     }
@@ -120,7 +132,8 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
 }
 
 static bool same_case(bench_case a, bench_case b) {
-  return a.p == b.p && a.q == b.q && a.r == b.r && a.n == b.n && a.M == b.M;
+  return a.p == b.p && a.q == b.q && a.r == b.r && a.n == b.n && a.M == b.M &&
+         a.rho == b.rho;
 }
 
 static void add_case(bench_case cases[], int *ncases, bench_case row) {
@@ -137,7 +150,8 @@ static bool case_less(bench_case a, bench_case b) {
   if (a.n != b.n) return a.n < b.n;
   if (a.M != b.M) return a.M < b.M;
   if (a.p != b.p) return a.p < b.p;
-  return a.q < b.q;
+  if (a.q != b.q) return a.q < b.q;
+  return a.rho < b.rho;
 }
 
 static void sort_cases(bench_case cases[], int ncases) {
@@ -158,6 +172,7 @@ static int make_cases(options *opts, bench_case cases[]) {
   int r_axis[] = {2, 5, 12, 32};
   int n_axis[] = {5, 10, 100, 10000};
   int M_axis[] = {1, 10, 100, 10000};
+  double rho_axis[] = {.5, .9, .99};
   bench_case base = opts->ref;
   int ncases = 0;
   add_case(cases, &ncases, base);
@@ -184,6 +199,11 @@ static int make_cases(options *opts, bench_case cases[]) {
   for (int i = 0; i < 4; i++) {
     bench_case row = base;
     row.M = M_axis[i];
+    add_case(cases, &ncases, row);
+  }
+  for (int i = 0; i < 3; i++) {
+    bench_case row = base;
+    row.rho = rho_axis[i];
     add_case(cases, &ncases, row);
   }
   sort_cases(cases, ncases);
@@ -223,7 +243,6 @@ static double time_case(bench_case c, double target, bool returnE, randompack_rn
   int M = c.M;
   int icase = 0;
   char name[12] = "rho";
-  double rho = 0.95;
   double *A, *B, *Sig, *X, *E = 0;
   bool ok;
   int reps = 0;
@@ -233,7 +252,7 @@ static double time_case(bench_case c, double target, bool returnE, randompack_rn
     E = malloc(sizeof(double)*r*n*M);
     if (E == 0) die("allocation failed");
   }
-  ok = varmapack_testcase(name, &icase, rho, &p, &q, &r, A, B, Sig, rng);
+  ok = varmapack_testcase(name, &icase, c.rho, &p, &q, &r, A, B, Sig, rng);
   if (!ok) {
     fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_last_error());
     exit(1);
@@ -287,15 +306,17 @@ int main(int argc, char **argv) {
   printf("\n");
   warm_cpu(opts.w);
   ncases = make_cases(&opts, cases);
-  printf("%3s %5s %3s %3s %5s %10s %10s\n", "r", "n", "p", "q", "M", "Setup", "C");
+  printf("%3s %5s %3s %3s %5s %5s %8s %9s %7s\n", "r", "n", "p", "q", "M",
+         "rho", "Setup", "Generate", "Total");
   for (int i = 0; i < ncases; i++) {
     bench_case c = cases[i];
     int n = c.n == 0 ? (c.p > c.q ? c.p : c.q) : c.n;
     int h = c.p > c.q ? c.p : c.q;
-    double init = time_setup_case(c, opts.t, opts.returnE, rng)*h/(n*c.M);
-    double ns = time_case(c, opts.t, opts.returnE, rng);
-    printf("%3d %5d %3d %3d %5d %10.2f %10.1f%s\n", c.r, n, c.p, c.q, c.M, init, ns,
-           same_case(c, opts.ref) ? " reference" : "");
+    double setup = time_setup_case(c, opts.t, opts.returnE, rng)*h/(n*c.M);
+    double total = time_case(c, opts.t, opts.returnE, rng);
+    double generate = total - setup;
+    printf("%3d %5d %3d %3d %5d %5.2f %8.1f %9.1f %7.1f%s\n", c.r, n, c.p, c.q, c.M,
+           c.rho, setup, generate, total, same_case(c, opts.ref) ? " reference" : "");
   }
   randompack_free(rng);
   return 0;

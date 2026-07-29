@@ -9,24 +9,29 @@ The models considered are either VARMA $(p,q)$:
 
 $$
 \tag{1}
-x_t = \sum_{i=1}^{p} A_i x_{t-i} + \eps_t + \sum_{j=1}^{q} B_j \eps_{t-j},
-      \quad \eps_t \sim N(0,\Sigma).
+x_t = \sum_{i=1}^{p} A_i x_{t-i} + \varepsilon_t
+      + \sum_{j=1}^{q} B_j \varepsilon_{t-j},
+      \quad \varepsilon_t \sim N(0,\Sigma).
 $$
 
 or VARMAX $(p,q,s)$:
 
 $$
 \tag{2}
-x_t = \eps_t + \sum_{i=1}^{p} A_i x_{t-i} + \sum_{j=1}^{q} B_j \eps_{t-j}
-      + \sum_{k=1}^{s} C_k z_{t-k+1}, \quad \eps_t \sim N(0,\Sigma),
+x_t = \varepsilon_t + \sum_{i=1}^{p} A_i x_{t-i}
+      + \sum_{j=1}^{q} B_j \varepsilon_{t-j}
+      + \sum_{k=1}^{s} C_k z_{t-k+1},
+      \quad \varepsilon_t \sim N(0,\Sigma),
 $$
 
-where in both cases $x_t$ is $r$-dimensional, $\eps$ are shocks or innovations,
-$A_i$, $B_j$, and $C_k$ are autoregressive, moving-average, and exogenous
-coefficient matrices, respectively, $\Sigma$ is the innovation covariance
-matrix, and $z_t$ are exogenous terms. Varmapack supports a time-dependent mean
-path $\mu_t$ for VARMA simulation. Explicit mean paths are unsupported for
-VARMAX. For VARMA, the recursion is applied to the centered series
+where in both cases $x_t$ is $r$-dimensional, $\varepsilon_t$ are shocks or
+innovations,
+$A_i$ and $B_j$ are $r$ by $r$ autoregressive and moving-average coefficient
+matrices, $C_k$ is an $r$ by $d$ exogenous coefficient matrix, $z_t$ is a
+$d$-dimensional exogenous vector, and $\Sigma$ is the innovation covariance
+matrix. Varmapack supports a time-dependent mean path $\mu_t$ for VARMA
+simulation. Explicit mean paths are unsupported for VARMAX. For VARMA, the
+recursion is applied to the centered series
 $x_t - \mu_t$, which replaces $x_t$ in equation (1). The mean may also be
 fixed, i.e. independent of the time step.
 
@@ -39,10 +44,11 @@ $p$ are zero and $s > 0$ the models are designated VARX or VMAX.
 ## Simulation start
 
 There are two possibilities to start VARMA simulation with Varmapack: (a) by
-drawing both shocks $\eps_t$ and series values $x_t$ from the exact joint
-distribution of $(x,\eps)$ for the initial segment $t=0,\ldots,h-1$ where
+drawing both shocks $\varepsilon_t$ and series values $x_t$ from the exact joint
+distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$ where
 $h=\max(p,q)$, and (b) by specifying $h$ initial values of the series and
-drawing the first $h$ shocks from the conditional distribution of $(\eps|x)$,
+drawing the first $h$ shocks from the conditional distribution of
+$(\varepsilon|x)$,
 where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
 has the correct distribution from the first term, so there is no need for
 discarding a burn-in start segment. In case (b), the simulated values have the
@@ -60,13 +66,12 @@ $t=0,\ldots,h-1$, where $h > \max(p,s-1)$, and in addition the whole sequence
 of exogenous values
 $z_t, t=0,\ldots,n-1$ must be specified, where $n$ is the number of $x_t$ terms
 to be generated. The initial shocks are again drawn from the exact conditional
-distribution of $(\eps|x,z)$, alleviating the need for burn-in discarding. The
+distribution of $(\varepsilon|x,z)$, alleviating the need for burn-in discarding. The
 shock covariance $\Sigma$ must be positive definite.
 
 ## Autocovariances
 
-Varmapack can compute the theoretical autocovariance function of models (1) and
-(2),
+Varmapack can compute the theoretical autocovariance function of model (1),
 
 $$
 \Gamma_k = \Cov(x_t, x_{t-k}), \qquad k=0,1,2,\ldots,
@@ -97,7 +102,7 @@ $B(L)^{-1} = I + D_1L + D_2 L^2 + \ldots$. It follows that the model can be
 written as an equivalent infinite pure VAR model
 
 $$
-x_t = E_1 x_{t-1} + E_2 x_{t-2} + \ldots + \eps_t,
+x_t = E_1 x_{t-1} + E_2 x_{t-2} + \ldots + \varepsilon_t,
 $$
 
 where $I-E_1L-E_2L^2-\ldots = (I + D_1L + D_2 L^2 + \ldots) A(L)$.
@@ -110,7 +115,7 @@ time $t$ to the resulting change in the process at time $t + j$. If the time
 series is stationary, it can be expressed as an infinite VMA series:
 
 $$
-x_t = \sum_{j=0}^{\infty} \Psi_j \eps_{t-j},
+x_t = \sum_{j=0}^{\infty} \Psi_j \varepsilon_{t-j},
 $$
 
 which has the impulse response matrices as coefficients. With $\Psi_0=I$, the

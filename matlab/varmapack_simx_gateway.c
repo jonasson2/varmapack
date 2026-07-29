@@ -7,12 +7,12 @@
 static randompack_rng *get_rng(const mxArray *arg);
 static double *get_double_array(const mxArray *arg, const char *name);
 static int get_int_scalar(const mxArray *arg, const char *name);
-static void check_dims(const mxArray *A, const mxArray *B, const mxArray *C,
-                       const mxArray *Sig, int *p, int *q, int *s, int *r);
+static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
+                       int *p, int *q, int *r);
 static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  int p, q, s, r, n, M, h, Mz = 1, MX0 = 1;
+  int p, q, s, d, r, n, M, h, Mz = 1, MX0 = 1;
   bool ok;
   double *A, *B, *C, *Sig, *z = 0, *X0, *X, *E;
   randompack_rng *rng;
@@ -26,7 +26,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   B = get_double_array(prhs[1], "B");
   C = get_double_array(prhs[2], "C");
   Sig = get_double_array(prhs[4], "Sig");
-  check_dims(prhs[0], prhs[1], prhs[2], prhs[4], &p, &q, &s, &r);
+  check_dims(prhs[0], prhs[1], prhs[4], &p, &q, &r);
   n = get_int_scalar(prhs[5], "n");
   M = get_int_scalar(prhs[6], "M");
   h = get_int_scalar(prhs[8], "h");
@@ -44,16 +44,31 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     if (MX0 != 1 && MX0 != M)
       mexErrMsgIdAndTxt("varmapack:simx:X0", "size(X0,3) must be 1 or M");
   }
-  if (s > 0) {
+  if (mxGetNumberOfDimensions(prhs[2]) != 2 || mxGetM(prhs[2]) != r ||
+      mxGetN(prhs[2]) > INT_MAX) {
+    mexErrMsgIdAndTxt("varmapack:simx:C", "C must be an r-by-(d*s) matrix");
+  }
+  if (mxGetN(prhs[2]) == 0) {
+    s = 0;
+    d = 0;
+  }
+  else {
+    mwSize ndimsZ = mxGetNumberOfDimensions(prhs[3]);
+    const mwSize *dimsZ = mxGetDimensions(prhs[3]);
     if (!mxIsDouble(prhs[3]) || mxIsComplex(prhs[3]) ||
-        mxGetNumberOfDimensions(prhs[3]) != 2 || mxGetM(prhs[3]) < n) {
-      mexErrMsgIdAndTxt("varmapack:simx:z", "z must be a real n-by-Mz matrix");
+        (ndimsZ != 2 && ndimsZ != 3) || dimsZ[0] == 0 || dimsZ[1] < n ||
+        dimsZ[0] > INT_MAX) {
+      mexErrMsgIdAndTxt("varmapack:simx:z", "z must have shape d-by-n or d-by-n-by-M");
     }
-    if (mxGetN(prhs[3]) > INT_MAX)
+    d = (int)dimsZ[0];
+    if (mxGetN(prhs[2]) % d != 0)
+      mexErrMsgIdAndTxt("varmapack:simx:C", "C must have d columns per term");
+    s = (int)(mxGetN(prhs[2])/d);
+    if (ndimsZ == 3 && dimsZ[2] > INT_MAX)
       mexErrMsgIdAndTxt("varmapack:simx:z", "z is too large");
-    Mz = (int)mxGetN(prhs[3]);
+    Mz = ndimsZ == 3 ? (int)dimsZ[2] : 1;
     if (Mz != 1 && Mz != M)
-      mexErrMsgIdAndTxt("varmapack:simx:z", "z must have 1 or M columns");
+      mexErrMsgIdAndTxt("varmapack:simx:z", "size(z,3) must be 1 or M");
     z = mxGetPr(prhs[3]);
   }
   rng = get_rng(prhs[9]);
@@ -67,7 +82,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   X = mxGetPr(plhs[0]);
   E = Eout ? mxGetPr(Eout) : 0;
-  ok = varmapack_simx(A, B, C, Sig, z, Mz, p, q, s, r, n, M, X0, h, MX0, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, Mz, p, q, s, d, r, n, M, X0, h, MX0,
+                       X, E, rng);
   check_varmapack_error(ok);
 }
 
@@ -98,24 +114,23 @@ static int get_int_scalar(const mxArray *arg, const char *name) {
   return (int)x;
 }
 
-static void check_dims(const mxArray *A, const mxArray *B, const mxArray *C,
-                       const mxArray *Sig, int *p, int *q, int *s, int *r) {
+static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
+                       int *p, int *q, int *r) {
   mwSize rSig = mxGetM(Sig);
   mwSize cSig = mxGetN(Sig);
   mwSize cA = mxGetN(A);
   mwSize cB = mxGetN(B);
   if (rSig == 0 || cSig != rSig)
     mexErrMsgIdAndTxt("varmapack:simx:Sig", "Sig must be square");
-  if (rSig > INT_MAX || cA > INT_MAX || cB > INT_MAX || mxGetN(C) > INT_MAX)
-    mexErrMsgIdAndTxt("varmapack:simx:argument", "A, B, C, or Sig is too large");
-  if (mxGetM(A) != rSig || mxGetM(B) != rSig || mxGetM(C) != rSig)
-    mexErrMsgIdAndTxt("varmapack:simx:argument", "A, B, and C must have r rows");
+  if (rSig > INT_MAX || cA > INT_MAX || cB > INT_MAX)
+    mexErrMsgIdAndTxt("varmapack:simx:argument", "A, B, or Sig is too large");
+  if (mxGetM(A) != rSig || mxGetM(B) != rSig)
+    mexErrMsgIdAndTxt("varmapack:simx:argument", "A and B must have r rows");
   if (cA % rSig != 0 || cB % rSig != 0)
     mexErrMsgIdAndTxt("varmapack:simx:argument", "A and B must have r columns per term");
   *r = (int)rSig;
   *p = (int)(cA/rSig);
   *q = (int)(cB/rSig);
-  *s = (int)mxGetN(C);
 }
 
 static void check_varmapack_error(bool ok) {

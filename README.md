@@ -1,5 +1,6 @@
 <!-- -*- poly-markdown -*- -->
-# Varmapack [https://github.com/jonasson2/varmapack]
+# Varmapack
+<https://github.com/jonasson2/varmapack>
 
 ## Overview
 
@@ -10,12 +11,12 @@ testcases, theoretical and sample autocovariances, spectral radii, and impulse
 response functions. In contrast to some other packages, the simulated series
 have the correct distribution from the start; they are burn-in (or spin-up)
 free. The package uses Randompack (https://github.com/jonasson2/randompack),
-[xx], to generate random numbers for the simulation. Interfaces for C, R,
-Python, and Matlab have been written. These are described in the respective
-readme files in the Github repository.
+[xx], to generate random numbers for the simulation. C, Python, and MATLAB
+interfaces are described in the respective README files in the GitHub
+repository.
 
 Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
-[xx]. That algorithm is a collection of Matlab functions to evaluate the
+[xx]. That algorithm is a collection of MATLAB functions to evaluate the
 likelihood of a VARMA model, which also includes functions to simulate such
 models and provide testcase data.
 
@@ -37,7 +38,8 @@ The models considered are either VARMA $(p,q)$:
 
 $$
 \tag{1}
-x_t = \sum_{i=1}^{p} A_i x_{t-i} + \varepsilon_t + \sum_{j=1}^{q} B_j \varepsilon_{t-j},
+x_t = \sum_{i=1}^{p} A_i x_{t-i} + \varepsilon_t
+      + \sum_{j=1}^{q} B_j \varepsilon_{t-j},
       \quad \varepsilon_t \sim N(0,\Sigma).
 $$
 
@@ -45,16 +47,20 @@ or VARMAX $(p,q,s)$:
 
 $$
 \tag{2}
-x_t = \varepsilon_t + \sum_{i=1}^{p} A_i x_{t-i} + \sum_{j=1}^{q} B_j \varepsilon_{t-j}
-      + \sum_{k=1}^{s} C_k z_{t-k+1}, \quad \varepsilon_t \sim N(0,\Sigma),
+x_t = \varepsilon_t + \sum_{i=1}^{p} A_i x_{t-i}
+      + \sum_{j=1}^{q} B_j \varepsilon_{t-j}
+      + \sum_{k=1}^{s} C_k z_{t-k+1},
+      \quad \varepsilon_t \sim N(0,\Sigma),
 $$
 
-where in both cases $x_t$ is $r$-dimensional, $\varepsilon$ are shocks or innovations,
-$A_i$, $B_j$, and $C_k$ are autoregressive, moving-average, and exogenous
-coefficient matrices, respectively, $\Sigma$ is the innovation covariance
-matrix, and $z_t$ are exogenous terms. Varmapack supports a time-dependent mean
-path $\mu_t$ for VARMA simulation. Explicit mean paths are unsupported for
-VARMAX. For VARMA, the recursion is applied to the centered series
+where in both cases $x_t$ is $r$-dimensional, $\varepsilon_t$ are shocks or
+innovations,
+$A_i$ and $B_j$ are $r$ by $r$ autoregressive and moving-average coefficient
+matrices, $C_k$ is an $r$ by $d$ exogenous coefficient matrix, $z_t$ is a
+$d$-dimensional exogenous vector, and $\Sigma$ is the innovation covariance
+matrix. Varmapack supports a time-dependent mean path $\mu_t$ for VARMA
+simulation. Explicit mean paths are unsupported for VARMAX. For VARMA, the
+recursion is applied to the centered series
 $x_t - \mu_t$, which replaces $x_t$ in equation (1). The mean may also be
 fixed, i.e. independent of the time step.
 
@@ -70,7 +76,8 @@ There are two possibilities to start VARMA simulation with Varmapack: (a) by
 drawing both shocks $\varepsilon_t$ and series values $x_t$ from the exact joint
 distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$ where
 $h=\max(p,q)$, and (b) by specifying $h$ initial values of the series and
-drawing the first $h$ shocks from the conditional distribution of $(\varepsilon|x)$,
+drawing the first $h$ shocks from the conditional distribution of
+$(\varepsilon|x)$,
 where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
 has the correct distribution from the first term, so there is no need for
 discarding a burn-in start segment. In case (b), the simulated values have the
@@ -93,8 +100,7 @@ shock covariance $\Sigma$ must be positive definite.
 
 ### Autocovariances
 
-Varmapack can compute the theoretical autocovariance function of models (1) and
-(2),
+Varmapack can compute the theoretical autocovariance function of model (1),
 
 $$
 \Gamma_k = \operatorname{Cov}(x_t, x_{t-k}), \qquad k=0,1,2,\ldots,
@@ -313,16 +319,17 @@ normalization `"C"` instead of `"ML"` for division by `n - k`.
 
 ### VARMAX simulation
 
-Finally, the example creates deterministic exogenous testcase data. Its input
-sequence is broadcast to every replicate. To use a different sequence for each
-replicate, set `Mz=M` and let `z` be `n` by `M`.
+Finally, the example creates deterministic two-dimensional exogenous testcase
+data. Its `d` by `n` input sequence is broadcast to every replicate. To use a
+different sequence for each replicate, set `Mz=M` and store `z` as `d` by `n`
+by `M`.
 
 ```c
-      int s = 1;
-      double C[2];
-      double z[200];
-      varmapack_testcasex(s, r, n, C, z);
-      varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, 2, 1, X, E, rng);
+      int s = 2, d = 2;
+      double C[2*2*2];
+      double z[2*200];
+      varmapack_testcasex(s, d, r, n, C, z);
+      varmapack_simx(A, B, C, Sig, z, 1, p, q, s, d, r, n, M, X0, 2, 1, X, E, rng);
       randompack_free(rng);
       free(Sig);
       free(B);
@@ -397,11 +404,38 @@ functions are generally easier to write from mathematical algorithm
 descriptions than C functions, making implementation errors less likely. This
 makes the reference implementation a valuable independent cross-check.
 
-When MATLAB is available, regenerate the reference fixture and run the full
-comparison as follows:
+When MATLAB is available, see `DEVELOPMENT.md` for regenerating the reference
+fixture and running the full comparison.
+
+## Timing
+
+The `benchmark` directory contains four C timing programs. Build them with:
 
 ```sh
-    matlab -batch "cd('matlab-reference/tests'); run_reference_tests"
-    matlab -batch "addpath('tests'); matlabcompare"
-    meson test -C build AgainstMatlab --print-errorlogs
+    ninja -C build benchmark/TimeSimulate benchmark/TimeScalability \
+        benchmark/TimeSetup benchmark/TimeBreakEven
 ```
+
+`TimeSimulate` measures direct C-library simulation for all named testcases and
+an unnamed `(p,q,r,rho)=(3,3,10,.98)` model. It uses length 100, 1000
+replicates, and a 0.1-second timing target per testcase by default. Its output
+is directly comparable with `matlab/examples/TimeSimulate.sh` and
+`python/examples/TimeSimulate.py`:
+
+```sh
+    build/benchmark/TimeSimulate
+```
+
+Use `-h` to list its timing and workload options.
+
+`TimeScalability` varies one of the model order, dimension, series length,
+replicate count, or spectral radius at a time around a configurable reference
+model. It separates the amortized setup estimate from the remaining generation
+time:
+
+```sh
+    build/benchmark/TimeScalability
+```
+
+`TimeSetup` and `TimeBreakEven` are development benchmarks for analyzing the
+two startup solvers. See `DEVELOPMENT.md` for their use.

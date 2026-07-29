@@ -13,15 +13,47 @@ meson test -C build --print-errorlogs
 
 Use the `build` directory for normal optimized development builds and tests.
 
+## Setup benchmarks
+
+`TimeSetup` measures complete startup preparation using both the modified
+Yule-Walker (VYW) and SLICOT Lyapunov covariance solvers. It reports each
+solver's time separately from the remaining preparation work that turns its
+result into a startup draw. Build and run it with:
+
+```sh
+ninja -C build benchmark/TimeSetup
+build/benchmark/TimeSetup
+```
+
+`TimeBreakEven` times only the VYW and Lyapunov solvers over a grid of model
+orders and dimensions. Its output identifies where the Lyapunov route becomes
+faster; `SummarizeBreakEven.awk` produces first-winning and stable break-even
+tables:
+
+```sh
+ninja -C build benchmark/TimeBreakEven
+build/benchmark/TimeBreakEven -t 0.05 | \
+    awk -f benchmark/SummarizeBreakEven.awk
+```
+
 ## MATLAB reference tests
 
 The MATLAB reference implementation lives in `matlab-reference/`.
 `tests/matlabcompare.m` writes fixtures for the `AgainstMatlab` C comparison
 test.
 
+In a MATLAB session, change the current folder to the repository root, then run:
+
+```matlab
+cd("matlab-reference/tests")
+run_reference_tests
+cd("../../tests")
+matlabcompare
+```
+
+From the repository root, run the C comparison with:
+
 ```sh
-matlab -batch "cd('matlab-reference/tests'); run_reference_tests"
-matlab -batch "addpath('tests'); matlabcompare"
 meson test -C build AgainstMatlab --print-errorlogs
 ```
 

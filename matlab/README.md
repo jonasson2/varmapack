@@ -47,6 +47,8 @@ Check the installation with:
 
 ```matlab
 test_varmapack_rng
+test_varmapack_testcasex
+test_varmapack_simx
 ```
 
 ## More information
@@ -59,6 +61,33 @@ library builds, MATLAB reference tests, and the current MEX build helper, see
 also in the repository root.
 
 TODO: add reference to paper.
+
+## Timing
+
+On macOS and Linux, `matlab/examples/TimeSimulate.sh` measures Varmapack
+simulation for all named testcases and an unnamed `(p,q,r,rho)=(3,3,10,.98)`
+model. It uses length 100, 1000 replicates, and a 0.1-second timing target per
+testcase by default. Its output can be compared with the C and Python
+`TimeSimulate` benchmarks:
+
+```sh
+    matlab/examples/TimeSimulate.sh
+```
+
+Use `-h` to list its timing and workload options.
+
+On Windows, run the same benchmark directly from MATLAB:
+
+```matlab
+root = "C:\path\to\varmapack";
+addpath(fullfile(root, "matlab", "examples"))
+addpath(fullfile(root, "matlab"))
+addpath(fullfile(root, "matlab-reference"))
+addpath(fullfile(root, "tests", "matlab"))
+TimeSimulate
+```
+
+Pass options as name-value pairs, for example `TimeSimulate("M", 5000)`.
 
 ## Usage
 
@@ -101,12 +130,12 @@ X1 = varmapack.sim(A1, [], Sig, [], n, M, [], vrng);
 X2 = varmapack.sim([], [B1, B2], Sig, [], n, M, [], vrng);
 [X3, E] = varmapack.sim([A1, A2], B1, Sig, [], n, M, [], vrng); % E = shocks
 
-% Add exogenous input z with coefficient vector C: a VARMAX(1,1,1) model.
-C = [0.8; 0.2];
-z = cos((1:n)'/10);   % n by 1, broadcast to all replicates
-zmulti = z + (1:M)/100; % n by M, different for each replicate
+% Add two-dimensional exogenous input z with coefficient matrix C.
+C = [0.8, -0.3; 0.2, 0.4];
+z = [cos((1:n)/10); sin((1:n)/10)]; % d by n, broadcast to all replicates
+zmulti = cat(3, z, z + 0.01);       % d by n by 2, different paths
 [X4,E4] = varmapack.simx(A1, B1, C, z, Sig, n, M, zeros(2), 2, vrng); %E4=shocks
-X5 = varmapack.simx(A1, B1, C, zmulti, Sig, n, M, zeros(2), 2, vrng);
+X5 = varmapack.simx(A1, B1, C, zmulti, Sig, n, 2, zeros(2), 2, vrng);
 
 % Compute AR and MA spectral radii, and theoretical and data autocovariances
 maxlag = 3;
@@ -139,6 +168,7 @@ function.
 | [`varmapack.psi`](+varmapack/psi.m) | Impulse-response matrices. |
 | [`varmapack.irf`](+varmapack/irf.m) | Orthogonalized impulse responses. |
 | [`varmapack.testcase`](+varmapack/testcase.m) | Construct testcase models. |
+| [`varmapack.testcasex`](+varmapack/testcasex.m) | Construct exogenous testcase data. |
 
 ### Array shapes
 
@@ -147,12 +177,14 @@ lags are concatenated horizontally:
 
 - `A` has shape `r` by `r*p`: `[A1, A2, ..., Ap]`.
 - `B` has shape `r` by `r*q`: `[B1, B2, ..., Bq]`.
-- `C` has shape `r` by `s`: `[C1, C2, ..., Cs]`.
+- `C` has shape `r` by `d*s`: `[C1, C2, ..., Cs]`, where each `Ck` is
+  `r` by `d` and multiplies the `d`-vector `z(t-k+1)`.
 - `Sig` has shape `r` by `r`.
 - The mean `mu` has shape `r` by `nmu`, where `nmu <= n`; the last supplied
   column repeats to the end. Use `[]` or `0` for zero mean.
 - Startup values `X0` have shape `r` by `nX0` or `r` by `nX0` by `M`.
-- Exogenous inputs `z` have shape `n` by `1` or `n` by `M`.
+- Exogenous inputs `z` have shape `d` by `n` or `d` by `n` by `M`.
+  The scalar `d=1` forms `n` by `1` and `n` by `M` are also accepted.
 - For `r > 1`, simulated series and returned shocks have shape `r` by `n` by
   `M`. For scalar models, `sim` and `simx` return `1` by `n` when `M=1` and
   `n` by `M` otherwise.

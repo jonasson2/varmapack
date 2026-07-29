@@ -308,7 +308,7 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
   xCheck(ok);
   for (int k=0; k<ncases; k++) {
     int icase = cases[k];
-    int p, q, s, r, h, r2;
+    int p, q, s, d, r, h, r2;
     double *A = 0, *B = 0, *C = 0, *Sig = 0, *z = 0, *StartX0 = 0;
     double *zM = 0, *StartX0M = 0;
     double rhoC;
@@ -317,26 +317,27 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
     STRSETF(name, "xp%d", icase); ok = IntFromMatlab(fid, name, &p);
     STRSETF(name, "xq%d", icase); ok &= IntFromMatlab(fid, name, &q);
     STRSETF(name, "xs%d", icase); ok &= IntFromMatlab(fid, name, &s);
+    STRSETF(name, "xd%d", icase); ok &= IntFromMatlab(fid, name, &d);
     STRSETF(name, "xr%d", icase); ok &= IntFromMatlab(fid, name, &r);
     STRSETF(name, "xh%d", icase); ok &= IntFromMatlab(fid, name, &h);
     xCheck(ok);
     r2 = r*r;
     ASSERT(ALLOC(A, r2*(p > 0 ? p : 1)), "allocation failed");
     ASSERT(ALLOC(B, r2*(q > 0 ? q : 1)), "allocation failed");
-    ASSERT(ALLOC(C, r*(s > 0 ? s : 1)), "allocation failed");
+    ASSERT(ALLOC(C, r*d*(s > 0 ? s : 1)), "allocation failed");
     ASSERT(ALLOC(Sig, r2), "allocation failed");
-    ASSERT(ALLOC(z, n), "allocation failed");
+    ASSERT(ALLOC(z, d*n), "allocation failed");
     ASSERT(ALLOC(StartX0, r*h), "allocation failed");
-    ASSERT(ALLOC(zM, n*xMultiM), "allocation failed");
+    ASSERT(ALLOC(zM, d*n*xMultiM), "allocation failed");
     ASSERT(ALLOC(StartX0M, r*h*xMultiM), "allocation failed");
     STRSETF(name, "xA%d", icase); ok = MatrixFromMatlab(fid, name, A, r, r*p);
     STRSETF(name, "xB%d", icase); ok &= MatrixFromMatlab(fid, name, B, r, r*q);
-    STRSETF(name, "xC%d", icase); ok &= MatrixFromMatlab(fid, name, C, r, s);
+    STRSETF(name, "xC%d", icase); ok &= MatrixFromMatlab(fid, name, C, r, d*s);
     STRSETF(name, "xSig%d", icase); ok &= MatrixFromMatlab(fid, name, Sig, r, r);
-    STRSETF(name, "xz%d", icase); ok &= MatrixFromMatlab(fid, name, z, 1, n);
+    STRSETF(name, "xz%d", icase); ok &= MatrixFromMatlab(fid, name, z, d, n);
     STRSETF(name, "xStartX0%d", icase); ok &= MatrixFromMatlab(fid, name, StartX0, r, h);
     STRSETF(name, "xzM%d-%d", xMultiM, icase);
-    ok &= MatrixFromMatlab(fid, name, zM, n, xMultiM);
+    ok &= MatrixFromMatlab(fid, name, zM, d, n*xMultiM);
     STRSETF(name, "xStartX0M%d-%d", xMultiM, icase);
     ok &= MatrixFromMatlab(fid, name, StartX0M, r*h, xMultiM);
     xCheck(ok);
@@ -352,11 +353,11 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
       ASSERT(ALLOC(E, r*n*M), "allocation failed");
       ASSERT(ALLOC(XnoE, r*n*M), "allocation failed");
       randompack_seed(42, 0, 0, rng);
-      ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, StartX0, h, 1,
+      ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, d, r, n, M, StartX0, h, 1,
                              X, E, rng);
       checkVarmapackSuccess(ok);
       randompack_seed(42, 0, 0, rng);
-      ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, StartX0, h, 1,
+      ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, d, r, n, M, StartX0, h, 1,
                              XnoE, 0, rng);
       checkVarmapackSuccess(ok);
       STRSETF(name, "Xx%d-%d", M, icase);
@@ -382,7 +383,7 @@ static bool compare_varmax_matlab(FILE *fid, int n, double Ms[], int nMs) {
     ASSERT(ALLOC(X, r*n*M), "allocation failed");
     ASSERT(ALLOC(E, r*n*M), "allocation failed");
     randompack_seed(42, 0, 0, rng);
-    ok = varmapack_simx(A, B, C, Sig, zM, M, p, q, s, r, n, M, StartX0M, h, M,
+    ok = varmapack_simx(A, B, C, Sig, zM, M, p, q, s, d, r, n, M, StartX0M, h, M,
                            X, E, rng);
     checkVarmapackSuccess(ok);
     STRSETF(name, "XxM%d-%d", M, icase);
