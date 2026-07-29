@@ -15,18 +15,18 @@ function test_ref_varma_sim(cases, M, n, showTable)
     mu = (1:r)'/10;
     % Smoke test: generated states and shocks should be finite.
     randompack_seed(rng, 42);
-    [X, E] = ref_varma_sim(A, B, Sig, [], h + 4, 3, [], [], rng);
+    [X, E] = ref_varma_sim(A, B, Sig, [], h + 4, 3, [], rng);
     ascertain(all(isfinite(X(:))));
     ascertain(all(isfinite(E(:))));
     % Constant mean: using the same shocks should only shift X by mu.
     randompack_seed(rng, 42);
-    [Xmu, Emu] = ref_varma_sim(A, B, Sig, mu, h + 4, 3, [], [], rng);
+    [Xmu, Emu] = ref_varma_sim(A, B, Sig, mu, h + 4, 3, [], rng);
     ascertain(almostequal(Emu, E));
     % Mean path: supplied means should shift X while leaving shocks unchanged.
     mupath = [mu, 2*mu, 3*mu];
     Mupath = [mupath, repmat(mupath(:, end), 1, h + 1)];
     randompack_seed(rng, 42);
-    [Xpath, Epath] = ref_varma_sim(A, B, Sig, mupath, h + 4, 3, [], [], rng);
+    [Xpath, Epath] = ref_varma_sim(A, B, Sig, mupath, h + 4, 3, [], rng);
     ascertain(almostequal(Epath, E));
     if r == 1
       X = reshape(X, h + 4, 3);
@@ -41,12 +41,21 @@ function test_ref_varma_sim(cases, M, n, showTable)
     % Fixed startup: supplied X0 should be copied into every replicate.
     X0 = 2 + repmat((1:r)', 1, h);
     randompack_seed(rng, 42);
-    Xstart = ref_varma_sim(A, B, Sig, mu, h + 3, 2, X0, [], rng);
+    Xstart = ref_varma_sim(A, B, Sig, mu, h + 3, 2, X0, rng);
     if r == 1
       Xstart = reshape(Xstart, 1, h + 3, 2);
     end
     ascertain(almostequal(Xstart(:, 1:h, 1), X0, 1e-12));
     ascertain(almostequal(Xstart(:, 1:h, 2), X0, 1e-12));
+    % Replicate-specific startup: each supplied X0 path is copied in place.
+    X0M = cat(3, X0, X0 + 1);
+    randompack_seed(rng, 42);
+    XstartM = ref_varma_sim(A, B, Sig, mu, h + 3, 2, X0M, rng);
+    if r == 1
+      XstartM = reshape(XstartM, 1, h + 3, 2);
+    end
+    ascertain(almostequal(XstartM(:, 1:h, 1), X0M(:, :, 1), 1e-12));
+    ascertain(almostequal(XstartM(:, 1:h, 2), X0M(:, :, 2), 1e-12));
     [D(k, :), Z(k, :)] = check_statistics(A, B, Sig, p, q, r, n, M, rng);
     if showTable
       fprintf('%5d %9.2f %10.2f %10.2f %10.2f %9.2f\n', ...
@@ -72,7 +81,7 @@ function [d, z] = check_statistics(A, B, Sig, p, q, r, n, M, rng)
   S = vyw_solve(A, PLU, G);
   % z(1): long-run sample mean agrees with the supplied mean.
   randompack_seed(rng, 42);
-  X = ref_varma_sim(A, B, Sig, mu, n, M, [], [], rng);
+  X = ref_varma_sim(A, B, Sig, mu, n, M, [], rng);
   X = asarray3(X, r, n, M);
   mud = mean(mean(X, 3), 2);
   d(1) = relabsdiff(mu, mud);
@@ -80,7 +89,7 @@ function [d, z] = check_statistics(A, B, Sig, p, q, r, n, M, rng)
   z(1) = mean_zscore(mud, mu, SSmean, r, n, M);
   % z(2): covariance of the startup/early block agrees with S_build.
   randompack_seed(rng, 42);
-  X = ref_varma_sim(A, B, Sig, [], nCov, M, [], [], rng);
+  X = ref_varma_sim(A, B, Sig, [], nCov, M, [], rng);
   X = reshape(asarray3(X, r, nCov, M), r*nCov, M);
   SSd = cov(X');
   SS = S_build(S, A, G, nCov);
@@ -89,7 +98,7 @@ function [d, z] = check_statistics(A, B, Sig, p, q, r, n, M, rng)
   % z(5): covariance of the first two values agrees with S_build.
   nLag = max(h, 2);
   randompack_seed(rng, 42);
-  X = ref_varma_sim(A, B, Sig, [], nLag, M, [], [], rng);
+  X = ref_varma_sim(A, B, Sig, [], nLag, M, [], rng);
   X = asarray3(X, r, nLag, M);
   X = reshape(X(:, 1:2, :), 2*r, M);
   SS2d = cov(X');
@@ -101,7 +110,7 @@ function [d, z] = check_statistics(A, B, Sig, p, q, r, n, M, rng)
   SSh = S_build(S, A, G, h);
   EE = kron(eye(h), Sig);
   randompack_seed(rng, 42);
-  [X, E] = ref_varma_sim(A, B, Sig, [], 2*h, M, [], [], rng);
+  [X, E] = ref_varma_sim(A, B, Sig, [], 2*h, M, [], rng);
   X = asarray3(X, r, 2*h, M);
   E = asarray3(E, r, 2*h, M);
   X1 = reshape(X(:, 1:h, :), r*h, []);
@@ -157,7 +166,7 @@ end
 function [z1, z2, z3] = forecast_zscores(A, B, Sig, C, SS, h, r, mu, M, rng)
   X0 = 2 + repmat((1:r)', 1, h);
   randompack_seed(rng, 43);
-  X = ref_varma_sim(A, B, Sig, mu, h + 2, M, X0, [], rng);
+  X = ref_varma_sim(A, B, Sig, mu, h + 2, M, X0, rng);
   X = asarray3(X, r, h + 2, M);
   X1 = reshape(X(:, h+1, :), r, M);
   X2 = reshape(X(:, h+2, :), r, M);

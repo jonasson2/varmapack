@@ -51,7 +51,7 @@ C = varmapack.autocov(Xsmall, 1)
 Xc = Xsmall - Xsmall.mean(axis=0)
 assert C.shape == (2, 2, 2)
 assert np.allclose(C[0], Xc.T @ Xc / Xsmall.shape[0])
-assert np.allclose(C[1], Xc[:-1].T @ Xc[1:] / Xsmall.shape[0])
+assert np.allclose(C[1], Xc[1:].T @ Xc[:-1] / Xsmall.shape[0])
 
 A2 = np.array([[[0.1, 0.2], [0.3, 0.4]]])
 B2 = np.array([[[0.5, 0.6], [0.7, 0.8]]])

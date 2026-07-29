@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "Tests.h"
-#include "error.h"
 #include "xCheck.h"
 #include "varmapack.h"
 #include "VarmaPackUtil.h"
@@ -11,12 +10,12 @@ void TestFindCFindG(void) {
   int p, q, r, icase;
   char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A, *B, *Sig, *C, *G, *W;
-  varmapack_error error;
+  bool ok;
 
   // First call: query dimensions for smallARMA1
   icase = 8;
-  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  xCheck(!error);
+  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
+  checkVarmapackSuccess(ok);
   xCheck(p == 1);
   xCheck(q == 1);
   xCheck(r == 2);
@@ -29,8 +28,8 @@ void TestFindCFindG(void) {
   xCheck(ALLOC(G, r*r*(q + 1)));
   xCheck(ALLOC(W, r*r*(q + 1)));
 
-  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  xCheck(!error);
+  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
+  checkVarmapackSuccess(ok);
   FindC(A, B, Sig, p, q, r, C);
   FindG(B, C, q, r, G);
 

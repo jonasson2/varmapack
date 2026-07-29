@@ -3,6 +3,9 @@ Usage
 
 Quick start
 -----------
+A runnable version of this sequence is available as ``quickstart.py`` in the
+``python/examples`` directory.
+
 .. code-block:: python
 
     import varmapack

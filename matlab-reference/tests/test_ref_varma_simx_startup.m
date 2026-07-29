@@ -1,6 +1,6 @@
 function zmax = test_ref_varma_simx_startup(cases, M, n, seed)
   fprintf('TESTING REF_VARMA_SIMX STARTUP DRAWS... ');
-  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcasex('count'); end
+  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('count'); end
   if nargin < 2 || isempty(M), M = 5000; end
   if nargin < 3 || isempty(n), n = 10; end
   if nargin < 4 || isempty(seed), seed = 2000; end
@@ -8,13 +8,15 @@ function zmax = test_ref_varma_simx_startup(cases, M, n, seed)
   cleanup = onCleanup(@() randompack_free(rng));
   zmax = 0;
   for icase = cases
-    [A, B, C, Sig, z, p, q, s, r, name] = ref_varma_testcasex(icase, n);
+    [A, B, Sig, p, q, r, name] = ref_varma_testcase(icase);
+    s = 1 + mod(icase - 1, 3);
+    [C, z] = ref_varma_testcasex(s, r, n);
     h = max([p, q, s]) + 2;
     if n < h, error('n must be at least h'); end
     StartX0 = startup_values(r, h, icase);
     [muE, covE] = startup_theory(A, B, C, Sig, z, p, q, s, r, h, StartX0);
     randompack_seed(rng, seed + icase);
-    [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, StartX0, h, [], rng);
+    [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, StartX0, h, rng);
     E0 = reshape_startup_shocks(E, r, h, M);
     X0drawn = reshape_startup_values(X, r, h, M);
     ascertain(almostequal(X0drawn, repmat(StartX0(:), 1, M), 1e-12), ...

@@ -16,40 +16,26 @@ cdef extern from "randompack.h":
 cdef extern from "varmapack.h":
     enum:
         VARMAPACK_TESTCASE_NAME_LEN
-    ctypedef enum varmapack_error:
-        VARMAPACK_OK
-        VARMAPACK_INVALID_ARGUMENT
-        VARMAPACK_DIMENSION
-        VARMAPACK_ALLOCATION
-        VARMAPACK_UNKNOWN_TESTCASE
-        VARMAPACK_NONSTATIONARY
-        VARMAPACK_NONSTATIONARY_MA
-        VARMAPACK_SINGULAR
-        VARMAPACK_NOT_POSITIVE_SEMIDEFINITE
-        VARMAPACK_INTERNAL
-    const char *varmapack_strerror(varmapack_error error)
-    varmapack_error varmapack_sim(double *A, double *B, double *Sig,
-                                  double *mu, int nmu, int p, int q, int r, int n,
-                                  int M, double *X0, int nX0,
-                                  int MX0, double *X, double *E,
-                                  randompack_rng *rng)
-    varmapack_error varmapack_simx(double *A, double *B, double *C, double *Sig,
-                                   double *z, int Mz, int p, int q, int s,
-                                   int r, int n, int M, double *X0, int h,
-                                   int MX0, double *X, double *E,
-                                   randompack_rng *rng)
-    varmapack_error varmapack_testcase(char *name, int *icase, double rho,
-                                       int *pp, int *qp, int *rp, double *A,
-                                       double *B, double *Sig,
-                                       randompack_rng *rng)
-    varmapack_error varmapack_acvf(double *A, double *B, double *Sig,
-                                   int p, int q, int r, double *Gamma, int maxlag)
-    varmapack_error varmapack_psi(double *A, double *B, int p, int q,
-                                  int r, int h, double *Psi)
-    varmapack_error varmapack_irf(double *A, double *B, double *Sig,
-                                  int p, int q, int r, int h, double *Theta)
-    varmapack_error varmapack_autocov(const char *transp, const char *norm,
-                                      int r, int n, double *X, int maxlag, double *C)
+    char *varmapack_last_error()
+    bint varmapack_sim(double *A, double *B, double *Sig,
+                       double *mu, int nmu, int p, int q, int r, int n,
+                       int M, double *X0, int nX0, int MX0, double *X,
+                       double *E, randompack_rng *rng)
+    bint varmapack_simx(double *A, double *B, double *C, double *Sig,
+                        double *z, int Mz, int p, int q, int s, int r, int n,
+                        int M, double *X0, int h, int MX0, double *X,
+                        double *E, randompack_rng *rng)
+    bint varmapack_testcase(char *name, int *index, double rho, int *p, int *q,
+                            int *r, double *A, double *B, double *Sig,
+                            randompack_rng *rng)
+    bint varmapack_acvf(double *A, double *B, double *Sig, int p, int q, int r,
+                        double *Gamma, int maxlag)
+    bint varmapack_psi(double *A, double *B, int p, int q, int r, int maxlag,
+                       double *Psi)
+    bint varmapack_irf(double *A, double *B, double *Sig, int p, int q, int r,
+                       int maxlag, double *Theta)
+    bint varmapack_autocov(const char *transp, const char *norm, int r, int n,
+                           double *X, int maxlag, double *C)
     double varmapack_specrad(double *A, int r, int p)
     double varmapack_ma_specrad(double *B, int r, int q)
 
@@ -74,8 +60,8 @@ class _TestcaseInfo(dict):
         return "\n".join(lines)
 
 
-cdef str _error_message(varmapack_error error):
-    cdef const char *msg = varmapack_strerror(error)
+cdef str _error_message():
+    cdef char *msg = varmapack_last_error()
     if msg == NULL:
         return "varmapack error"
     return (<bytes>msg).decode("utf-8", "replace")
@@ -213,7 +199,7 @@ cdef object _testcases():
     cdef int ncase
     cdef int k
     cdef char namebuf[VARMAPACK_TESTCASE_NAME_LEN]
-    cdef varmapack_error error
+    cdef bint ok
     cdef bytes raw
     cdef str name
     namebuf[0] = 0
@@ -221,10 +207,10 @@ cdef object _testcases():
     namebuf[1] = ord("a")
     namebuf[2] = ord("x")
     namebuf[3] = 0
-    error = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
-                               NULL, NULL, NULL, NULL)
-    if error != VARMAPACK_OK:
-        raise VarmapackError(_error_message(error))
+    ok = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
+                            NULL, NULL, NULL, NULL)
+    if not ok:
+        raise VarmapackError(_error_message())
     ncase = icase
     out = _TestcaseInfo()
     for k in range(1, ncase + 1):
@@ -233,10 +219,10 @@ cdef object _testcases():
         r = 0
         icase = k
         namebuf[0] = 0
-        error = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
-                                   NULL, NULL, NULL, NULL)
-        if error != VARMAPACK_OK:
-            raise VarmapackError(_error_message(error))
+        ok = varmapack_testcase(namebuf, &icase, 0, &p, &q, &r,
+                                NULL, NULL, NULL, NULL)
+        if not ok:
+            raise VarmapackError(_error_message())
         raw = bytes(namebuf).split(b"\0", 1)[0]
         name = raw.decode("utf-8", "replace")
         out[name] = {"index": k, "p": p, "q": q, "r": r}
@@ -248,7 +234,7 @@ cdef object _autocov(object X0, int maxlag, str norm):
     cdef np.ndarray Xc
     cdef np.ndarray C
     cdef bytes normbytes = norm.encode("utf-8")
-    cdef varmapack_error error
+    cdef bint ok
     cdef int n
     cdef int r
     X = np.asarray(X0, dtype=DTYPE_F64)
@@ -258,11 +244,11 @@ cdef object _autocov(object X0, int maxlag, str norm):
     r = X.shape[1]
     Xc = X.T.copy()
     C = np.empty((maxlag + 1, r, r), dtype=DTYPE_F64)
-    error = varmapack_autocov(
+    ok = varmapack_autocov(
         "T", normbytes, r, n, <double *>np.PyArray_DATA(Xc), maxlag,
         <double *>np.PyArray_DATA(C))
-    if error != VARMAPACK_OK:
-        raise VarmapackError(_error_message(error))
+    if not ok:
+        raise VarmapackError(_error_message())
     return C.transpose(0, 2, 1).copy()
 
 
@@ -284,7 +270,7 @@ cdef object _testcase(object which, object p0, object q0, object r0,
     cdef double *Aptr = NULL
     cdef double *Bptr = NULL
     cdef double dummy = 0
-    cdef varmapack_error error
+    cdef bint ok
     namebuf[0] = 0
     if isinstance(which, str):
         if which == "random":
@@ -318,10 +304,10 @@ cdef object _testcase(object which, object p0, object q0, object r0,
         if p0 is None or q0 is None or r0 is None:
             raise ValueError("p, q, and r are required for this testcase")
     else:
-        error = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
-                                   NULL, NULL, NULL, NULL)
-        if error != VARMAPACK_OK:
-            raise VarmapackError(_error_message(error))
+        ok = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
+                                NULL, NULL, NULL, NULL)
+        if not ok:
+            raise VarmapackError(_error_message())
     A = None
     B = None
     if p > 0:
@@ -337,11 +323,11 @@ cdef object _testcase(object which, object p0, object q0, object r0,
     Sig = np.empty((r, r), dtype=DTYPE_F64)
     rngptr = _rng_from_object(rng, &owned)
     try:
-        error = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
-                                   Aptr, Bptr,
-                                   <double *>np.PyArray_DATA(Sig), rngptr)
-        if error != VARMAPACK_OK:
-            raise VarmapackError(_error_message(error))
+        ok = varmapack_testcase(nameptr, &icase, rho, &p, &q, &r,
+                                Aptr, Bptr,
+                                <double *>np.PyArray_DATA(Sig), rngptr)
+        if not ok:
+            raise VarmapackError(_error_message())
     finally:
         if owned:
             randompack_free(rngptr)
@@ -619,12 +605,9 @@ cdef object _acvf_model(Model model, int maxlag):
     cdef double *Aptr = NULL
     cdef double *Bptr = NULL
     cdef double dummy = 0
-    cdef varmapack_error error
-    cdef int call_maxlag = maxlag
+    cdef bint ok
     if maxlag < 0:
         raise ValueError("maxlag must be nonnegative")
-    if call_maxlag < model.pval:
-        call_maxlag = model.pval
     if model.Aarr is not None:
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
     else:
@@ -633,20 +616,20 @@ cdef object _acvf_model(Model model, int maxlag):
         Bptr = <double *>np.PyArray_DATA(model.Barr)
     else:
         Bptr = &dummy
-    Gamma = np.empty((call_maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
-    error = varmapack_acvf( Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
-        model.pval, model.qval, model.rval, <double *>np.PyArray_DATA(Gamma),
-        call_maxlag)
-    if error != VARMAPACK_OK:
-        raise VarmapackError(_error_message(error))
-    return Gamma[:maxlag + 1].transpose(0, 2, 1).copy()
+    Gamma = np.empty((maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
+    ok = varmapack_acvf(Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
+                         model.pval, model.qval, model.rval,
+                         <double *>np.PyArray_DATA(Gamma), maxlag)
+    if not ok:
+        raise VarmapackError(_error_message())
+    return Gamma.transpose(0, 2, 1).copy()
 
 
 cdef object _psi_model(Model model, int maxlag):
     cdef np.ndarray Psi
     cdef double *Aptr = NULL
     cdef double *Bptr = NULL
-    cdef varmapack_error error
+    cdef bint ok
     if maxlag < 0:
         raise ValueError("maxlag must be nonnegative")
     if model.Aarr is not None:
@@ -654,10 +637,10 @@ cdef object _psi_model(Model model, int maxlag):
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
     Psi = np.empty((maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
-    error = varmapack_psi(Aptr, Bptr, model.pval, model.qval, model.rval, maxlag,
-                          <double *>np.PyArray_DATA(Psi))
-    if error != VARMAPACK_OK:
-        raise VarmapackError(_error_message(error))
+    ok = varmapack_psi(Aptr, Bptr, model.pval, model.qval, model.rval, maxlag,
+                       <double *>np.PyArray_DATA(Psi))
+    if not ok:
+        raise VarmapackError(_error_message())
     return Psi.transpose(0, 2, 1).copy()
 
 
@@ -665,7 +648,7 @@ cdef object _irf_model(Model model, int maxlag):
     cdef np.ndarray Theta
     cdef double *Aptr = NULL
     cdef double *Bptr = NULL
-    cdef varmapack_error error
+    cdef bint ok
     if maxlag < 0:
         raise ValueError("maxlag must be nonnegative")
     if model.Aarr is not None:
@@ -673,26 +656,34 @@ cdef object _irf_model(Model model, int maxlag):
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
     Theta = np.empty((maxlag + 1, model.rval, model.rval), dtype=DTYPE_F64)
-    error = varmapack_irf(Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
-                          model.pval, model.qval, model.rval, maxlag,
-                          <double *>np.PyArray_DATA(Theta))
-    if error != VARMAPACK_OK:
-        raise VarmapackError(_error_message(error))
+    ok = varmapack_irf(Aptr, Bptr, <double *>np.PyArray_DATA(model.Sigarr),
+                        model.pval, model.qval, model.rval, maxlag,
+                        <double *>np.PyArray_DATA(Theta))
+    if not ok:
+        raise VarmapackError(_error_message())
     return Theta.transpose(0, 2, 1).copy()
 
 
 cdef double _specrad_model(Model model):
     cdef double *Aptr = NULL
+    cdef double rho
     if model.Aarr is not None:
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
-    return varmapack_specrad(Aptr, model.rval, model.pval)
+    rho = varmapack_specrad(Aptr, model.rval, model.pval)
+    if rho != rho:
+        raise VarmapackError(_error_message())
+    return rho
 
 
 cdef double _ma_specrad_model(Model model):
     cdef double *Bptr = NULL
+    cdef double rho
     if model.Barr is not None:
         Bptr = <double *>np.PyArray_DATA(model.Barr)
-    return varmapack_ma_specrad(Bptr, model.rval, model.qval)
+    rho = varmapack_ma_specrad(Bptr, model.rval, model.qval)
+    if rho != rho:
+        raise VarmapackError(_error_message())
+    return rho
 
 
 cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
@@ -712,7 +703,7 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
     cdef double *Eptr = NULL
     cdef randompack_rng *rngptr
     cdef bint owned
-    cdef varmapack_error error
+    cdef bint ok
     cdef int nX0 = 0
     cdef int MX0 = 1
     cdef int Mz = 1
@@ -774,19 +765,19 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
     try:
         if model.Carr is not None:
             h = nX0
-            error = varmapack_simx(Aptr, Bptr, Cptr,
-                                   <double *>np.PyArray_DATA(model.Sigarr),
-                                   zptr, Mz, model.pval, model.qval, model.sval,
-                                   model.rval, length, nrep, X0ptr, h, MX0,
-                                   <double *>np.PyArray_DATA(X), Eptr, rngptr)
+            ok = varmapack_simx(Aptr, Bptr, Cptr,
+                                 <double *>np.PyArray_DATA(model.Sigarr),
+                                 zptr, Mz, model.pval, model.qval, model.sval,
+                                 model.rval, length, nrep, X0ptr, h, MX0,
+                                 <double *>np.PyArray_DATA(X), Eptr, rngptr)
         else:
-            error = varmapack_sim(Aptr, Bptr,
-                                  <double *>np.PyArray_DATA(model.Sigarr), muptr,
-                                  nmu, model.pval, model.qval, model.rval, length,
-                                  nrep, X0ptr, nX0, MX0,
-                                  <double *>np.PyArray_DATA(X), Eptr, rngptr)
-        if error != VARMAPACK_OK:
-            raise VarmapackError(_error_message(error))
+            ok = varmapack_sim(Aptr, Bptr,
+                                <double *>np.PyArray_DATA(model.Sigarr), muptr,
+                                nmu, model.pval, model.qval, model.rval, length,
+                                nrep, X0ptr, nX0, MX0,
+                                <double *>np.PyArray_DATA(X), Eptr, rngptr)
+        if not ok:
+            raise VarmapackError(_error_message())
     finally:
         if owned:
             randompack_free(rngptr)

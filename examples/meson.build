@@ -4,6 +4,12 @@ run_varmasim = executable( 'RunVarmaSim',
   ['RunVarmaSim.c', '../src/printX.c'] + example_util, dependencies : [varmapack_dep],
   c_args : debug_print_args, )
 
+quick_start = executable( 'QuickStart', 'QuickStart.c', dependencies : [varmapack_dep],
+  c_args : debug_print_args, )
+
+error_check = executable( 'ErrorCheck', 'ErrorCheck.c', dependencies : [varmapack_dep],
+  c_args : debug_print_args, )
+
 debugprint_demo = executable( 'debugprint-demo',
   ['debugprint-demo.c'] + example_util, dependencies : [varmapack_dep], )
 

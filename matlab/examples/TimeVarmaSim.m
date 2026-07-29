@@ -34,9 +34,9 @@ end
 function time_problem_table(opts)
   cases = benchmark_cases(opts);
   rngRef = randompack_create();
-  rngC = randompack_create();
+  rngC = varmapack.Rng();
   cleanupRef = onCleanup(@() randompack_free(rngRef));
-  cleanupC = onCleanup(@() randompack_free(rngC));
+  cleanupC = onCleanup(@() delete(rngC));
   warm_cpu(max(opts.w, 0.1));
   fmt = "%3s %3s %3s %5s %5s %8s %10s %12s %12s %8s\n";
   fprintf(fmt, "p", "q", "r", "n", "M", "rho", "base", "ref ns/val", ...
@@ -52,13 +52,13 @@ function time_problem_table(opts)
       n = max(p, q);
     end
     [A, B, Sig, baseRho] = benchmark_problem(p, q, r, rho);
-    achieved = varmapack_specrad(A);
+    achieved = varmapack.specrad(A);
     if achieved >= 1
       error("TimeVarmaSim:rho", "rho must be below 1 for stationary timing");
     end
     randompack_seed(rngRef, 12345);
     refTime = time_one(@() call_ref_sim(A, B, Sig, n, M, rngRef), opts.t);
-    randompack_seed(rngC, 12345);
+    rngC.seed(12345);
     cTime = time_one(@() call_c_sim(A, B, Sig, n, M, rngC), opts.t);
     scale = 1e9/(r*n*M);
     fprintf("%3d %3d %3d %5d %5d %8.4f %10.4f %12.*f %12.*f %8.2f\n", ...
@@ -90,8 +90,8 @@ end
 
 function [A, B, Sig, baseRho] = benchmark_problem(p, q, r, targetRho)
   Ahi = benchmark_Ahi(p, r);
-  baseRho = varmapack_specrad(Ahi);
-  [A, B, Sig] = varmapack_testcase(p, q, r, targetRho);
+  baseRho = varmapack.specrad(Ahi);
+  [A, B, Sig] = varmapack.testcase(p, q, r, targetRho);
 end
 
 function seconds = time_one(fun, timingTarget)
@@ -107,11 +107,11 @@ function seconds = time_one(fun, timingTarget)
 end
 
 function call_ref_sim(A, B, Sig, n, M, rng)
-  [~, ~] = ref_varma_sim(A, B, Sig, n, [], M, [], rng);
+  [~, ~] = ref_varma_sim(A, B, Sig, [], n, M, [], rng);
 end
 
 function call_c_sim(A, B, Sig, n, M, rng)
-  [~, ~] = varmapack_sim(A, B, Sig, n, [], M, [], rng);
+  [~, ~] = varmapack.sim(A, B, Sig, [], n, M, [], rng);
 end
 
 function warm_cpu(seconds)

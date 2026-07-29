@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "error.h"
 #include "getopt.h"
 #include "printX.h"
 #include "Tests.h"
-#include "error.h"
 #include "xCheck.h"
 
 static int NTOTAL = 0, NFAIL = 0;
@@ -56,18 +56,6 @@ static void run_test(const char *name, void (*fn)(void)) {
   vprint(table_fmt, name, ntotal - nfail, nfail);
 }
 
-static void run_bool_test(const char *name, bool (*fn)(void)) {
-  int ntotal, nfail;
-  xCheckInit(name);
-  bool ok = fn();
-  xCheck(ok);
-  ntotal = xCheckNTotal();
-  nfail  = xCheckNFailures();
-  NTOTAL += ntotal;
-  NFAIL  += nfail;
-  vprint(table_fmt, name, ntotal - nfail, nfail);
-}
-
 int main(int argc, char **argv) {
   char optstring[10] = ":vh", c;
   while ((c = getopt(argc, argv, optstring)) != -1) {
@@ -82,10 +70,10 @@ int main(int argc, char **argv) {
   vprint("\n");
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
   run_test("FromMatlab helpers", TestFromMatlab);
-  run_bool_test("AgainstMatlab", TestAgainstMatlab);
   run_test("FindC/FindG",        TestFindCFindG);
   run_test("ExtraUtil",          TestExtraUtil);
   run_test("varmapack_testcase", TestTestcase);
+  run_test("varmapack_testcasex", TestTestcasex);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
   run_test("varmapack_acvf",     TestAcvf);
   run_test("varmapack_autocov",  TestAutocov);

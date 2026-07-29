@@ -1,6 +1,5 @@
 # Build products
 build/
-release/
 debug/
 compile_commands.json
 .ninja_*

@@ -15,11 +15,11 @@ HIDDEN void WBuild(double Wlag[], int q, int r, int nW, double W[]) {
     for (i=j; i<nW; i++) {
       k = i - j;
       if (k > q) continue;
-      Wij = W + j*r*rW + i*r;
-      Wk = Wlag + k*rr;
+      Wij = W + (size_t)j*r*rW + i*r;
+      Wk = Wlag + (size_t)k*rr;
       lacpy("All", r, r, Wk, r, Wij, rW);
       if (i > j) {
-        Wij = W + i*r*rW + j*r;
+        Wij = W + (size_t)i*r*rW + j*r;
         copytranspose(r, r, Wk, r, Wij, rW);
       }
     }
@@ -30,7 +30,7 @@ HIDDEN void postmultiplySigmaPrime(double Y[], int ldY, int m, int h, double Sig
                                    int r, double Work[]) {
   // Replace Y by Y*Sigma', where Sigma' = I_h kron Sig.
   for (int j=0; j<h; j++) {
-    double *Yj = Y + j*r*ldY;
+    double *Yj = Y + (size_t)j*r*ldY;
     symm("Right", "Low", m, r, 1, Sig, r, Yj, ldY, 0, Work, m);
     lacpy("All", m, r, Work, m, Yj, ldY);
   }

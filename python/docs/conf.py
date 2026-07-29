@@ -13,13 +13,15 @@ data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
 release = data["project"]["version"]
 
 extensions = [
+    "myst_parser",
     "sphinx.ext.autodoc",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "numpydoc",
 ]
+
+myst_enable_extensions = ["dollarmath"]
 
 mathjax3_config = {
     "tex": {

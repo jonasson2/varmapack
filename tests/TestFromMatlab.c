@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include "xCheck.h"
 #include "Tests.h"
-#include "error.h"
 #include "FromMatlab.h"
 
 static void write_matlab_file(const char *path) {

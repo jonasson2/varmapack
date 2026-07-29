@@ -1,5 +1,5 @@
-// ExtraUtils.h — Utilities used by example/demo and test programs (means, (co)variances,
-// and approximate-equality helpers)
+// ExtraUtils.h — Utilities used by example/demo and test programs
+// (means, (co)variances, and approximate-equality helpers)
 
 #ifndef EXTRAUTIL_H
 #define EXTRAUTIL_H
@@ -14,12 +14,16 @@ double mean(const double *x, int n);               // Mean of vector
 double var(const double *x, int n, double mu);     // Unbiased variance of vector
 int almostSame(double a, double b);                // are a and b are almost equal?
 int almostEqual(double a[], double b[], int n);    // is rel.diff. beween a and b < 5e-14?
-int almostAllSame(double a[], int n);              // is max diff. among x-elements < 5e-14?
+int almostAllSame(double a[], int n);              // is max diff. < 5e-14?
 int almostZero(double a[], int n);                 // is a ≈ 0?
 void checkArrayTol(double x[], double y[], int n, double tol);
 void checkArraySame(double x[], double y[], int n);
 void checkArrayZero(double x[], int n);
 void checkArrayFinite(double x[], int n);
+void checkVarmapackClean(void);
+void checkVarmapackSuccess(bool ok);
+void checkVarmapackFailure(bool ok);
+void checkVarmapackNaN(double value);
 randompack_rng *seededRng(uint64_t seed);
 
 void cov(char *transp, int m, int n, double X[], double C[]);

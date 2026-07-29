@@ -1,6 +1,6 @@
 function maxAbsRel = test_ref_varma_simx_forward(cases, n, M, tol)
   fprintf('TESTING REF_VARMA_SIMX FORWARD RECURSION... ');
-  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcasex('count'); end
+  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('count'); end
   if nargin < 2 || isempty(n), n = 10; end
   if nargin < 3 || isempty(M), M = 7; end
   if nargin < 4 || isempty(tol), tol = 5*eps; end
@@ -8,19 +8,21 @@ function maxAbsRel = test_ref_varma_simx_forward(cases, n, M, tol)
   cleanup = onCleanup(@() randompack_free(rng));
   maxAbsRel = 0;
   for icase = cases
-    [A, B, C, Sig, z, p, q, s, r, name] = ref_varma_testcasex(icase, n);
+    [A, B, Sig, p, q, r, name] = ref_varma_testcase(icase);
+    s = 1 + mod(icase - 1, 3);
+    [C, z] = ref_varma_testcasex(s, r, n);
     h = max([p, q, s]) + 2;
     if n < h, error('n must be at least h'); end
     [mu, X0, e0x, e0] = fixed_start(A, B, C, z, p, q, s, r, h, n, icase);
     randompack_seed(rng, 2000 + icase);
-    [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0x, rng);
+    [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0x);
     randompack_seed(rng, 2000 + icase);
-    [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng);
+    [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0);
     dx = absrel_difference(Xx, Xs);
     de = absrel_difference(Ex, Es);
     d = max(dx, de);
     maxAbsRel = max(maxAbsRel, d);
-    ascertain(d < tol, ['simx/sim forward mismatch in ' name]);
+    ascertain(d <= tol, ['simx/sim forward mismatch in ' name]);
   end
   fprintf('OK\n');
 end

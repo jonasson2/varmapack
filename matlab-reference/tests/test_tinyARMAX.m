@@ -13,8 +13,11 @@ function maxAbsRel = test_tinyARMAX(varargin)
   cleanup = onCleanup(@() randompack_free(rng));
   n = 10;
   h = 2;
-  [A, B, C, Sig, z, p, q, s, r, name] = ref_varma_testcasex(1, n);
-  ascertain(strcmp(name, 'tinyARMAX'));
+  A = 0.6;
+  B = 0.2;
+  C = 0.8;
+  Sig = 1;
+  z = (-1).^(0:n-1)';
   randompack_seed(rng, 41);
   maxAbsRel = check_simx_sim_agreement(A, B, C, z, Sig, n, h, rng);
   randompack_seed(rng, 42);
@@ -35,9 +38,9 @@ function maxAbsRel = check_simx_sim_agreement(A, B, C, z, Sig, n, h, rng)
   X0 = y0 + mu(1:h);
   e0 = [-0.7 0.4];
   randompack_seed(rng, 41);
-  [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng);
+  [Xx, Ex] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0);
   randompack_seed(rng, 41);
-  [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng);
+  [Xs, Es] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0);
   maxX = absrel_difference(Xx, Xs);
   maxE = absrel_difference(Ex, Es);
   maxAbsRel = max(maxX, maxE);
@@ -59,7 +62,7 @@ function check_stationary_start(A, B, C, z, Sig, n, h, M, rng, showTable)
   X = zeros(M, n);
   for j = 1:M
     X0 = randompack_mvn(rng, V0, 1, mu0')';
-    X(j, :) = ref_varma_simx(A, B, C, z, Sig, n, 1, X0, h, [], rng);
+    X(j, :) = ref_varma_simx(A, B, C, z, Sig, n, 1, X0, h, rng);
   end
   mu = 0.5*(-1).^(0:n-1);
   V = 2*ones(1, n);
@@ -69,7 +72,7 @@ end
 
 function check_fixed_zero_start(A, B, C, z, Sig, n, h, M, rng, showTable)
   X0 = zeros(1, h);
-  X = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, [], rng)';
+  X = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng)';
   mu = [0 0 62/65 zeros(1, n-3)];
   for t = 4:n
     mu(t) = 0.6*mu(t-1) + 0.8*(-1)^(t-1);

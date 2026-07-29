@@ -40,6 +40,6 @@ function C = direct_autocov(X, maxlag, ML)
   C = zeros(r, r, maxlag + 1);
   for k = 0:maxlag
     if ML, f = n; else, f = n - k; end
-    C(:, :, k+1) = X(:, 1:n-k)*X(:, k+1:n)'/f;
+    C(:, :, k+1) = X(:, k+1:n)*X(:, 1:n-k)'/f;
   end
 end

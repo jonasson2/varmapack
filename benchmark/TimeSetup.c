@@ -191,7 +191,7 @@ static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
   int icase = 0;
   char name[12] = "rho";
   double rho = 0.95;
-  varmapack_error error;
+  bool ok;
   *p = c.p;
   *q = c.q;
   *r = c.r;
@@ -200,9 +200,9 @@ static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
   *B = malloc(sizeof(double)*(*r)*(*r)*(*q > 0 ? *q : 1));
   *Sig = malloc(sizeof(double)*(*r)*(*r));
   if (!*A || !*B || !*Sig) die("allocation failed");
-  error = varmapack_testcase(name, &icase, rho, p, q, r, *A, *B, *Sig, rng);
-  if (error) {
-    fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_strerror(error));
+  ok = varmapack_testcase(name, &icase, rho, p, q, r, *A, *B, *Sig, rng);
+  if (!ok) {
+    fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_last_error());
     exit(1);
   }
 }
@@ -325,8 +325,8 @@ int main(int argc, char **argv) {
   printf("\n");
   warm_cpu(opts.w);
   ncases = make_cases(&opts, cases);
-  printf("–– Dimensions ––    ––––––– Time per case ––––––––"
-         "    ––– Time per value –––\n");
+  printf("–– Dimensions ––    ––––––– Time per case "
+         "––––––––    ––– Time per value –––\n");
   printf("   r   p   q   h     VYW   SLICOT    Other   VTotal"
          "   STotal     VYW   SLICOT\n");
   for (int i = 0; i < ncases; i++) {

@@ -3,7 +3,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "error.h"
 #include "VarmaUtilities.h"
 #include "FromMatlab.h"
 

@@ -34,6 +34,18 @@ assert_raises(ValueError, lambda: model.acvf(-1))
 assert_raises(ValueError, lambda: model.psi(-1))
 assert_raises(ValueError, lambda: model.irf(-1))
 assert_raises(ValueError, lambda: varmapack.autocov(np.zeros((2, 2, 1)), 1))
+assert_raises(varmapack.VarmapackError,
+              lambda: varmapack.autocov(np.zeros((3, 2)), 1, "bad"))
+
+unstable = varmapack.Model(A=np.array([[[1.1]]]), Sig=np.ones((1, 1)))
+assert_raises(varmapack.VarmapackError, lambda: unstable.sim(4, rng=rng))
+assert_raises(varmapack.VarmapackError, lambda: unstable.acvf(0))
+bad_ar = varmapack.Model(A=np.array([[[np.nan]]]), Sig=np.ones((1, 1)))
+bad_ma = varmapack.Model(B=np.array([[[np.inf]]]), Sig=np.ones((1, 1)))
+assert_raises(varmapack.VarmapackError, bad_ar.specrad)
+assert_raises(varmapack.VarmapackError, bad_ma.ma_specrad)
+non_psd = varmapack.Model(Sig=np.array([[1.0, 2.0], [2.0, 1.0]]))
+assert_raises(varmapack.VarmapackError, lambda: non_psd.irf(0))
 
 varmax = varmapack.Model(A=A, B=B, C=C, Sig=Sig)
 assert_raises(ValueError, lambda: varmax.sim(4, X0=np.zeros((2, 2)), rng=rng))

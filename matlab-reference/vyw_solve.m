@@ -2,7 +2,7 @@
 %
 %  S = VYW_SOLVE(A,PLU,G) returns a cell matrix S = {S0,S1,...,Sp} where Sj =
 %  cov(x(t),x(t-j)). PLU is from vyw_factorize and G = {G0,G1,...,Gq} should
-%  have been found by find_CGW. The Sj are obtained by solving the modified
+%  have been found by find_CG. The Sj are obtained by solving the modified
 %  vector Yule-Walker equations shown in vyw_factorize (with Gj=0 for q<j<=p in
 %  case p>q).
 %

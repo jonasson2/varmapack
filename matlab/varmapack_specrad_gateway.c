@@ -26,7 +26,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   r = (int)m;
   p = (int)(n/m);
   rho = varmapack_specrad(mxGetPr(prhs[0]), r, p);
-  if (isnan(rho))
-    mexErrMsgIdAndTxt("varmapack:specrad:error", "invalid argument");
+  if (isnan(rho)) {
+    char *message = varmapack_last_error();
+    mexErrMsgIdAndTxt("varmapack:specrad:error", "%s",
+                      message ? message : "varmapack error");
+  }
   plhs[0] = mxCreateDoubleScalar(rho);
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 t=0.2
 w=0.1
 d=2
@@ -59,7 +59,7 @@ if [ "$#" -ne 0 ]; then
   exit 2
 fi
 
-cmd="addpath('$root_dir/benchmark'); addpath('$root_dir/matlab'); "
+cmd="addpath('$root_dir/matlab/examples'); addpath('$root_dir/matlab'); "
 cmd="$cmd addpath('$root_dir/matlab-reference'); addpath('$root_dir/tests/matlab'); "
 cmd="$cmd TimeVarmaSim("
 cmd="$cmd't', $t, 'w', $w, 'd', $d, "

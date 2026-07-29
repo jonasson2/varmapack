@@ -61,7 +61,7 @@ static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
   if (Nc > 0 && !ALLOC(F0r, Nr*Nc)) goto fail;
   if (Nc > 0 && !ALLOC(F0c, Nc*Nr)) goto fail;
   if (!ALLOC(F00, Nr*Nr)) goto fail;
-  F11 = F + N0*(1 + N);
+  F11 = p > 1 ? F + N0*(1 + N) : F;
   setzero(N*N, F);
   Ap = A + rr*(p-1);
   Fii = F11;
@@ -82,24 +82,26 @@ static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
   }
   kronecker(r, -1.0, Ap, Ap, F00);
   for (k = 0; k < r; k++) {
-    FKK = F11 + r*k + N*r*k;
-    FKJ = F11 + r*k + N*k;
-    for (i = 0; i < p-1; i++) {
-      for (j = 0; j < i; j++) {
-        Aj = A + rr*j;
-        FiimjKK = FKK + rr*i + N*rr*(i-j-1);
-        subtractmat(r, r, Aj, r, FiimjKK, N);
+    if (p > 1) {
+      FKK = F11 + r*k + N*r*k;
+      FKJ = F11 + r*k + N*k;
+      for (i = 0; i < p-1; i++) {
+        for (j = 0; j < i; j++) {
+          Aj = A + rr*j;
+          FiimjKK = FKK + rr*i + N*rr*(i-j-1);
+          subtractmat(r, r, Aj, r, FiimjKK, N);
+        }
+        for (j = i+1; j < p; j++) {
+          Aj = A + rr*j;
+          FijmiKJ = FKJ + rr*i + N*rr*(j-i-1);
+          subtractmat(r, r, Aj, r, FijmiKJ, N*r);
+        }
+        Ai = A + rr*i;
+        F0ciKK = F0c + rr*i + r*k + Nc*r*k;
+        F0ciKJ = F0c + rr*i + r*k + Nc*k;
+        subtractmat(r, r, Ai, r, F0ciKK, Nc);
+        subtractmat(r, r, Ai, r, F0ciKJ, Nc*r);
       }
-      for (j = i+1; j < p; j++) {
-        Aj = A + rr*j;
-        FijmiKJ = FKJ + rr*i + N*rr*(j-i-1);
-        subtractmat(r, r, Aj, r, FijmiKJ, N*r);
-      }
-      Ai = A + rr*i;
-      F0ciKK = F0c + rr*i + r*k + Nc*r*k;
-      F0ciKJ = F0c + rr*i + r*k + Nc*k;
-      subtractmat(r, r, Ai, r, F0ciKK, Nc);
-      subtractmat(r, r, Ai, r, F0ciKJ, Nc*r);
     }
     for (int k1 = 0; k1 < r; k1++) {
       F00KK1 = F00 + r*k + Nr*r*k1;
@@ -116,8 +118,10 @@ static bool vyw_factorize(double A[], double LU[], int piv[], int p, int r, int 
       lacpy("All", r-i, r-j, F00+I+Nr*J, Nr, F+i1+N*j1, N);
       i1 += r-i;
     }
-    lacpy("All", r-j, Nc, F0r+J, Nr, F+N0*N+j1, N);
-    lacpy("All", Nc, r-j, F0c+Nc*J, Nc, F+N0+N*j1, N);
+    if (Nc > 0) {
+      lacpy("All", r-j, Nc, F0r+J, Nr, F+N0*N+j1, N);
+      lacpy("All", Nc, r-j, F0c+Nc*J, Nc, F+N0+N*j1, N);
+    }
     j1 += r-j;
   }
   getrf(N, N, F, N, piv, info);

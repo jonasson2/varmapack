@@ -1,4 +1,4 @@
-The tinyARMAX testcase is given by:
+The tinyARMAX test model is given by:
   xt = a*x{t-1} + epst + b*eps{t-1} + c*zt
 with
   a = 0.6, b = 0.2, c = 0.8, zt = (-1)^t.

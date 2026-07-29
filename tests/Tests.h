@@ -16,4 +16,5 @@ void TestSimEdgeCases(void);
 void TestSimxEdgeCases(void);
 void TestFromMatlab(void);
 void TestPsdCondCov(void);
+void TestTestcasex(void);
 #endif /* TESTS_H */

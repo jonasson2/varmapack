@@ -5,14 +5,14 @@
 static double *get_double_matrix(const mxArray *arg, const char *name);
 static int get_int_scalar(const mxArray *arg, const char *name);
 static void get_norm(const mxArray *arg, char norm[16]);
-static void check_varmapack_error(varmapack_error error);
+static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   int r, n, maxlag;
   char norm[16];
   double *X, *C;
   mwSize dim[3];
-  varmapack_error error;
+  bool ok;
   if (nrhs != 3)
     mexErrMsgIdAndTxt("varmapack:autocov:nrhs", "Wrong number of input arguments");
   if (nlhs > 1)
@@ -29,8 +29,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   dim[2] = maxlag + 1;
   plhs[0] = mxCreateNumericArray(3, dim, mxDOUBLE_CLASS, mxREAL);
   C = mxGetPr(plhs[0]);
-  error = varmapack_autocov("N", norm, r, n, X, maxlag, C);
-  check_varmapack_error(error);
+  ok = varmapack_autocov("N", norm, r, n, X, maxlag, C);
+  check_varmapack_error(ok);
 }
 
 static double *get_double_matrix(const mxArray *arg, const char *name) {
@@ -67,18 +67,10 @@ static void get_norm(const mxArray *arg, char norm[16]) {
   }
 }
 
-static void check_varmapack_error(varmapack_error error) {
-  if (error == VARMAPACK_OK) return;
-  switch (error) {
-    case VARMAPACK_INVALID_ARGUMENT:
-      mexErrMsgIdAndTxt("varmapack:autocov:invalidArgument", "%s",
-                        varmapack_strerror(error));
-      break;
-    case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:autocov:allocation", "%s", varmapack_strerror(error));
-      break;
-    default:
-      mexErrMsgIdAndTxt("varmapack:autocov:error", "%s", varmapack_strerror(error));
-      break;
-  }
+static void check_varmapack_error(bool ok) {
+  char *message;
+  if (ok) return;
+  message = varmapack_last_error();
+  mexErrMsgIdAndTxt("varmapack:autocov:error", "%s",
+                    message ? message : "varmapack error");
 }

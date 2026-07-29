@@ -12,41 +12,51 @@
 //   S   : r×r×(maxlag+1) array containing the first (maxlag+1) matrices of the
 //         theoretical autocovariance function (varmapack_acvf) of the process {x_t},
 //         S[:,:,k] = Cov(x_t, x_{t−k}),  k = 0,…,maxlag
-// Returns VARMAPACK_OK on success.
+// Returns true on success.
 
 #include <math.h>
 #include <stdbool.h>
 #include "varmapack.h"
+#include "error.h"
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
 
-varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
-                               int q, int r, double Gamma[], int maxlag) {
+bool varmapack_acvf(double A[], double B[], double Sig[], int p,
+                    int q, int r, double Gamma[], int maxlag) {
   double *S = Gamma;
   double *C = 0;
   double *G = 0;
+  double *Sfull = 0;
+  clear_error();
   if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || Gamma == 0) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
-  if (p < 0 || q < 0 || r <= 0 || maxlag < p) {
-    return VARMAPACK_INVALID_ARGUMENT;
+  if (p < 0 || q < 0 || r <= 0 || maxlag < 0) {
+    return fail_error("invalid argument");
   }
   int r2 = r*r;
   double rho = varmapack_specrad(A, r, p);
-  if (isnan(rho)) return VARMAPACK_INVALID_ARGUMENT;
-  if (rho >= 1) return VARMAPACK_NONSTATIONARY;
+  if (isnan(rho)) return false;
+  if (rho >= 1) return fail_error("nonstationary model");
+  if (maxlag < p) {
+    if (!ALLOC(Sfull, r2*(p+1))) return fail_error("allocation failed");
+    S = Sfull;
+  }
   if (!ALLOC(C, r2*(q+1))) {
-    return VARMAPACK_ALLOCATION;
+    FREE(Sfull);
+    return fail_error("allocation failed");
   }
   if (!ALLOC(G, r2*(q+1))) {
     FREE(C);
-    return VARMAPACK_ALLOCATION;
+    FREE(Sfull);
+    return fail_error("allocation failed");
   }
   if (!FindS(A, B, Sig, p, q, r, S, C, G)) {
     FREE(C);
     FREE(G);
-    return VARMAPACK_INTERNAL;
+    FREE(Sfull);
+    return fail_error("internal error");
   }
   if (p == 0) {
     int qcopy = imin(q, maxlag);
@@ -54,7 +64,8 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
     if (qcopy < maxlag) setzero(r2*(maxlag - qcopy), S + r2*(qcopy+1));
     FREE(C);
     FREE(G);
-    return VARMAPACK_OK;
+    FREE(Sfull);
+    return true;
   }
   for (int j=p+1; j<=maxlag; j++) {
     double *Sj = S + j*r2;
@@ -71,7 +82,9 @@ varmapack_error varmapack_acvf(double A[], double B[], double Sig[], int p,
       gemm("N", "N", r, r, r, 1.0, Ai, r, Sji, r, 1.0, Sj, r);
     }
   }
+  if (Sfull) copy(r2*(maxlag+1), Sfull, 1, Gamma, 1);
   FREE(C);
   FREE(G);
-  return VARMAPACK_OK;
+  FREE(Sfull);
+  return true;
 }

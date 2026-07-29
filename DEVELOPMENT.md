@@ -6,22 +6,23 @@ Varmapack uses Meson/Ninja. Randompack must be installed so that `pkg-config`
 can find `randompack`.
 
 ```sh
-meson setup release --buildtype=release
-ninja -C release
-meson test -C release --print-errorlogs
+meson setup build --buildtype=release
+ninja -C build
+meson test -C build --print-errorlogs
 ```
 
-Use the `release` build directory for normal development builds and tests.
+Use the `build` directory for normal optimized development builds and tests.
 
 ## MATLAB reference tests
 
-The MATLAB reference implementation lives in `matlab-reference/`. The C tests
-compare against files written by `tests/matlabcompare.m`.
+The MATLAB reference implementation lives in `matlab-reference/`.
+`tests/matlabcompare.m` writes fixtures for the `AgainstMatlab` C comparison
+test.
 
 ```sh
 matlab -batch "cd('matlab-reference/tests'); run_reference_tests"
 matlab -batch "addpath('tests'); matlabcompare"
-meson test -C release RunTests --print-errorlogs
+meson test -C build AgainstMatlab --print-errorlogs
 ```
 
 ## Python package

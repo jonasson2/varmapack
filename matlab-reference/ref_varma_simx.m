@@ -1,30 +1,37 @@
-%REF_VARMA_SIMX  Reference simulation of a VARMAX model with fixed exogenous data
+%REF_VARMA_SIMX  Reference simulation of a VARMAX model with exogenous data.
 %
-%  [X,E] = REF_VARMA_SIMX(A,B,C,z,Sig,n,M,X0,h,e0,rng) simulates
+%  [X,E] = REF_VARMA_SIMX(A,B,C,z,Sig,n,M,X0,h,rng,e0) simulates
 %
 %    x(t) = eps(t) + sum Ai*x(t-i) + sum Bi*eps(t-i) + sum Ci*z(t-i+1),
 %
-%  using X0 as a known startup segment. The exogenous sequence z is M by n for
-%  replicate-specific data, or 1 by n to broadcast the same sequence to all
-%  replicates. The startup segment X0 is r by h, or r by h by M.
+%  using X0 as a known startup segment. C is r by s, with C(:,i) multiplying
+%  the scalar sequence z(t-i+1); C=[] specifies no exogenous terms. z has at
+%  least n rows and is either n by M for replicate-specific data or n by 1 to
+%  broadcast the same sequence to all replicates. X0 is r by h, or r by h by M.
 %
-%  The formula time axis is zero-based: X0(:,1) is x(0), and z(:,1) is z(0).
+%  The formula time axis is zero-based: X0(:,1) is x(0), and z(1,:) is z(0).
 %  MATLAB column h+1 is therefore formula time h.
 %
-%  The number of exogenous terms is s = size(C,2), with s = 0 when C is empty.
+%  M defaults to 1 and h defaults to size(X0,2). X0 is required, n must be at
+%  least h, and h must be greater than max(p,s-1).
 %
-%  The e0 parameter exists to test ref_varma_simx against ref_varma_sim. It is
-%  not present in the corresponding varmapack_simx C function.
+%  rng is a Randompack RNG handle. e0 is for the AgainstMatlab comparison tests
+%  only. It is an r by (h-first_shock_time) fixed startup shock path, where
+%  first_shock_time = min(max(p,s-1)-q,0), and is not present in
+%  the corresponding varmapack_simx C function.
+%
+%  For r > 1, X and E have shape r by n by M. Scalar models return 1 by n for
+%  M=1 and n by M otherwise. E is returned only when requested.
 
-function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng)
+function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
   if nargin < 7 || isempty(M), M = 1; end
   if nargin < 8 || isempty(X0), error('X0 must be specified'); end
   if nargin < 9 || isempty(h), h = size(X0, 2); end
-  if nargin < 10, e0 = []; end
-  if nargin < 11, rng = []; end
+  if nargin < 10, rng = []; end
+  if nargin < 11, e0 = []; end
   [p, q, r] = get_dimensions(A, B, Sig);
   if size(X0, 1) ~= r || size(X0, 2) ~= h || ...
       (ndims(X0) == 3 && size(X0, 3) ~= M) || ndims(X0) > 3
@@ -34,7 +41,7 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng)
   if isempty(C)
     s = 0;
     Cc = {};
-    z = zeros(1, n);
+    z = zeros(n, 1);
   else
     if size(C, 1) ~= r, error('C must have r rows'); end
     s = size(C, 2);
@@ -43,9 +50,9 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng)
       Cc{i} = C(:, i);
     end
   end
-  if size(z, 2) < n, error('z must have at least n columns'); end
-  if size(z, 1) ~= 1 && size(z, 1) ~= M
-    error('z must be 1 by n or M by n');
+  if size(z, 1) < n, error('z must have at least n rows'); end
+  if size(z, 2) ~= 1 && size(z, 2) ~= M
+    error('z must be n by 1 or n by M');
   end
   zlag = max(s - 1, 0);
   t0 = max(p, zlag);
@@ -72,12 +79,12 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, e0, rng)
     X0j = X0rep(X0, j);
     X(1:r*h,j) = X0j(:);
   end
+  for t = h+1:n
+    I = r*(t - first_shock_time - 1) + (1:r);
+    Eall(I,:) = randnm(M, Sig, "T", rng);
+  end
   for j = 1:M
     zj = zrep(z, j);
-    if n > h
-      I = r*(h - first_shock_time) + 1:r*(n - first_shock_time);
-      Eall(I,j) = reshape(randnm(n - h, Sig, "T", rng), r*(n - h), 1);
-    end
     for t = h+1:n
       Xt = Eall(r*(t - first_shock_time - 1)+(1:r), j);
       for i = 1:p
@@ -190,10 +197,10 @@ function rvec = startup_residual(A, C, z, X0, p, s, r, h, t0)
 end
 
 function zj = zrep(z, j)
-  if size(z, 1) == 1
-    zj = z(1,:);
+  if size(z, 2) == 1
+    zj = z(:,1);
   else
-    zj = z(j,:);
+    zj = z(:,j);
   end
 end
 

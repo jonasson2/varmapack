@@ -50,10 +50,10 @@ HIDDEN void postmultiplySigmaPrime(double Y[], int ldY, int m, int h, double Sig
 HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r);
 // TODO: doc
 
-HIDDEN void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h);
+HIDDEN bool FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h);
 // TODO: doc
 
-HIDDEN varmapack_error psdFactor(double Sig[], int r, double L[], bool *triangular);
+HIDDEN bool psdFactor(double Sig[], int r, double L[], bool *triangular);
 // TODO: doc
 
 HIDDEN double CompanionSpecrad(double P[], int r, int k, double sign);

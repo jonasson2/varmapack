@@ -102,13 +102,13 @@ static void make_problem(int p, int q, int r, double **A, double **B,
   int icase = 0;
   char name[12] = "rho";
   double rho = p > 0 ? 0.95 : 0;
-  varmapack_error error;
+  bool ok;
   *A = malloc(sizeof(double)*r*r*(p > 0 ? p : 1));
   *B = malloc(sizeof(double)*r*r*(q > 0 ? q : 1));
   *Sig = malloc(sizeof(double)*r*r);
   if (!*A || !*B || !*Sig) die("allocation failed");
-  error = varmapack_testcase(name, &icase, rho, &p, &q, &r, *A, *B, *Sig, rng);
-  if (error) die("varmapack_testcase failed");
+  ok = varmapack_testcase(name, &icase, rho, &p, &q, &r, *A, *B, *Sig, rng);
+  if (!ok) die("varmapack_testcase failed");
 }
 
 static timing time_case(int p, int q, int r, double target, randompack_rng *rng) {

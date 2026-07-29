@@ -1,4 +1,4 @@
-% FIND_CGW  Determine C matrices for VARMA log-likelihood
+% FIND_C  Determine C matrices for VARMA calculations
 %
 %  C = FIND_C(A,B,Sig,k) calculates the covariances Cj of xt and eps{t-k} in the
 %  cell array C = {C0 C1...C{k-1}}. CC_build can subsequently be used to find CC 

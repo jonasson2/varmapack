@@ -1,6 +1,6 @@
 % S_EXTEND  Extend S0...Sp from Yule-Walker equations to S0...S(n-1)
 %
-%   Scol = S_EXTEND(A, G, S, n) when A = [A0...Ap], G = {G0,...,Gq} and S =
+%   Scol = S_EXTEND(A, G, S, n) when A = [A1...Ap], G = {G0,...,Gq} and S =
 %   {S0,...,Sp} calculates S(p+1)...S(n-1) and returns them together with
 %   S0,..., Sp in a block column vector Scol = [S0; S1;...; S(n-1)]. Thus Scol
 %   will be n·r × r.

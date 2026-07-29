@@ -8,5 +8,6 @@ EXPORTS
   varmapack_sim
   varmapack_simx
   varmapack_specrad
-  varmapack_strerror
+  varmapack_last_error
   varmapack_testcase
+  varmapack_testcasex

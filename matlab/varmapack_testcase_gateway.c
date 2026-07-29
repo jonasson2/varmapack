@@ -15,7 +15,7 @@ static void query_case(char name[64], int *p, int *q, int *r, int *icase);
 static void create_outputs(mxArray *plhs[], int p, int q, int r);
 static void set_extra_outputs(mxArray *plhs[], int nlhs, int nrhs, bool indexed,
                               char name[64], int p, int q, int r, int icase);
-static void check_varmapack_error(varmapack_error error);
+static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   int p = 0, q = 0, r = 0, icase = 0;
@@ -24,7 +24,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   bool indexed = false;
   randompack_rng *rng = 0;
   double Adummy = 0, Bdummy = 0, *Aout, *Bout;
-  varmapack_error error;
+  bool ok;
   if (nrhs != 1 && nrhs != 3 && nrhs != 4)
     mexErrMsgIdAndTxt("varmapack:testcase:nrhs", "Wrong number of inputs");
   if (nrhs == 1 && mxIsChar(prhs[0])) {
@@ -67,9 +67,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   Bout = mxGetPr(plhs[1]);
   if (Aout == 0) Aout = &Adummy;
   if (Bout == 0) Bout = &Bdummy;
-  error = varmapack_testcase(Aout, Bout, mxGetPr(plhs[2]), name, &p, &q, &r,
-                             &icase, rho, rng);
-  check_varmapack_error(error);
+  ok = varmapack_testcase(name, &icase, rho, &p, &q, &r, Aout, Bout,
+                          mxGetPr(plhs[2]), rng);
+  check_varmapack_error(ok);
   set_extra_outputs(plhs, nlhs, nrhs, indexed, name, p, q, r, icase);
 }
 
@@ -114,16 +114,15 @@ static void get_string(const mxArray *arg, char text[64], const char *name) {
 static void get_count(int *count) {
   int p = 0, q = 0, r = 0;
   char maxname[64] = "max";
-  varmapack_error error;
+  bool ok;
   *count = 0;
-  error = varmapack_testcase(0, 0, 0, maxname, &p, &q, &r, count, 0, 0);
-  check_varmapack_error(error);
+  ok = varmapack_testcase(maxname, count, 0, &p, &q, &r, 0, 0, 0, 0);
+  check_varmapack_error(ok);
 }
 
 static void query_case(char name[64], int *p, int *q, int *r, int *icase) {
-  varmapack_error error;
-  error = varmapack_testcase(0, 0, 0, name, p, q, r, icase, 0, 0);
-  check_varmapack_error(error);
+  bool ok = varmapack_testcase(name, icase, 0, p, q, r, 0, 0, 0, 0);
+  check_varmapack_error(ok);
 }
 
 static void create_outputs(mxArray *plhs[], int p, int q, int r) {
@@ -146,22 +145,10 @@ static void set_extra_outputs(mxArray *plhs[], int nlhs, int nrhs, bool indexed,
     plhs[6] = indexed ? mxCreateString(name) : mxCreateDoubleScalar(icase);
 }
 
-static void check_varmapack_error(varmapack_error error) {
-  if (error == VARMAPACK_OK) return;
-  switch (error) {
-    case VARMAPACK_INVALID_ARGUMENT:
-      mexErrMsgIdAndTxt("varmapack:testcase:invalidArgument", "%s",
-                        varmapack_strerror(error));
-      break;
-    case VARMAPACK_UNKNOWN_TESTCASE:
-      mexErrMsgIdAndTxt("varmapack:testcase:unknownTestcase", "%s",
-                        varmapack_strerror(error));
-      break;
-    case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:testcase:allocation", "%s", varmapack_strerror(error));
-      break;
-    default:
-      mexErrMsgIdAndTxt("varmapack:testcase:error", "%s", varmapack_strerror(error));
-      break;
-  }
+static void check_varmapack_error(bool ok) {
+  char *message;
+  if (ok) return;
+  message = varmapack_last_error();
+  mexErrMsgIdAndTxt("varmapack:testcase:error", "%s",
+                    message ? message : "varmapack error");
 }

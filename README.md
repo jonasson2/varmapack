@@ -1,66 +1,407 @@
+<!-- -*- poly-markdown -*- -->
 # Varmapack [https://github.com/jonasson2/varmapack]
 
 ## Overview
 
-Varmapack is a library for VARMA time series and related models. It's primary
-purpose is to generate simulated series given model parameters, but it also
-provides features for generating data for testcase models, and computing
-autocovariances, spectral radii, and impulse responses. In contrast to some
-other packages, the simulated series have the correct distribution from the
-start; they are burn-in (or spin-up) free.
+Varmapack is a C library for simulation and analysis of Gaussian VAR, VMA,
+VARMA, and VARMAX time-series models. Its primary purpose is to generate
+simulated series from supplied model parameters, but it also provides model
+testcases, theoretical and sample autocovariances, spectral radii, and impulse
+response functions. In contrast to some other packages, the simulated series
+have the correct distribution from the start; they are burn-in (or spin-up)
+free. The package uses Randompack (https://github.com/jonasson2/randompack),
+[xx], to generate random numbers for the simulation. Interfaces for C, R,
+Python, and Matlab have been written. These are described in the respective
+readme files in the Github repository.
 
-The package uses Randompack (https://github.com/jonasson2/randompack) to
-generate random numbers for the simulation.
+Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
+[xx]. That algorithm is a collection of Matlab functions to evaluate the
+likelihood of a VARMA model, which also includes functions to simulate such
+models and provide testcase data.
 
 The public header file `varmapack.h` serves as a compact reference for the C
 API: all user-facing functions are declared there, with comments describing the
 role of each parameter.
 
+A manuscript about Varmapack is being prepared and expected to be submitted to
+the journal SoftwareX. [TODO: fill in details]
 
-**VARMA time-series simulation library** — intended for CRAN submission but also usable as
-a standalone C program.
+## Mathematical Description
 
----
+For more details of the mathematics, see the report [1]. (TODO: put in the
+right reference).
 
-## Overview
+### VARMA and VARMAX models
 
-This project provides exact, spin-up-free simulation of **VARMA(p, q)** and related models.  
-It can be used in two ways:
-
-- **As an R package** (for CRAN) providing efficient simulation and likelihood utilities.
-- **As a standalone C library** or demo executable (`RunVarmaSim`) built via
-  [Meson](https://mesonbuild.com).
-
----
-
-## Model
-
-A **VARMA(p, q)** process is defined as
+The models considered are either VARMA $(p,q)$:
 
 $$
-x_t - \mu = \sum_{i=1}^{p} A_i (x_{t-i} - \mu)
-           + \sum_{j=0}^{q} B_j \varepsilon_{t-j},
-\qquad
-\varepsilon_t \sim \mathcal{N}(0, \Sigma).
+\tag{1}
+x_t = \sum_{i=1}^{p} A_i x_{t-i} + \varepsilon_t + \sum_{j=1}^{q} B_j \varepsilon_{t-j},
+      \quad \varepsilon_t \sim N(0,\Sigma).
 $$
 
-- $x_t$ is an $r$-dimensional time series.  
-- The innovations $\varepsilon_t$ are uncorrelated in time and have covariance \(\Sigma\).  
-- When \(r = 1\) the model reduces to an **ARMA(p, q)** series.  
-- When \(q = 0\) and \(r > 1\) it becomes a **VAR(p)** model.  
-- When \(q = 0\) and \(r = 1\) it is a simple **AR(p)** model.
+or VARMAX $(p,q,s)$:
 
-The simulation avoids any “burn-in” period: the generated series has the correct
-covariance structure from the first observation.
+$$
+\tag{2}
+x_t = \varepsilon_t + \sum_{i=1}^{p} A_i x_{t-i} + \sum_{j=1}^{q} B_j \varepsilon_{t-j}
+      + \sum_{k=1}^{s} C_k z_{t-k+1}, \quad \varepsilon_t \sim N(0,\Sigma),
+$$
 
----
+where in both cases $x_t$ is $r$-dimensional, $\varepsilon$ are shocks or innovations,
+$A_i$, $B_j$, and $C_k$ are autoregressive, moving-average, and exogenous
+coefficient matrices, respectively, $\Sigma$ is the innovation covariance
+matrix, and $z_t$ are exogenous terms. Varmapack supports a time-dependent mean
+path $\mu_t$ for VARMA simulation. Explicit mean paths are unsupported for
+VARMAX. For VARMA, the recursion is applied to the centered series
+$x_t - \mu_t$, which replaces $x_t$ in equation (1). The mean may also be
+fixed, i.e. independent of the time step.
 
-## Usage (standalone C build)
+### VAR, VMA, VARX, and VMAX models
 
-```bash
-meson setup build
-cd build
-meson compile
-./RunVarmaSim smallMA     # named testcase
-./RunVarmaSim 5           # numbered testcase
-./RunVarmaSim 3,2,2       # dimensions p,q,r
+A model with $q=s=0$ is a pure vector-autoregressive (VAR) model, and when
+$p=s=0$ the model is a pure moving-average (VMA) model. Similarly, when $q$ or
+$p$ are zero and $s > 0$ the models are designated VARX or VMAX.
+
+### Simulation start
+
+There are two possibilities to start VARMA simulation with Varmapack: (a) by
+drawing both shocks $\varepsilon_t$ and series values $x_t$ from the exact joint
+distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$ where
+$h=\max(p,q)$, and (b) by specifying $h$ initial values of the series and
+drawing the first $h$ shocks from the conditional distribution of $(\varepsilon|x)$,
+where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
+has the correct distribution from the first term, so there is no need for
+discarding a burn-in start segment. In case (b), the simulated values have the
+exact conditional distribution given the supplied starting values. A
+nonstationary pure VAR model ($q=0$) can also be simulated from supplied
+starting values, but a model with MA terms must be stationary.
+For a stationary model with supplied starting values, the covariance of the
+startup segment must be positive definite. When that covariance is singular
+positive semidefinite, simulation is supported only without supplied starting
+values.
+
+For VARMAX simulation, drawing initial values of the series randomly is not
+possible. It is necessary to supply the $h$ initial values $x_t$ for
+$t=0,\ldots,h-1$, where $h > \max(p,s-1)$, and in addition the whole sequence
+of exogenous values
+$z_t, t=0,\ldots,n-1$ must be specified, where $n$ is the number of $x_t$ terms
+to be generated. The initial shocks are again drawn from the exact conditional
+distribution of $(\varepsilon|x,z)$, alleviating the need for burn-in discarding. The
+shock covariance $\Sigma$ must be positive definite.
+
+### Autocovariances
+
+Varmapack can compute the theoretical autocovariance function of models (1) and
+(2),
+
+$$
+\Gamma_k = \operatorname{Cov}(x_t, x_{t-k}), \qquad k=0,1,2,\ldots,
+$$
+
+up to a user-specified maximum lag. It can also compute sample autocovariance
+matrices from observed data. The default maximum-likelihood normalization is
+
+$$
+\widehat{\Gamma}_k =
+\frac{1}{n}\sum_{t=k}^{n-1}(x_t-\bar{x})(x_{t-k}-\bar{x})^T,
+$$
+
+and the corrected normalization replaces the denominator $n$ by $n-k$.
+
+### Spectral radii
+
+The spectral radius $\rho$ of the model (1) is defined as the spectral radius
+(maximum absolute eigenvalue) of the autoregressive companion matrix, which is a
+square block matrix with $A_1,\ldots,A_p$ on the first block row and identity
+matrices on the block-subdiagonal. Stationary models have $\rho < 1$. The
+spectral radius of the moving average companion matrix, which has
+$-B_1,\ldots,-B_q$ on the top block row, plays a different role: it provides
+an invertibility diagnostic. Models with MA companion spectral radius $<1$ are
+invertible, in the sense that the moving-average polynomial of the backshift
+operator $L$, $B(L)$ has a convergent inverse,
+$B(L)^{-1} = I + D_1L + D_2 L^2 + \ldots$. It follows that the model can be
+written as an equivalent infinite pure VAR model
+
+$$
+x_t = E_1 x_{t-1} + E_2 x_{t-2} + \ldots + \varepsilon_t,
+$$
+
+where $I-E_1L-E_2L^2-\ldots = (I + D_1L + D_2 L^2 + \ldots) A(L)$.
+
+### Impulse response functions
+
+An important concept in time-series theory is that of impulse response
+functions. The impulse response matrix $\Psi_j$ maps a change in the shock at
+time $t$ to the resulting change in the process at time $t + j$. If the time
+series is stationary, it can be expressed as an infinite VMA series:
+
+$$
+x_t = \sum_{j=0}^{\infty} \Psi_j \varepsilon_{t-j},
+$$
+
+which has the impulse response matrices as coefficients. With $\Psi_0=I$, the
+remaining $\Psi$ matrices can be computed with the recursion
+
+$$
+\Psi_j = B_j + \sum_{i=1}^{\min(p,j)} A_i\Psi_{j-i},
+$$
+
+for $j\geq 1$, with $B_j=0$ for $j>q$. Varmapack provides functions to compute
+these impulse responses as well as *orthogonalized impulse responses*, defined
+as
+
+$$
+\Theta_j=\Psi_jL,
+$$
+
+where $L L^T=\Sigma$; for positive-definite $\Sigma$, $L$ is its lower
+Cholesky factor. Only the lower triangle of $\Sigma$ is used.
+
+## Installation
+
+The supported installation method is to build Varmapack from source. Building
+the library requires Meson, Ninja, `pkg-config`, C and Fortran compilers, and
+an optimized BLAS library. macOS provides BLAS through the Accelerate framework.
+On Linux and Windows, OpenBLAS or MKL must be installed separately. Varmapack
+also requires the Randompack C library; see below.
+
+Install or load these prerequisites using the normal method for your system.
+For example, an HPC cluster may supply them through environment-module systems,
+using `module load` commands.
+
+### Install Randompack
+
+Download, build, test, and install Randompack with:
+
+```sh
+    git clone https://github.com/jonasson2/randompack.git
+    cd randompack
+    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
+    ninja -C build
+    meson test -C build
+    ninja -C build install
+    cd ..
+```
+
+### Install Varmapack
+
+Before configuring or using Varmapack, make the user-local installations
+visible to `pkg-config`:
+
+```sh
+    export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+Then download, build, test, and install Varmapack with:
+
+```sh
+    git clone https://github.com/jonasson2/varmapack.git
+    cd varmapack
+    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
+    ninja -C build
+    meson test -C build
+    ninja -C build install
+```
+
+Check that the installation can be found with:
+
+```sh
+    pkg-config --modversion varmapack
+```
+
+Programs using Varmapack can then be compiled with:
+
+```sh
+    cc -o myprog myprog.c $(pkg-config --cflags --libs varmapack)
+```
+
+## C API overview by example
+
+Varmapack stores matrices in column-major order. Coefficient matrices belonging
+to successive lags are contiguous blocks, and simulated series are stored as an
+`r` by `n` by `M` array.
+
+The code blocks through the VARMAX simulation section are successive parts of one
+`main` function in `QuickStart.c` in the `examples` folder. For
+readability, error checking is omitted; the final section of the chapter shows
+how to check errors.
+
+### VAR simulation
+
+The program begins by simulating 10 replicates of length 200 from a
+two-dimensional VAR(1) model. Passing `B=0` and `q=0` selects a pure VAR model;
+similarly, `A=0` and `p=0` would select a VMA model. Once Varmapack is
+installed, compile the complete `QuickStart.c` example using the `cc`
+command given above.
+
+```c
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <varmapack.h>
+
+    int main(void) {
+      int p = 1, q = 0, r = 2, n = 200, M = 10;
+      double Avar[] = {0.6, 0, 0.1, 0.4}; // r by r by p
+      double Sigvar[] = {2, 0, 0, 1};     // r by r
+      double X[2*200*10];               // r by n by M
+      randompack_rng *rng = randompack_create(0); // select default Randompack engine
+      randompack_seed(123, 0, 0, rng); // optional, but gives reproducible results
+      varmapack_sim(Avar, 0, Sigvar, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
+      for (int t=0; t<5; t++)
+        printf("%8.4f %8.4f\n", X[r*t], X[1 + r*t]);
+```
+
+### Testcase construction
+
+The next part selects the fixed `smallARMA1` testcase. First inquire about its
+dimensions, then allocate and fill its coefficient arrays. This testcase has
+`p=q=1` and `r=2`.
+
+```c
+      char name[VARMAPACK_TESTCASE_NAME_LEN] = "smallARMA1";
+      int index = 0;
+
+      varmapack_testcase(name, &index, 0, &p, &q, &r, 0, 0, 0, 0);
+      double *A = malloc((p ? p : 1)*r*r*sizeof(*A));
+      double *B = malloc((q ? q : 1)*r*r*sizeof(*B));
+      double *Sig = malloc(r*r*sizeof(*Sig));
+      varmapack_testcase(name, &index, 0, &p, &q, &r, A, B, Sig, 0);
+```
+
+### VARMA simulation
+
+The testcase is simulated with a time-dependent mean and a supplied startup
+path. The last `mu` column repeats to the end, so the mean at t=0 is (0,0) and
+at every subsequent time step is (1,1). Here `nX0=2`, while `MX0=1` broadcasts
+the single startup path. Set `MX0=M` and supply an `r` by `nX0` by `M` array to
+give each replicate its own path.
+
+```c
+      double mu[] = {0, 0, 1, 1};        // r by nmu (time dependent means)
+      double X0[] = {0, 0, 0.1, -0.1};   // r by nX0 (common start for all replicates)
+      double E[2*200*10];                // r by n by M (returns shocks)
+
+      varmapack_sim(A, B, Sig, mu, 2, p, q, r, n, M, X0, 2, 1, X, E, rng);
+```
+
+### Model analysis
+
+Next, `QuickStart.c` simulates a zero-mean realization of `smallARMA1` and
+computes theoretical and sample autocovariances, ordinary and orthogonalized
+impulse responses, and AR and MA spectral radii.
+
+```c
+      varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
+      enum { maxlag = 3 };
+      double Gamma[2*2*(maxlag+1)], Psi[2*2*(maxlag+1)];
+      double Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
+      double rho = varmapack_specrad(A, r, p);
+      double rhoMA = varmapack_ma_specrad(B, r, q);
+      varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
+      varmapack_autocov("N", "ML", r, n, X, maxlag, GammaHat);
+      varmapack_psi(A, B, p, q, r, maxlag, Psi);
+      varmapack_irf(A, B, Sig, p, q, r, maxlag, Theta);
+      printf("AR spectral radius: %.4f\n", rho);
+      printf("MA spectral radius: %.4f\n", rhoMA);
+```
+
+`Gamma`, `Psi`, `Theta`, and `GammaHat` each contain `maxlag + 1` contiguous `r`
+by `r` matrices. The sample call above analyzes the first replicate in `X`; use
+normalization `"C"` instead of `"ML"` for division by `n - k`.
+
+### VARMAX simulation
+
+Finally, the example creates deterministic exogenous testcase data. Its input
+sequence is broadcast to every replicate. To use a different sequence for each
+replicate, set `Mz=M` and let `z` be `n` by `M`.
+
+```c
+      int s = 1;
+      double C[2];
+      double z[200];
+      varmapack_testcasex(s, r, n, C, z);
+      varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, 2, 1, X, E, rng);
+      randompack_free(rng);
+      free(Sig);
+      free(B);
+      free(A);
+      return 0;
+    }
+```
+
+### Error checking
+
+Most Varmapack functions return `false` on failure and make a diagnostic
+available through `varmapack_last_error()`. The exceptions are
+`varmapack_specrad()` and `varmapack_ma_specrad()`, which return `NAN` on
+failure. The diagnostic is thread-local, so a failure in one thread does not
+replace the error reported in another. Randompack reports errors through its
+RNG object. The standalone `ErrorCheck.c` in the `examples` folder checks
+both libraries:
+
+```c
+    #include <stdio.h>
+    #include <varmapack.h>
+
+    int main(void) {
+      int status = 0;
+      int r = 2, n = 200, M = 10;
+      double A[] = {0.6, 0, 0.1, 0.4};
+      double Sig[] = {2, 0, 0, 1};
+      double X[2*200*10];
+      randompack_rng *rng = randompack_create(0);
+      if (!rng) {
+        fprintf(stderr, "could not create RNG\n");
+        return 1;
+      }
+      if (!randompack_seed(123, 0, 0, rng)) {
+        fprintf(stderr, "Randompack: %s\n", randompack_last_error(rng));
+        status = 1;
+      }
+      else if (!varmapack_sim(A, 0, Sig, 0, 0, 1, 0, r, n, M, 0, 0, 1, X, 0,
+                               rng)) {
+        fprintf(stderr, "Varmapack: %s\n", varmapack_last_error());
+        status = 1;
+      }
+      randompack_free(rng);
+      return status;
+    }
+```
+
+## Testing
+
+Varmapack includes three Meson test programs:
+
+- `RunTests` provides direct C unit and edge-case tests of the public functions.
+- `AgainstMatlab` compares C results with MATLAB reference outputs.
+- `TestLyapunov` tests the state-space covariance solver used for simulation
+  startup.
+
+Run the C test suite with:
+
+```sh
+    meson test -C build --print-errorlogs
+```
+
+`AgainstMatlab` compares the public numerical functions and simulated series,
+using identical Randompack streams where applicable. The standard suite uses
+the checked-in `tests/matlabcompare.txt` fixture, so MATLAB is not needed to
+run it.
+
+Most of the MATLAB reference functions are based on the thoroughly tested
+MATLAB code from the 2008 ACM TOMS Algorithm 878 package. New reference
+functions were developed mostly independently of the C implementations. MATLAB
+functions are generally easier to write from mathematical algorithm
+descriptions than C functions, making implementation errors less likely. This
+makes the reference implementation a valuable independent cross-check.
+
+When MATLAB is available, regenerate the reference fixture and run the full
+comparison as follows:
+
+```sh
+    matlab -batch "cd('matlab-reference/tests'); run_reference_tests"
+    matlab -batch "addpath('tests'); matlabcompare"
+    meson test -C build AgainstMatlab --print-errorlogs
+```

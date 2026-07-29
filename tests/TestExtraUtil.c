@@ -1,5 +1,4 @@
 #include "ExtraUtil.h"
-#include "error.h"
 #include "xCheck.h"
 #include "VarmaUtilities.h"
 #include <math.h>

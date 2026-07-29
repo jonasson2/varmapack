@@ -1,89 +1,34 @@
-% NEW_VARMA_SIM  Simulate an ARMA or a VARMA time series model
-% 
-%   ARMA MODELS:
-%     X = NEW_VARMA_SIM(A,B,sigma,n) with scalar sigma generates a zero-mean
-%     time series of length n using the ARMA(p,q) model:
-% 
-%              x(t) = A1·x(t-1) + ... + Ap·x(t-p) + y(t)                    (1a)
-%     where:
-%              y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q)              (1b)
-% 
-%     and eps(t) is N(0,sigma). A should be the row vector [A1,...,Ap] and B
-%     should be [B1,...,Bq]. X returns the series as a row vector. To start the
-%     simulation, (x(1),...,x(h),eps(1),...,eps(h)), with h=max(p,q), are drawn
-%     from N(0,SCE) where SCE = [SS CC; CC' EE] is obtained by solving the
-%     modified Yule-Walker equations (see vyw_factorize, vyw_solve and S_build),
-%     so there is no need to throw away the first values to avoid spin-up
-%     effects. The model must be stationary. 
-% 
-%     X = NEW_VARMA_SIM(A,B,sigma,n,mu) returns a time series with mean mu using
-%     y(t) as above, and x(t) given by:
-% 
-%             x(t) - mu = A1·(x(t-1) - mu) + ... + Ap·(x(t-p) - mu) + y(t)   (2)
-% 
-%     In this case x and eps are drawn from N([mu; 0], SCE).
-% 
-%     X = NEW_VARMA_SIM(A,B,sigma,n,mu,M) generates M sequences simultaneously
-%     and returns the i-th one in the i-th column of X. Use mu=[] to obtain
-%     zero-mean.
-% 
-%     X = NEW_VARMA_SIM(A,B,sigma,n,mu,M,X0) sets x(1)...x(h) to X0(end-h+1:end)
-%     - mu and draws eps(1)...eps(h) from the conditional distribution of
-%     eps(1), ..., eps(h) given x(1),...,x(h). For this option the model need
-%     not be stationary.
-% 
-%     [X,EPS] = NEW_VARMA_SIM(...) returns also the shock series, eps(t), in the
-%     t-th row of EPS.
-% 
-%   VARMA MODELS:
-%     X = NEW_VARMA_SIM(A,B,Cov,n), where Cov is an r×r matrix uses a VARMA(p,q)
-%     model given by (1), but now x(t) is r-dimensional, eps(t) is r-variate
-%     normal with mean 0 and covariance Cov, and Cov and the Ai's and Bi's are
-%     r×r matrices. A and B should contain A = [A1 A2...Ap] (an r × r·p matrix)
-%     and B = [B1 B2 ... Bq] (an r × r·q matrix). The r×n matrix X returns x(t)
-%     in its t-th column. As in the scalar case the simulated series is spin-up
-%     free, the starting values x(1),...,x(h) and eps(1),...,eps(h) being drawn
-%     from the correct distribution. The model must be stationary.
-%  
-%     X = NEW_VARMA_SIM(...,mu) uses (2) for x(t) instead of (1a).
-% 
-%     X = NEW_VARMA_SIM(...,mu,M) returns M sequences in an r×n×M
-%     multidimensional X (when r > 1) with the i-th sequence in X(1:r, 1:n, i).
-%     Use mu = [] to obtain zero-mean.
-% 
-%     X = NEW_VARMA_SIM(...,mu,M,X0) initializes x(1),...,x(h) with the last h
-%     columns of X0 instead of drawing from N(mu,SS). The model need not be
-%     stationary.
-% 
-%     [X,EPS] = NEW_VARMA_SIM(...) returns also the shock series; the i-th
-%     eps(t) is returned in EPS(:, t, i).
-% 
-%   For both ARMA and VARMA, use NEW_VARMA_SIM(A,[],...) for a pure
-%   autoregressive model, and NEW_VARMA_SIM([],B,...) for a pure moving average
-%   model.
-% 
-%   The method used is described in [3]. It is an improved version of varma_sim
-%   in the original Vauto package aka ACM TOMS Algorithm 878 as described in [1]
-%   and [2]. The primary difference is that in this new function the first h
-%   shocks (eps_t) are drawn first and afterwards the first h states (x_t) are
-%   drawn using the conditional distribution of x_t|eps_t, whereas the original
-%   version did the opposite (eps_t after x_t).
+%REF_VARMA_SIM  Reference simulation of a VARMA time series model.
 %
-%   [1] K Jonasson and SE Ferrando 2008. Evaluating exact VARMA likelihood and
-%       its gradient when data are incomplete. ACM Trans. Math. Softw. (TOMS),
-%       35(1)
+%  [X,E] = REF_VARMA_SIM(A,B,Sig,mu,n,M,X0,rng,e0) simulates M independent
+%  VARMA(p,q) series of length n:
 %
-%   [2] K Jonasson 2008. Algorithm 878: Exact VARMA likelihood and its gradient
-%       for complete and incomplete data with Matlab. ACM Trans. Math. Softw.
-%       (TOMS), 35(1)
+%    x(t) - mu(t) = sum Ai*(x(t-i) - mu(t-i)) + eps(t) + sum Bi*eps(t-i),
 %
-%   [3] K Jonasson 2025. Burn-in free simulation of VARMA time series.
-%       Manuscript in preparation.
+%  where eps(t) is N(0,Sig). A and B have r rows and contain the coefficient
+%  blocks [A1,...,Ap] and [B1,...,Bq]; Sig is r by r. Use [] for A or B to
+%  select a pure VMA or VAR model, respectively.
 %
-%   (C) Kristján Jónasson, Dept. of Computer Science, University of Iceland,
-%   2025. jonasson@hi.is.
+%  mu is [] or an r by nmu mean path. A scalar is expanded to all r components,
+%  and the last supplied column repeats through time n. M defaults to 1.
+%
+%  With X0=[], a stationary model is initialized by drawing the startup states
+%  and shocks from their exact joint distribution, so no burn-in is needed. X0
+%  may instead be an r by nX0 common fixed startup path or an r by nX0 by M
+%  array of replicate-specific paths, where max(p,q) <= nX0 <= n. For
+%  stationary models, the resulting paths have the exact conditional
+%  distribution given X0. A nonstationary model is allowed only when q=0 and
+%  X0 is supplied.
+%
+%  rng is a Randompack RNG handle. e0 is for the AgainstMatlab comparison tests
+%  only: an r by nE0 fixed startup shock path used for exact comparisons with
+%  REF_VARMA_SIMX. It must have max(p,q) <= nE0 <= n columns and, with X0,
+%  nE0 must equal nX0.
+%
+%  For r > 1, X and E have shape r by n by M. Scalar models return 1 by n for
+%  M=1 and n by M otherwise. E is returned only when requested.
 
-function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
+function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0)
   r = size(Sig, 1);
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
@@ -105,8 +50,8 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
   if size(mu, 2) > n, error('mu cannot have more columns than n'); end
   if nargin < 6 || isempty(M), M=1; end
   if nargin < 7, X0 = []; end
-  if nargin < 8, e0 = []; end
-  if nargin < 9, rng = []; end
+  if nargin < 8, rng = []; end
+  if nargin < 9, e0 = []; end
   if isempty(X0) && ref_varma_specrad(A) >= 1
     error("Cannot run varma_sim with unspecified X0 and rho(A) ≥ 1");
   end
@@ -120,6 +65,8 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
   % Check size of provided start vectors, set h to their size if ok
   if ~isempty(X0)
     nX0 = size(X0, 2);
+    assert(size(X0, 1) == r)
+    assert(ndims(X0) <= 3 && (size(X0, 3) == 1 || size(X0, 3) == M))
     assert(h <= nX0 && nX0 <= n)
     h = nX0;
   end
@@ -130,7 +77,6 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
     if ~isempty(X0), assert(nX0 == ne0); end
     h = ne0;
   end
-  X0 = X0(:);
   e0 = e0(:);
 
   SS = S_build(S, A, G, h);
@@ -157,12 +103,12 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
     X1 = e + Wrk;
     h = h;
   elseif ~isempty(e0)  % Fixed x{1:h} and eps{1:h}
-    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    X0bar = centered_startup(X0, mu, r, h, M);
     E(1:r*h,:) = repmat(e0, 1, M);
-    X1 = repmat(X0bar,1,M);
+    X1 = X0bar;
   elseif q == 0 && ref_varma_specrad(A) >= 1  % Fixed-history pure AR path.
-    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
-    X1 = repmat(X0bar,1,M);
+    X0bar = centered_startup(X0, mu, r, h, M);
+    X1 = X0bar;
     R = Sig;
   else  % X0 given
     SS = S_build(S, A, G, h);
@@ -170,7 +116,7 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
     CC = CC_build(A, C, h);
     LS = chol(SS, 'lower'); % TODO: Check this
     Chat = LS\CC;
-    X0bar = X0(:) - reshape(meanpath(mu, r, h), r*h, 1);
+    X0bar = centered_startup(X0, mu, r, h, M);
     e = Chat'*(LS\X0bar);
     R = -Chat'*Chat;
     J = 1:r;
@@ -181,7 +127,7 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
 
     % Draw eps{1:h} and fill x{1:h}
     E(1:r*h, :) = e + randnm(M, R, "T", rng);
-    X1 = repmat(X0bar,1,M);
+    X1 = X0bar;
   end
   X2 = zeros(n*r - h*r, M);
   X = [X1; X2];
@@ -212,10 +158,8 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
     end
     E = [];
   else
-    for j = 1:M
-      E(r*h+1:r*n,j) = reshape(randnm(n - h, Sig, "T", rng), r*(n - h), 1);
-    end
     for t = h+1:n
+      E(I,:) = randnm(M, Sig, "T", rng);
       X(I,:) = E(I,:);
       if p > 0
         X(I,:) = X(I,:) + Aflp*X(J,:);
@@ -240,6 +184,15 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, e0, rng)
   else             %   one or more VARMA sequences in r×n×M array:
     X = reshape(X,r,n,M) + repmat(Mu, [1,1,M]);
     if returnE, E = reshape(E,r,n,M); end
+  end
+end
+
+function X0bar = centered_startup(X0, mu, r, h, M)
+  Mu = meanpath(mu, r, h);
+  if size(X0, 3) == 1
+    X0bar = repmat(reshape(X0(:, :, 1) - Mu, r*h, 1), 1, M);
+  else
+    X0bar = reshape(X0 - repmat(Mu, [1, 1, M]), r*h, M);
   end
 end
 

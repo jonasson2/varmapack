@@ -1,6 +1,6 @@
 %FIND_CG  Determine C and G matrices for VARMA simulation
 %
-%  [C,G] = FIND_CGW(A,B,Sig) calculates the matrices Ci and Gi for varma_sim. On
+%  [C,G] = FIND_CG(A,B,Sig) calculates the matrices Ci and Gi for varma_sim. On
 %  entry A=[A1 A2...Ap] and B=[B1 B2...Bq] are r × p·r and r × q·r arrays with
 %  the r×r matrices Ai and Bi and Sig is also r × r. On exit
 %                C = [C0 C1...Cq] with Cj = cov(x(t),eps(t-j)),

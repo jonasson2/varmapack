@@ -1,18 +1,20 @@
-% REF_VARMA_TESTCASE  Create testcases for VARMA likelihood calculation
+% REF_VARMA_TESTCASE  Create testcases for VARMA calculations
 %
-%   [A,B,Sig] = REF_VARMA_TESTCASE(NAME) returns a named test case in matrices A =
-%   [A1...Ap], B = [B1...Bq] and Sig suitable for testing various components of
-%   the calculation of exact VARMA likelihood. REF_VARMA_TESTCASE SUMMARY prints a list of
-%   the named testcases (with possible values for NAME)
+%   [A,B,Sig] = REF_VARMA_TESTCASE(NAME) returns a named testcase in matrices
+%   A = [A1...Ap], B = [B1...Bq], and Sig, suitable for VARMA calculations.
+%   REF_VARMA_TESTCASE('summary') prints a list of the named testcases with
+%   possible values for NAME.
 %
-%   [A,B,Sig,p,q,r] = REF_VARMA_TESTCASE(NAME) returns also the dimensions of the case.
+%   [A,B,Sig,p,q,r] = REF_VARMA_TESTCASE(NAME) also returns the dimensions of
+%   the case.
 %
-%   [A,B,Sig,name] = REF_VARMA_TESTCASE(i) returns the i-th named testcase. To
-%   get also dimensions use [A,B,Sig,p,q,r,name] = REF_VARMA_TESTCASE(i).
+%   [A,B,Sig,name] = REF_VARMA_TESTCASE(i) returns the one-based i-th named
+%   testcase. To also get dimensions, use [A,B,Sig,p,q,r,name] =
+%   REF_VARMA_TESTCASE(i).
 %
 %   n = REF_VARMA_TESTCASE('COUNT') returns the number of named testcases.
 %
-%   REF_VARMA_TESTCASE SUMMARY prints a list of the named testcases.
+%   REF_VARMA_TESTCASE('summary') prints a list of the named testcases.
 %
 %   [A,B,Sig] = REF_VARMA_TESTCASE(p,q,r) returns a deterministic unnamed
 %   testcase with dimensions p,q,r.

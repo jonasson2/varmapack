@@ -1,12 +1,12 @@
-%DIMENSIONS  Dimensions of VARMA model
+%GET_DIMENSIONS  Dimensions of VARMA model
 %
 %  [p,q,r] = GET_DIMENSIONS(A, B, Sig) returns the dimensions of the VARMA
-%  model with parameters A = [A1...Ap], B = [B1...Bp] and Sig (Ai are the AR
-%  coefficients, Bi are the MA coefficients and Sig is the covariance matrix of
-%  the shock series.
+%  model with parameters A = [A1...Ap], B = [B1...Bq] and Sig. Ai are the AR
+%  coefficients, Bi are the MA coefficients, and Sig is the covariance matrix
+%  of the shock series.
 %
 %  [p,q,r,n] = GET_DIMENSIONS(A, B, Sig, X) returns also the length of the
-%  time series (the number of rows in X) in n.
+%  time series (the number of columns in the r-by-n array X) in n.
 
 function [p, q, r, n] = get_dimensions(A, B, Sig, X)
   r = size(Sig,1);

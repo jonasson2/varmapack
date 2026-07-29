@@ -2,30 +2,32 @@
 
 #include <stdbool.h>
 #include "varmapack.h"
+#include "error.h"
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 
-varmapack_error varmapack_autocov(const char *transp, const char *norm, int r,
-                                  int n, double X[], int maxlag, double C[]) {
+bool varmapack_autocov(const char *transp, const char *norm, int r,
+                       int n, double X[], int maxlag, double C[]) {
+  clear_error();
   if (transp == 0 || norm == 0 || X == 0 || C == 0) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
   if (r <= 0 || n <= 0 || maxlag < 0 || maxlag > n-1) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
   bool ML = (norm[0] == 'M' || norm[0] == 'm');
   bool CORRECTED = (norm[0] == 'C' || norm[0] == 'c');
-  if (!ML && !CORRECTED) return VARMAPACK_INVALID_ARGUMENT;
+  if (!ML && !CORRECTED) return fail_error("invalid argument");
   bool TRANSP = !(transp[0] == 'N' || transp[0] == 'n');
   if (!(!TRANSP || transp[0] == 'T' || transp[0] == 't')) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
   double *Xc = 0;
   double *mu = 0;
-  if (!ALLOC(Xc, r*n)) return VARMAPACK_ALLOCATION;
+  if (!ALLOC(Xc, r*n)) return fail_error("allocation failed");
   if (!ALLOC(mu, r)) {
     FREE(Xc);
-    return VARMAPACK_ALLOCATION;
+    return fail_error("allocation failed");
   }
   copy(r*n, X, 1, Xc, 1);
   if (TRANSP) {
@@ -42,20 +44,20 @@ varmapack_error varmapack_autocov(const char *transp, const char *norm, int r,
       axpy(r, -1.0, mu, 1, col, 1);
     }
   }
-  double *Y = Xc;
+  double *Xlag = Xc;
   for (int k=0; k<=maxlag; k++) {
     double fctr = ML ? 1.0/n : 1.0/(n - k);
     double *Ck = C + r*r*k;
     if (TRANSP) {
-      double *Z = Xc + k;
-      gemm("T", "N", r, r, n-k, fctr, Y, n, Z, n, 0.0, Ck, r);
+      double *Xnow = Xc + k;
+      gemm("T", "N", r, r, n-k, fctr, Xnow, n, Xlag, n, 0.0, Ck, r);
     }
     else {
-      double *Z = Xc + r*k;
-      gemm("N", "T", r, r, n-k, fctr, Y, r, Z, r, 0.0, Ck, r);
+      double *Xnow = Xc + r*k;
+      gemm("N", "T", r, r, n-k, fctr, Xnow, r, Xlag, r, 0.0, Ck, r);
     }
   }
   FREE(mu);
   FREE(Xc);
-  return VARMAPACK_OK;
+  return true;
 }

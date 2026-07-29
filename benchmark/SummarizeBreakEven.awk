@@ -2,7 +2,7 @@
 #
 # Usage:
 #   awk -f benchmark/SummarizeBreakEven.awk time_breakeven.out
-#   release/benchmark/TimeBreakEven -t 0.05 | awk -f benchmark/SummarizeBreakEven.awk
+#   build/benchmark/TimeBreakEven -t 0.05 | awk -f benchmark/SummarizeBreakEven.awk
 
 NR > 4 && $1 ~ /^[0-9]+$/ {
   r = $1

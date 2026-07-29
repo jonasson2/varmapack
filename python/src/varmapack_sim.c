@@ -48,9 +48,10 @@
 //   stationary joint distribution, so there is no initial burn-in segment to
 //   throw away. With X0 and a stationary model, h = max(p,q,nX0), and the first
 //   h eps(t) values are drawn from the conditional distribution of the startup
-//   shocks given the supplied x values. With X0 and a nonstationary pure AR
-//   model, no latent startup shocks are needed; future shocks are drawn and the
-//   recurrence is run forward from the supplied X0.
+//   shocks given the supplied x values. This conditional path requires the
+//   startup covariance of x to be positive definite. With X0 and a
+//   nonstationary pure AR model, no latent startup shocks are needed; future
+//   shocks are drawn and the recurrence is run forward from the supplied X0.
 //
 // MATRIX STORAGE SCHEME
 //   All matrices are stored in column-major order, so that for example the
@@ -58,14 +59,15 @@
 //   A1(2,1),...,A1(r,r),..., Ap(r,r).
 //
 // STATIONARITY
-//   Stationary models can be simulated with or without X0. Nonstationary pure
-//   AR models can be simulated with X0, because no latent startup shocks are
-//   needed for forward recursion. Models with MA terms and specified X0 must be
-//   stationary.
+//   Stationary models can be simulated without X0, including models with
+//   singular positive-semidefinite startup covariance. Supplying X0 requires
+//   this covariance to be positive definite. Nonstationary pure AR models can
+//   be simulated with X0, because no latent startup shocks are needed for
+//   forward recursion. Models with MA terms and specified X0 must be stationary.
 //
 // FAILURES
 //   If the series is nonstationary without X0, or another recoverable error is
-//   detected, the function returns a nonzero varmapack_error code.
+//   detected, the function returns false and sets varmapack_last_error().
 //
 // REFERENCES:
 //   [1] K Jonasson and SE Ferrando 2008. Evaluating exact VARMA likelihood
@@ -81,6 +83,7 @@
 //       Generation and Distribution Sampling, arXiv:2605.05099. Submitted to
 //       ACM Trans. Math. Softw.
 
+#include <math.h>
 #include <stdbool.h>
 #include "error.h"
 #include "BlasGateway.h"
@@ -91,104 +94,134 @@
 
 static void addMean(double X[], double mu[], int nmu, int r, int n, int M);
 static void subtractMean(double X[], double mu[], int nmu, int r, int n, int M, int ldX);
-static varmapack_error buildStartupCovar(double A[], double B[], double Sig[], int p,
-                                         int q, int r, int h, double C[], double SS[]);
-static varmapack_error startUnconditional(double A[], double B[], double Sig[],
-                                          double SS[], double E[], int ldE,
-                                          double X[], int p, int q, int r, int h,
-                                          int n, int M, randompack_rng *rng);
-static varmapack_error startFromX0(double A[], double Sig[], double X0[], double mu[],
-                                   int nmu, double C[], double SS[], double E[],
-                                   int ldE, bool returnE, bool stationary, double X[],
-                                   int p, int q, int r, int h, int n, int M, int MX0,
-                                   randompack_rng *rng);
+static bool buildStartupCovar(double A[], double B[], double Sig[], int p, int q,
+                              int r, int h, double C[], double SS[]);
+static bool startUnconditional(double A[], double B[], double Sig[], double SS[],
+                               double E[], int ldE, double X[], int p, int q,
+                               int r, int h, int n, int M, randompack_rng *rng);
+static bool startFromX0(double A[], double Sig[], double X0[], double mu[], int nmu,
+                        double C[], double SS[], double E[], int ldE, bool returnE,
+                        bool stationary, double X[], int p, int q, int r, int h,
+                        int n, int M, int MX0, randompack_rng *rng);
 static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[], bool
                          rollingE, int ldE, double X[], int p, int q, int r,
                          int n, int M, int h, randompack_rng *rng);
+static bool validSimSizes(int p, int q, int r, int n, int M, int nX0, bool returnE,
+                          int *h, int *rn, int *rh, int *ldE, size_t *nM,
+                          size_t *eCount, size_t *cCount, size_t *ssCount,
+                          size_t *aCount, size_t *bCount);
 
-varmapack_error varmapack_sim(double A[], double B[], double Sig[], double mu[],
-                              int nmu, int p, int q, int r, int n, int M, double X0[],
-                              int nX0, int MX0, double X[], double E[],
-                              randompack_rng *rng)
+bool varmapack_sim(double A[], double B[], double Sig[], double mu[], int nmu,
+                   int p, int q, int r, int n, int M, double X0[], int nX0,
+                   int MX0, double X[], double E[], randompack_rng *rng)
 {
-  varmapack_error error = VARMAPACK_OK;
   double *C = 0, *SS = 0;
   double *Aflp = 0, *Bflp = 0;
+  int h, rn, rh, ldE;
+  size_t nM, eCount, cCount, ssCount, aCount, bCount;
   bool returnE = E != 0;
   bool X0Given = X0 != 0;
+  clear_error();
   if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || X == 0 || rng == 0) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
   if (p < 0 || q < 0 || r <= 0 || n <= 0 || M <= 0 || n < imax(p, q)) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
   if (nmu < 0 || nmu > n || (mu == 0 && nmu > 0)) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
-  if ((!X0Given && nX0 != 0) || (X0Given && (nX0 < imax(p, q) || nX0 > n)) ||
+  if ((!X0Given && nX0 != 0) ||
+      (X0Given && (nX0 <= 0 || nX0 < imax(p, q) || nX0 > n)) ||
       (X0Given && MX0 != 1 && MX0 != M)) {
-    return VARMAPACK_INVALID_ARGUMENT;
+    return fail_error("invalid argument");
   }
-  int h = imax(imax(p,q), nX0);
-  int rn = r*n;  // Total number of observations
-  int rh = r*h;
-  int ldE = returnE ? rn : r*(h + 1);
-  bool stationary = p == 0 || varmapack_specrad(A, r, p) < 1;
+  if (!validSimSizes(p, q, r, n, M, nX0, returnE, &h, &rn, &rh, &ldE, &nM,
+                     &eCount, &cCount, &ssCount, &aCount, &bCount)) {
+    return fail_error("problem size too large");
+  }
+  double rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
+  if (isnan(rho)) return false;
+  bool stationary = rho < 1;
   if (!X0Given && !stationary)
-    return VARMAPACK_NONSTATIONARY;
+    return fail_error("nonstationary model");
   if (X0Given && !stationary && q > 0)
-    return VARMAPACK_NONSTATIONARY_MA;
+    return fail_error("nonstationary model with MA term(s) and specified X0");
   if (!X0Given && p == 0 && q == 0) { // White noise can be drawn directly into X.
-    if (!randompack_mvn("T", 0, Sig, r, n*M, X, r, 0, rng)) goto alloc_fail;
+    if (!randompack_mvn("T", 0, Sig, r, nM, X, r, 0, rng)) goto random_fail;
     if (returnE) lacpy("All", rn, M, X, rn, E, rn); // and copy it to E
     addMean(X, mu, nmu, r, n, M);
-    return VARMAPACK_OK;
+    return true;
   }
   if (!returnE)
-    if (!ALLOC(E, ldE*M)) goto alloc_fail;
+    if (!ALLOC(E, eCount)) goto alloc_fail;
   if (!X0Given || stationary) { // compute C and SS
-    if (!ALLOC(C, r*r*(q+1))) goto alloc_fail;
+    if (!ALLOC(C, cCount)) goto alloc_fail;
     if (rh > 0)
-      if (!ALLOC(SS, rh*rh)) goto alloc_fail;
-    error = buildStartupCovar(A, B, Sig, p, q, r, h, C, SS);
-    if (error) goto fail;
+      if (!ALLOC(SS, ssCount)) goto alloc_fail;
+    if (!buildStartupCovar(A, B, Sig, p, q, r, h, C, SS)) goto fail;
   }
   if (X0Given) {
-    error = startFromX0(A, Sig, X0, mu, nmu, C, SS, E, ldE, returnE, stationary, X, p, q,
-                        r, h, n, M, MX0, rng);
-    if (error) goto fail;
+    if (!startFromX0(A, Sig, X0, mu, nmu, C, SS, E, ldE, returnE, stationary, X, p, q,
+                     r, h, n, M, MX0, rng)) goto fail;
   }
   else { // Unconditional exact startup: draw X[:h] given E[:h].
-    error = startUnconditional(A, B, Sig, SS, E, ldE, X, p, q, r, h, n, M, rng);
-    if (error) goto fail;
+    if (!startUnconditional(A, B, Sig, SS, E, ldE, X, p, q, r, h, n, M, rng)) {
+      goto fail;
+    }
   }
   FREE(C); FREE(SS);
-  if (p > 0 && !ALLOC(Aflp, r*r*p)) goto alloc_fail;
-  if (q > 0 && !ALLOC(Bflp, r*r*q)) goto alloc_fail;
+  if (p > 0 && !ALLOC(Aflp, aCount)) goto alloc_fail;
+  if (q > 0 && !ALLOC(Bflp, bCount)) goto alloc_fail;
   flipmat(A, Aflp, r, p);
   flipmat(B, Bflp, r, q);
   bool rollingE = !returnE;
   if (!tailSimulate(Aflp, Bflp, Sig, E, rollingE, ldE, X, p, q, r, n, M, h, rng))
-    goto alloc_fail;
+    goto fail;
   addMean(X, mu, nmu, r, n, M);
   FREE(Bflp); FREE(Aflp);
   if (!returnE) FREE(E);
-  return VARMAPACK_OK;
+  return true;
+random_fail:
+  fail_error(randompack_last_error(rng));
+  goto fail;
 alloc_fail:
-  error = VARMAPACK_ALLOCATION;
+  fail_error("allocation failed");
 fail:
   FREE(Bflp); FREE(Aflp); FREE(SS); FREE(C);
   if (!returnE) FREE(E);
-  return error;
+  return false;
+}
+
+static bool validSimSizes(int p, int q, int r, int n, int M, int nX0, bool returnE,
+                          int *h, int *rn, int *rh, int *ldE, size_t *nM,
+                          size_t *eCount, size_t *cCount, size_t *ssCount,
+                          size_t *aCount, size_t *bCount) {
+  int r2, cInt, aInt, bInt, square, rollingLdE, m, sColLd, sColCount;
+  *h = imax(imax(p, q), nX0);
+  if (*h == INT_MAX || !intProduct(r, n, rn) || !intProduct(r, *h, rh) ||
+      !intProduct(r, *h + 1, &rollingLdE) || !intProduct(r, r, &r2) ||
+      !intProduct(*rh, *rh, &square) || !intProduct(r2, q + 1, &cInt) ||
+      !intProduct(r2, p, &aInt) || !intProduct(r2, q, &bInt)) return false;
+  m = imax(*h, p + 1);
+  if (!intProduct(r, m, &sColLd) || !intProduct(sColLd, r, &sColCount) ||
+      !sizeProduct((size_t)n, (size_t)M, nM)) return false;
+  *ldE = returnE ? *rn : rollingLdE;
+  if (!sizeProduct((size_t)*ldE, (size_t)M, eCount)) return false;
+  *cCount = cInt;
+  *ssCount = square;
+  *aCount = aInt;
+  *bCount = bInt;
+  return true;
 }
 
 static void addMean(double X[], double mu[], int nmu, int r, int n, int M) {
-  int rn = r*n;
+  size_t rn = (size_t)r*n;
   if (mu == 0 || nmu == 0) return;
   for (int j=0; j<M; j++) {
     for (int t=0; t<n; t++) {
       int imu = t < nmu ? t : nmu - 1;
-      axpy(r, 1.0, mu + imu*r, 1, X + j*rn + t*r, 1);
+      axpy(r, 1.0, mu + (size_t)imu*r, 1, X + (size_t)j*rn + (size_t)t*r, 1);
     }
   }
 }
@@ -198,126 +231,150 @@ static void subtractMean(double X[], double mu[], int nmu, int r, int n, int M, 
   for (int j=0; j<M; j++) {
     for (int t=0; t<n; t++) {
       int imu = t < nmu ? t : nmu - 1;
-      axpy(r, -1.0, mu + imu*r, 1, X + j*ldX + t*r, 1);
+      axpy(r, -1.0, mu + (size_t)imu*r, 1,
+           X + (size_t)j*ldX + (size_t)t*r, 1);
     }
   }
 }
 
-static varmapack_error buildStartupCovar(double A[], double B[], double Sig[], int p,
-                                         int q, int r, int h, double C[], double SS[]) {
+static bool buildStartupCovar(double A[], double B[], double Sig[], int p,
+                              int q, int r, int h, double C[], double SS[]) {
   double *G = 0;
   double *S = 0;
-  if (!ALLOC(G, r*r*(q+1))) goto alloc_fail;
-  if (!ALLOC(S, r*r*(p+1))) goto alloc_fail;
+  size_t rr, gCount, sCount;
+  if (!sizeProduct((size_t)r, (size_t)r, &rr) ||
+      !sizeProduct(rr, (size_t)(q + 1), &gCount) ||
+      !sizeProduct(rr, (size_t)(p + 1), &sCount)) {
+    return fail_error("problem size too large");
+  }
+  if (!ALLOC(G, gCount)) goto alloc_fail;
+  if (!ALLOC(S, sCount)) goto alloc_fail;
   if (!FindS(A, B, Sig, p, q, r, S, C, G)) {
     FREE(S); FREE(G);
-    return VARMAPACK_INTERNAL;
+    return varmapack_last_error() ? false : fail_error("internal error");
   }
   if (!SBuild("Low", S, A, G, p, q, r, h, SS)) goto alloc_fail;
   FREE(S); FREE(G);
-  return VARMAPACK_OK;
+  return true;
 alloc_fail:
   FREE(S); FREE(G);
-  return VARMAPACK_ALLOCATION;
+  return fail_error("allocation failed");
 }
 
-static varmapack_error startUnconditional(double A[], double B[], double Sig[], double
-                                          SS[], double E[], int ldE, double X[], int p,
-                                          int q, int r, int h, int n, int M,
-                                          randompack_rng *rng) {
+static bool startUnconditional(double A[], double B[], double Sig[], double SS[],
+                               double E[], int ldE, double X[], int p, int q, int r,
+                               int h, int n, int M, randompack_rng *rng) {
   // Simulate M replicates X[:m] and E[:m] using joint distribution of (X,E)
   int rh = r*h;
   int rn = r*n;
-  varmapack_error error = VARMAPACK_OK;
+  bool ok = true;
   double *Wrk = 0;
   double *Psi = 0;
   double *PsiHat = 0;
   double *R = 0;
-  if (!ALLOC(Wrk, rh*M)) goto alloc_fail;
-  if (!ALLOC(Psi, rh*rh)) goto alloc_fail;
-  if (!ALLOC(PsiHat, rh*rh)) goto alloc_fail;
-  if (!ALLOC(R, rh*rh)) goto alloc_fail;
+  size_t wrkCount, squareCount;
+  if (!sizeProduct((size_t)rh, (size_t)M, &wrkCount) ||
+      !sizeProduct((size_t)rh, (size_t)rh, &squareCount)) {
+    return fail_error("problem size too large");
+  }
+  if (!ALLOC(Wrk, wrkCount)) goto alloc_fail;
+  if (!ALLOC(Psi, squareCount)) goto alloc_fail;
+  if (!ALLOC(PsiHat, squareCount)) goto alloc_fail;
+  if (!ALLOC(R, squareCount)) goto alloc_fail;
   for (int j=0; j<M; j++) {
-    if (!randompack_mvn("T", 0, Sig, r, h, E + j*ldE, r, 0, rng)) {
-      goto alloc_fail;
+    if (!randompack_mvn("T", 0, Sig, r, h, E + (size_t)j*ldE, r, 0, rng)) {
+      ok = fail_error(randompack_last_error(rng));
+      goto done;
     }
   }
   FindPsi(A, B, Psi, p, q, r);
-  FindPsiHat(Psi, PsiHat, Sig, r, h);
+  if (!FindPsiHat(Psi, PsiHat, Sig, r, h)) {
+    ok = false;
+    goto done;
+  }
   lacpy("Low", rh, rh, SS, rh, R, rh);
   syrk("Low", "NoT", rh, rh, -1.0, PsiHat, rh, 1.0, R, rh);
   if (!randompack_mvn("T", 0, R, rh, M, Wrk, rh, 0, rng)) {
-    goto alloc_fail;
+    ok = fail_error(randompack_last_error(rng));
+    goto done;
   }
   lacpy("All", rh, M, Wrk, rh, X, rn);
   gemm("NoT", "NoT", rh, M, rh, 1.0, Psi, rh, E, ldE, 1.0, X, rn);
   goto done;
 alloc_fail:
-  error = VARMAPACK_ALLOCATION;
+  ok = fail_error("allocation failed");
 done:
   FREE(R); FREE(PsiHat); FREE(Psi); FREE(Wrk);
-  return error;
+  return ok;
 }
 
-static varmapack_error startFromX0(double A[], double Sig[], double X0[], double mu[],
-                                   int nmu, double C[], double SS[], double E[], int ldE,
-                                   bool returnE, bool stationary, double X[], int p, int
-                                   q, int r, int h, int n, int M, int MX0,
-                                   randompack_rng *rng) {
+static bool startFromX0(double A[], double Sig[], double X0[], double mu[], int nmu,
+                        double C[], double SS[], double E[], int ldE, bool returnE,
+                        bool stationary, double X[], int p, int q, int r, int h,
+                        int n, int M, int MX0, randompack_rng *rng) {
   // Simulate M replicates from supplied X0.
   int info;
   int rh = r*h;
   int rn = r*n;
-  varmapack_error error = VARMAPACK_OK;
+  bool ok = true;
   double *CC = 0;
   double *x0bar = 0;
   double *e = 0;
   double *wrk = 0;
   double *R = 0;
   double *Chat;
+  size_t squareCount;
+  if (!sizeProduct((size_t)rh, (size_t)rh, &squareCount)) {
+    return fail_error("problem size too large");
+  }
   for (int j=0; j<M; j++) {
-    double *X0j = X0 + (MX0 == 1 ? 0 : j*rh);
-    copy(rh, X0j, 1, X + j*rn, 1);
-    subtractMean(X + j*rn, mu, nmu, r, h, 1, rn);
+    double *X0j = X0 + (MX0 == 1 ? 0 : (size_t)j*rh);
+    copy(rh, X0j, 1, X + (size_t)j*rn, 1);
+    subtractMean(X + (size_t)j*rn, mu, nmu, r, h, 1, rn);
   }
   if (!stationary) {
     if (returnE) {
-      for (int j=0; j<M; j++) setzero(rh, E + j*ldE);
+      for (int j=0; j<M; j++) setzero(rh, E + (size_t)j*ldE);
     }
     FREE(x0bar);
-    return VARMAPACK_OK;
+    return true;
   }
-  if (!ALLOC(CC, rh*rh)) goto alloc_fail;
+  if (!ALLOC(CC, squareCount)) goto alloc_fail;
   if (!ALLOC(x0bar, rh)) goto alloc_fail;
   if (!ALLOC(e, rh)) goto alloc_fail;
   if (!ALLOC(wrk, rh)) goto alloc_fail;
-  if (!ALLOC(R, rh*rh)) goto alloc_fail;
+  if (!ALLOC(R, squareCount)) goto alloc_fail;
   potrf("Low", rh, SS, rh, &info);
-  if (info > 0) { error = VARMAPACK_NOT_POSITIVE_SEMIDEFINITE; goto fail; }
-  if (info < 0) { error = VARMAPACK_INTERNAL; goto fail; }
+  if (info > 0) {
+    ok = fail_error(
+      "cannot condition on X0: startup covariance is not positive definite");
+    goto fail;
+  }
+  if (info < 0) { ok = fail_error("internal error"); goto fail; }
   CCBuild(A, C, p, q, r, h, CC);
   Chat = CC;
   trsm("Left", "Low", "NT", "NotUD", rh, rh, 1.0, SS, rh, Chat, rh);
   for (int j=0; j<h; j++) {
-    lacpy("Low", r, r, Sig, r, R + j*r*(rh + 1), rh);
+    lacpy("Low", r, r, Sig, r, R + (size_t)j*r*(rh + 1), rh);
   }
   syrk("L", "T", rh, rh, -1.0, Chat, rh, 1.0, R, rh);
   for (int j=0; j<M; j++) {
-    copy(rh, X + j*rn, 1, x0bar, 1);
+    copy(rh, X + (size_t)j*rn, 1, x0bar, 1);
     copy(rh, x0bar, 1, wrk, 1);
     trsv("Lo", "NT", "NotUD", rh, SS, rh, wrk, 1);
     gemv("T", rh, rh, 1.0, Chat, rh, wrk, 1, 0.0, e, 1);
-    if (!randompack_mvn("T", e, R, rh, 1, E + j*ldE, ldE, 0, rng)) {
-      goto alloc_fail;
+    if (!randompack_mvn("T", e, R, rh, 1, E + (size_t)j*ldE, ldE, 0, rng)) {
+      ok = fail_error(randompack_last_error(rng));
+      goto fail;
     }
   }
   FREE(R); FREE(wrk); FREE(e); FREE(x0bar); FREE(CC);
-  return VARMAPACK_OK;
+  return true;
 alloc_fail:
-  error = VARMAPACK_ALLOCATION;
+  ok = fail_error("allocation failed");
 fail:
   FREE(R); FREE(wrk); FREE(e); FREE(x0bar); FREE(CC);
-  return error;
+  return ok;
 }
 
 static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[], bool
@@ -325,26 +382,20 @@ static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[],
                          int n, int M, int h, randompack_rng *rng) {
   // Simulate X[h:] with forward computation from X[:h] and E[:h]
   int rn = r*n;
-  int rh = r*h;
-  if (!rollingE) {
-    for (int j=0; j<M; j++) {
-      if (!randompack_mvn("T", 0, Sig, r, n - h, E + j*ldE + rh, r, 0, rng)) {
-        return false;
-      }
-    }
-    lacpy("All", (n-h)*r, M, E + rh, rn, X + rh, rn);
+  double *LSig = 0;
+  if (n > h && !ALLOC(LSig, (size_t)r*r)) {
+    return fail_error("allocation failed");
   }
   for (int t=h; t<n; t++) {
     int iX = r*t;
     int iA = r*(t - p);
     int iB = r*(t - q);
-    if (rollingE) {
-      int iE = r*(t%(h + 1));
-      if (!randompack_mvn("T", 0, Sig, r, M, E + iE, ldE, 0, rng)) {
-        return false;
-      }
-      lacpy("All", r, M, E + iE, ldE, X + iX, rn);
+    int iE = rollingE ? r*(t%(h + 1)) : iX;
+    if (!randompack_mvn("T", 0, t == h ? Sig : 0, r, M, E + iE, ldE, LSig, rng)) {
+      FREE(LSig);
+      return fail_error(randompack_last_error(rng));
     }
+    lacpy("All", r, M, E + iE, ldE, X + iX, rn);
     if (p > 0) // Apply AR
       gemm("NoT", "NoT", r, M, r*p, 1.0, Aflp, r, X + iA, rn, 1.0, X + iX, rn);
     if (q > 0 && rollingE) { // rolling MA to avoid allocating full E
@@ -356,11 +407,12 @@ static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[],
       if (firstCount < q) {
         int secondCount = q - firstCount;
         gemm("NoT", "NoT", r, M, r*secondCount, 1.0,
-             Bflp + firstCount*r*r, r, E, ldE, 1.0, X + iX, rn);
+             Bflp + (size_t)firstCount*r*r, r, E, ldE, 1.0, X + iX, rn);
       }
     }
     else if (q > 0) // Using full E
       gemm("NoT", "NoT", r, M, r*q, 1.0, Bflp, r, E + iB, rn, 1.0, X + iX, rn);
   }
+  FREE(LSig);
   return true;
 }

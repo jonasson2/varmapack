@@ -1,7 +1,6 @@
 // Utilities used by example programs and tests for varmapack_sim
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "error.h"
 #include "ExtraUtil.h"
 #include "BlasGateway.h"
 #include "Tests.h"
@@ -56,6 +55,29 @@ void checkArrayFinite(double x[], int n) {
   for (int i=0; i<n; i++) {
     xCheck(isfinite(x[i]));
   }
+}
+
+void checkVarmapackClean(void) {
+  char *message = varmapack_last_error();
+  xCheck(message == 0 || message[0] == 0);
+}
+
+void checkVarmapackSuccess(bool ok) {
+  xCheck(ok);
+  checkVarmapackClean();
+}
+
+void checkVarmapackFailure(bool ok) {
+  char *message;
+  xCheck(!ok);
+  message = varmapack_last_error();
+  xCheck(message != 0 && message[0] != 0);
+}
+
+void checkVarmapackNaN(double value) {
+  char *message = varmapack_last_error();
+  xCheck(isnan(value));
+  xCheck(message != 0 && message[0] != 0);
 }
 
 randompack_rng *seededRng(uint64_t seed) {

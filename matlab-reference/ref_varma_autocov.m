@@ -4,7 +4,8 @@ function C = ref_varma_autocov(X, maxlag, norm)
 %   C = REF_VARMA_AUTOCOV(X) computes autocovariance matrices for all lags of
 %   the series X, where x(t) is stored in column t.
 %
-%   C = REF_VARMA_AUTOCOV(X, MAXLAG) computes lags 0,...,MAXLAG.
+%   C = REF_VARMA_AUTOCOV(X, MAXLAG) computes lags 0,...,MAXLAG, where the
+%   lag-k matrix is Cov(x(t), x(t-k)).
 %
 %   C = REF_VARMA_AUTOCOV(X, MAXLAG, NORM) uses NORM = "ML" for 1/n
 %   normalization, or "C", "corr", or "corrected" for 1/(n-k).
@@ -25,8 +26,8 @@ function C = ref_varma_autocov(X, maxlag, norm)
   C = zeros(r, r, maxlag + 1);
   for k = 0:maxlag
     if ML, f = n; else, f = n - k; end
-    Y = X(:, 1:end-k);
-    Z = X(:, 1+k:end);
-    C(:, :, k+1) = Y*Z'/f;
+    Xlag = X(:, 1:end-k);
+    Xnow = X(:, 1+k:end);
+    C(:, :, k+1) = Xnow*Xlag'/f;
   end
 end

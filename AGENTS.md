@@ -17,29 +17,23 @@ CORE C STYLE
 - Don't use any casts unless necessary
 - Prefer brackets around sizeof argument
 - Never use const unless absolutely necessary
-- Use "int" for index and size variables when bounds are known to be small
+- Use "size_t len" for the lengths of the drawn vectors in randompack.c and
+    distributions.c.
+- Use "int" for all other index and size variables when bounds are known to be small
 - Always use int constants for whole number doubles and let C convert them to double
 
 ---------------------------
 ARCHITECTURE
 ---------------------------
-- Public header: varmapack.h
-- Public C API uses the varmapack_ prefix
-- randompack is an external dependency, not an internal sublibrary
+- Public header: randompack.h
+- Single file build (via includes)
 - Sources under src/, tests live in tests/, examples in examples/
-- R package files live in r-package/
-- Do not manually edit generated R source copies once sync scripts exist
-- In tests, use utilities declared/defined in Tests.h, xCheck.h, and ExtraUtil.h
+- Use macros and helpers from randompack_config.h:
+-    STRSET, STRSETF, LEN, CLEAR, ALLOC, FREE, min, max
+- Do not manually edit r-package/src or python/src; they are synced from src
+  via syncR.sh and syncpy.sh
+- In tests, use utilities declared/defined in TestUtil.h
 - Meson/Ninja drive builds
-- Build and verify newly written code in the `release` Meson directory by default
-- Julia and Fortran interfaces are out of scope for now
-
----------------------------
-EDITING
----------------------------
-- Before editing a file, check whether it has changed and reread it from disk.
-  Do not rely on stale context, since user refactoring may have happened between
-  Codex turns.
 
 ---------------------------
 OUTPUT

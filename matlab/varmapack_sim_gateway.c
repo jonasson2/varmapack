@@ -9,11 +9,11 @@ static double *get_double_array(const mxArray *arg, const char *name);
 static int get_int_scalar(const mxArray *arg, const char *name);
 static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
                        int *p, int *q, int *r);
-static void check_varmapack_error(varmapack_error error);
+static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  int p, q, r, n, M, nmu = 0, nX0 = 0;
-  varmapack_error error;
+  int p, q, r, n, M, nmu = 0, nX0 = 0, MX0 = 1;
+  bool ok;
   double *A, *B, *Sig, *mu = 0, *X0 = 0, *X, *E;
   randompack_rng *rng;
   mxArray *Eout = 0;
@@ -26,21 +26,36 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   B = get_double_array(prhs[1], "B");
   Sig = get_double_array(prhs[2], "Sig");
   check_dims(prhs[0], prhs[1], prhs[2], &p, &q, &r);
-  n = get_int_scalar(prhs[3], "n");
-  if (!mxIsEmpty(prhs[4])) {
-    mu = get_double_array(prhs[4], "mu");
-    if ((int)mxGetM(prhs[4]) != r)
+  if (!mxIsEmpty(prhs[3])) {
+    mu = get_double_array(prhs[3], "mu");
+    if (mxGetNumberOfDimensions(prhs[3]) != 2 || mxGetM(prhs[3]) != r)
       mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must be empty or have r rows");
-    nmu = (int)mxGetN(prhs[4]);
-    if (nmu > n)
-      mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must not have more than n columns");
+    if (mxGetN(prhs[3]) > INT_MAX)
+      mexErrMsgIdAndTxt("varmapack:sim:mu", "mu is too large");
+    nmu = (int)mxGetN(prhs[3]);
   }
+  n = get_int_scalar(prhs[4], "n");
+  if (nmu > n)
+    mexErrMsgIdAndTxt("varmapack:sim:mu", "mu must not have more than n columns");
   M = get_int_scalar(prhs[5], "M");
   if (!mxIsEmpty(prhs[6])) {
+    const mwSize *dims;
+    mwSize ndims = mxGetNumberOfDimensions(prhs[6]);
     X0 = get_double_array(prhs[6], "X0");
-    if ((int)mxGetM(prhs[6]) != r)
-      mexErrMsgIdAndTxt("varmapack:sim:X0", "X0 must have r rows");
-    nX0 = (int)mxGetN(prhs[6]);
+    dims = mxGetDimensions(prhs[6]);
+    if (ndims > 3 || dims[0] != r)
+      mexErrMsgIdAndTxt("varmapack:sim:X0",
+                        "X0 must have r rows and at most 3 dimensions");
+    if (dims[1] > INT_MAX)
+      mexErrMsgIdAndTxt("varmapack:sim:X0", "X0 is too large");
+    nX0 = (int)dims[1];
+    if (ndims == 3) {
+      if (dims[2] > INT_MAX)
+        mexErrMsgIdAndTxt("varmapack:sim:X0", "X0 is too large");
+      MX0 = (int)dims[2];
+      if (MX0 != 1 && MX0 != M)
+        mexErrMsgIdAndTxt("varmapack:sim:X0", "size(X0,3) must be 1 or M");
+    }
   }
   rng = get_rng(prhs[7]);
   dim[0] = r;
@@ -53,8 +68,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   X = mxGetPr(plhs[0]);
   E = Eout ? mxGetPr(Eout) : 0;
-  error = varmapack_sim(A, B, Sig, mu, nmu, p, q, r, n, M, X0, nX0, 1, X, E, rng);
-  check_varmapack_error(error);
+  ok = varmapack_sim(A, B, Sig, mu, nmu, p, q, r, n, M, X0, nX0, MX0, X, E, rng);
+  check_varmapack_error(ok);
 }
 
 static randompack_rng *get_rng(const mxArray *arg) {
@@ -109,30 +124,10 @@ static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
   *q = (int)(cB/rSig);
 }
 
-static void check_varmapack_error(varmapack_error error) {
-  if (error == VARMAPACK_OK) return;
-  switch (error) {
-    case VARMAPACK_INVALID_ARGUMENT:
-      mexErrMsgIdAndTxt("varmapack:sim:invalidArgument", "%s", varmapack_strerror(error));
-      break;
-    case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:sim:allocation", "%s", varmapack_strerror(error));
-      break;
-    case VARMAPACK_NONSTATIONARY:
-      mexErrMsgIdAndTxt("varmapack:sim:nonstationary", "%s", varmapack_strerror(error));
-      break;
-    case VARMAPACK_NONSTATIONARY_MA:
-      mexErrMsgIdAndTxt("varmapack:sim:nonstationaryMA", "%s", varmapack_strerror(error));
-      break;
-    case VARMAPACK_NOT_POSITIVE_SEMIDEFINITE:
-      mexErrMsgIdAndTxt("varmapack:sim:notPositiveSemidefinite", "%s",
-                        varmapack_strerror(error));
-      break;
-    case VARMAPACK_INTERNAL:
-      mexErrMsgIdAndTxt("varmapack:sim:internal", "%s", varmapack_strerror(error));
-      break;
-    default:
-      mexErrMsgIdAndTxt("varmapack:sim:error", "%s", varmapack_strerror(error));
-      break;
-  }
+static void check_varmapack_error(bool ok) {
+  char *message;
+  if (ok) return;
+  message = varmapack_last_error();
+  mexErrMsgIdAndTxt("varmapack:sim:error", "%s",
+                    message ? message : "varmapack error");
 }

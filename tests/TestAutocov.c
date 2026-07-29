@@ -15,52 +15,52 @@ static void check_autocov_example(void) {
   };
   double C[2*2*3];
   double ml[] = {
-    0.5600, -0.0800, -0.0800,  1.0400, 0.0320, -0.0560,  0.0640, -0.1120,
-   -0.3760, -0.2720,  0.4480,  0.0560
+    0.5600, -0.0800, -0.0800,  1.0400, 0.0320,  0.0640, -0.0560, -0.1120,
+   -0.3760,  0.4480, -0.2720,  0.0560
   };
   double corrected[] = {
-    0.5600, -0.0800, -0.0800,  1.0400, 0.0400, -0.0700,  0.0800, -0.1400,
-   -0.6266666666666667, -0.4533333333333333, 0.7466666666666666,  0.09333333333333334
+    0.5600, -0.0800, -0.0800,  1.0400, 0.0400,  0.0800, -0.0700, -0.1400,
+   -0.6266666666666667, 0.7466666666666666, -0.4533333333333333, 0.09333333333333334
   };
-  varmapack_error error;
-  error = varmapack_autocov("N", "ML", r, n, X, maxlag, C);
-  xCheck(!error);
+  bool ok;
+  ok = varmapack_autocov("N", "ML", r, n, X, maxlag, C);
+  checkVarmapackSuccess(ok);
   checkArrayTol(C, ml, r*r*(maxlag+1), tol);
-  error = varmapack_autocov("N", "C", r, n, X, maxlag, C);
-  xCheck(!error);
+  ok = varmapack_autocov("N", "C", r, n, X, maxlag, C);
+  checkVarmapackSuccess(ok);
   checkArrayTol(C, corrected, r*r*(maxlag+1), tol);
-  error = varmapack_autocov("T", "ML", r, n, XT, maxlag, C);
-  xCheck(!error);
+  ok = varmapack_autocov("T", "ML", r, n, XT, maxlag, C);
+  checkVarmapackSuccess(ok);
   checkArrayTol(C, ml, r*r*(maxlag+1), tol);
-  error = varmapack_autocov("T", "C", r, n, XT, maxlag, C);
-  xCheck(!error);
+  ok = varmapack_autocov("T", "C", r, n, XT, maxlag, C);
+  checkVarmapackSuccess(ok);
   checkArrayTol(C, corrected, r*r*(maxlag+1), tol);
 }
 
 static void check_invalid_input(void) {
   double X[] = {1, 2};
   double C[1];
-  varmapack_error error;
-  error = varmapack_autocov(0, "ML", 1, 2, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", 0, 1, 2, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 1, 2, 0, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 1, 2, X, 0, 0);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("Z", "ML", 1, 2, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "Z", 1, 2, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 0, 2, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 1, 0, X, 0, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 1, 2, X, -1, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
-  error = varmapack_autocov("N", "ML", 1, 2, X, 2, C);
-  xCheck(error == VARMAPACK_INVALID_ARGUMENT);
+  bool ok;
+  ok = varmapack_autocov(0, "ML", 1, 2, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", 0, 1, 2, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 1, 2, 0, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 1, 2, X, 0, 0);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("Z", "ML", 1, 2, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "Z", 1, 2, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 0, 2, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 1, 0, X, 0, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 1, 2, X, -1, C);
+  checkVarmapackFailure(ok);
+  ok = varmapack_autocov("N", "ML", 1, 2, X, 2, C);
+  checkVarmapackFailure(ok);
 }
 
 void TestAutocov(void) {

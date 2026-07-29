@@ -6,13 +6,13 @@ static double *get_double_array(const mxArray *arg, const char *name);
 static int get_int_scalar(const mxArray *arg, const char *name);
 static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
                        int *p, int *q, int *r);
-static void check_varmapack_error(varmapack_error error);
+static void check_varmapack_error(bool ok);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   int p, q, r, maxlag;
   double *A, *B, *Sig, *Gamma;
   mwSize dim[3];
-  varmapack_error error;
+  bool ok;
   if (nrhs != 4)
     mexErrMsgIdAndTxt("varmapack:acvf:nrhs", "Wrong number of input arguments");
   if (nlhs > 1)
@@ -27,8 +27,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   dim[2] = maxlag + 1;
   plhs[0] = mxCreateNumericArray(3, dim, mxDOUBLE_CLASS, mxREAL);
   Gamma = mxGetPr(plhs[0]);
-  error = varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
-  check_varmapack_error(error);
+  ok = varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
+  check_varmapack_error(ok);
 }
 
 static double *get_double_array(const mxArray *arg, const char *name) {
@@ -73,21 +73,10 @@ static void check_dims(const mxArray *A, const mxArray *B, const mxArray *Sig,
   *q = (int)(cB/rSig);
 }
 
-static void check_varmapack_error(varmapack_error error) {
-  if (error == VARMAPACK_OK) return;
-  switch (error) {
-    case VARMAPACK_INVALID_ARGUMENT:
-      mexErrMsgIdAndTxt("varmapack:acvf:invalidArgument", "%s",
-                        varmapack_strerror(error));
-      break;
-    case VARMAPACK_ALLOCATION:
-      mexErrMsgIdAndTxt("varmapack:acvf:allocation", "%s", varmapack_strerror(error));
-      break;
-    case VARMAPACK_NONSTATIONARY:
-      mexErrMsgIdAndTxt("varmapack:acvf:nonstationary", "%s", varmapack_strerror(error));
-      break;
-    default:
-      mexErrMsgIdAndTxt("varmapack:acvf:error", "%s", varmapack_strerror(error));
-      break;
-  }
+static void check_varmapack_error(bool ok) {
+  char *message;
+  if (ok) return;
+  message = varmapack_last_error();
+  mexErrMsgIdAndTxt("varmapack:acvf:error", "%s",
+                    message ? message : "varmapack error");
 }

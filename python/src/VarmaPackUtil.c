@@ -184,13 +184,18 @@ HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   FREE(Aflp);
 }
 
-HIDDEN void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
+HIDDEN bool FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) {
   double *LSig, *Psi_hat_kk, *W;
   int hr = h*r, rr = r*r, k, nrow;
   bool triangular;
-  xAssert(ALLOC(LSig, rr));
-  xAssert(ALLOC(W, hr*r));
-  xAssert(psdFactor(Sig, r, LSig, &triangular) == VARMAPACK_OK);
+  bool ok = false;
+  LSig = 0;
+  W = 0;
+  if (!ALLOC(LSig, rr) || !ALLOC(W, hr*r)) {
+    fail_error("allocation failed");
+    goto done;
+  }
+  if (!psdFactor(Sig, r, LSig, &triangular)) goto done;
   lacpy("Low", hr, hr, Psi, hr, Psi_hat, hr);
   for (k=0; k<h; k++) {
     Psi_hat_kk = Psi_hat + k*h*rr + k*r;
@@ -203,26 +208,32 @@ HIDDEN void FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h) 
       gemm("NoT", "NoT", nrow, r, r, 1, W, nrow, LSig, r, 0, Psi_hat_kk, hr);
     }
   }
+  ok = true;
+done:
   FREE(W);
   FREE(LSig);
+  return ok;
 }
 
-HIDDEN varmapack_error psdFactor(double Sig[], int r, double L[], bool *triangular) {
+HIDDEN bool psdFactor(double Sig[], int r, double L[], bool *triangular) {
   int info, rank, rr = r*r;
   int *piv = 0;
   double *C = 0;
   double *work = 0;
   double *recon = 0;
   double tol;
-  varmapack_error error = VARMAPACK_OK;
+  bool ok = true;
   if (triangular) *triangular = false;
+  for (int i=0; i<r; i++) {
+    if (!isfinite(Sig[i + i*r])) return fail_error("matrix is not positive semidefinite");
+  }
   if (!ALLOC(C, rr)) goto alloc_fail;
   if (!ALLOC(piv, r)) goto alloc_fail;
   if (!ALLOC(work, 2*r)) goto alloc_fail;
   if (!ALLOC(recon, rr)) goto alloc_fail;
   lacpy("All", r, r, Sig, r, C, r);
   potrf("Low", r, C, r, &info);
-  if (info < 0) { error = VARMAPACK_INTERNAL; goto fail; }
+  if (info < 0) { ok = fail_error("internal error"); goto fail; }
   if (info == 0) {
     setzero(rr, L);
     lacpy("Low", r, r, C, r, L, r);
@@ -231,7 +242,7 @@ HIDDEN varmapack_error psdFactor(double Sig[], int r, double L[], bool *triangul
   }
   lacpy("All", r, r, Sig, r, C, r);
   pstrf("Low", r, C, r, piv, &rank, -1, work, &info);
-  if (info < 0) { error = VARMAPACK_INTERNAL; goto fail; }
+  if (info < 0) { ok = fail_error("internal error"); goto fail; }
   setzero(rr, L);
   for (int k=0; k<rank; k++) {
     for (int i=k; i<r; i++) {
@@ -243,15 +254,15 @@ HIDDEN varmapack_error psdFactor(double Sig[], int r, double L[], bool *triangul
   copylowertoupper(r, recon, r);
   tol = 100*r*lamch("E");
   if (relabsdiff(Sig, recon, rr) > tol) {
-    error = VARMAPACK_NOT_POSITIVE_SEMIDEFINITE;
+    ok = fail_error("matrix is not positive semidefinite");
   }
 fail:
   FREE(recon);
   FREE(work);
   FREE(piv);
   FREE(C);
-  return error;
+  return ok;
 alloc_fail:
-  error = VARMAPACK_ALLOCATION;
+  ok = fail_error("allocation failed");
   goto fail;
 }

@@ -7,7 +7,7 @@
 %                  y(t) = eps(t) + B1·eps(t-1) + ... + Bq·eps(t-q), %
 %  and x(t), y(t) and eps(t) are r-dimensional with eps(t) N(0,Sig). S = 
 %  {S0,S1...Sp}, with Sj = Cov(x(t),x(t-j)) and G = {G0 G1...Gq} with Gj =
-%  Cov(y(t),x(t-j)) should be previously calculated with find_CGW. A should
+%  Cov(y(t),x(t-j)) should be previously calculated with find_CG. A should
 %  contain [A1...Ap]. SS is the matrix:
 %
 %                   S0  S1' S2'...Sn-1'

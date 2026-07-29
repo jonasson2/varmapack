@@ -21,8 +21,8 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
   xCheck(ALLOC(wrk, rh));
   FindC(A, B, Sig, p, q, r, C);
   FindG(B, C, q, r, G);
-  varmapack_error error = varmapack_acvf(A, B, Sig, p, q, r, S, p);
-  xCheck(!error);
+  bool ok = varmapack_acvf(A, B, Sig, p, q, r, S, p);
+  checkVarmapackSuccess(ok);
   xCheck(SBuild("All", S, A, G, p, q, r, h, SS));
   potrf("Low", rh, SS, rh, &info);
   xCheck(info == 0);
@@ -51,8 +51,8 @@ static void check_case7_support(void) {
   char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A = 0, *B = 0, *Sig = 0, *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
   double *work = 0, *X = 0, *E = 0;
-  varmapack_error error = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  xCheck(!error);
+  bool ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
+  checkVarmapackSuccess(ok);
   h = imax(p, q);
   rh = r*h;
   xCheck(ALLOC(A, r*r*(p > 0 ? p : 1)));
@@ -66,8 +66,8 @@ static void check_case7_support(void) {
   xCheck(ALLOC(work, 3*rh));
   xCheck(ALLOC(X, r*n*M));
   xCheck(ALLOC(E, r*n*M));
-  error = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  xCheck(!error);
+  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
+  checkVarmapackSuccess(ok);
   for (int i=0; i<rh; i++) X0[i] = (i + 1)/10.0;
   conditional_moments(A, B, Sig, X0, p, q, r, h, R, e);
   lacpy("All", rh, rh, R, rh, Eig, rh);
@@ -80,8 +80,8 @@ static void check_case7_support(void) {
   xCheck(nulls > 0 && nulls < rh);
   randompack_rng *rng = randompack_create(0);
   xCheck(randompack_seed(42, 0, 0, rng));
-  error = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, 1, X, E, rng);
-  xCheck(!error);
+  ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
   for (int k=0; k<nulls; k++) {
     double nr = 0;
     for (int i=0; i<rh; i++) {

@@ -1,0 +1,276 @@
+<!-- -*- poly-markdown -*- -->
+# Varmapack [https://github.com/jonasson2/varmapack]
+
+## Overview
+
+Varmapack is a C library for simulation and analysis of Gaussian VAR, VMA,
+VARMA, and VARMAX time-series models. Its primary purpose is to generate
+simulated series from supplied model parameters, but it also provides model
+testcases, theoretical and sample autocovariances, spectral radii, and impulse
+response functions. In contrast to some other packages, the simulated series
+have the correct distribution from the start; they are burn-in (or spin-up)
+free. The package uses Randompack (https://github.com/jonasson2/randompack),
+[xx], to generate random numbers for the simulation. Interfaces for C, R,
+Python, and Matlab have been written. These are described in the respective
+readme files in the Github repository.
+
+Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
+[xx]. That algorithm is a collection of Matlab functions to evaluate the
+likelihood of a VARMA model, which also includes functions to simulate such
+models and provide testcase data.
+
+The public header file `varmapack.h` serves as a compact reference for the C
+API: all user-facing functions are declared there, with comments describing the
+role of each parameter.
+
+A manuscript about Varmapack is being prepared and expected to be submitted to
+the journal SoftwareX. [TODO: fill in details]
+
+<!-- include python/docs/math.md -->
+
+## Installation
+
+The supported installation method is to build Varmapack from source. Building
+the library requires Meson, Ninja, `pkg-config`, C and Fortran compilers, and
+an optimized BLAS library. macOS provides BLAS through the Accelerate framework.
+On Linux and Windows, OpenBLAS or MKL must be installed separately. Varmapack
+also requires the Randompack C library; see below.
+
+Install or load these prerequisites using the normal method for your system.
+For example, an HPC cluster may supply them through environment-module systems,
+using `module load` commands.
+
+### Install Randompack
+
+Download, build, test, and install Randompack with:
+
+```sh
+    git clone https://github.com/jonasson2/randompack.git
+    cd randompack
+    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
+    ninja -C build
+    meson test -C build
+    ninja -C build install
+    cd ..
+```
+
+### Install Varmapack
+
+Before configuring or using Varmapack, make the user-local installations
+visible to `pkg-config`:
+
+```sh
+    export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+Then download, build, test, and install Varmapack with:
+
+```sh
+    git clone https://github.com/jonasson2/varmapack.git
+    cd varmapack
+    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
+    ninja -C build
+    meson test -C build
+    ninja -C build install
+```
+
+Check that the installation can be found with:
+
+```sh
+    pkg-config --modversion varmapack
+```
+
+Programs using Varmapack can then be compiled with:
+
+```sh
+    cc -o myprog myprog.c $(pkg-config --cflags --libs varmapack)
+```
+
+## C API overview by example
+
+Varmapack stores matrices in column-major order. Coefficient matrices belonging
+to successive lags are contiguous blocks, and simulated series are stored as an
+`r` by `n` by `M` array.
+
+The code blocks through the VARMAX simulation section are successive parts of one
+`main` function in `QuickStart.c` in the `examples` folder. For
+readability, error checking is omitted; the final section of the chapter shows
+how to check errors.
+
+### VAR simulation
+
+The program begins by simulating 10 replicates of length 200 from a
+two-dimensional VAR(1) model. Passing `B=0` and `q=0` selects a pure VAR model;
+similarly, `A=0` and `p=0` would select a VMA model. Once Varmapack is
+installed, compile the complete `QuickStart.c` example using the `cc`
+command given above.
+
+```c
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <varmapack.h>
+
+    int main(void) {
+      int p = 1, q = 0, r = 2, n = 200, M = 10;
+      double Avar[] = {0.6, 0, 0.1, 0.4}; // r by r by p
+      double Sigvar[] = {2, 0, 0, 1};     // r by r
+      double X[2*200*10];               // r by n by M
+      randompack_rng *rng = randompack_create(0); // select default Randompack engine
+      randompack_seed(123, 0, 0, rng); // optional, but gives reproducible results
+      varmapack_sim(Avar, 0, Sigvar, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
+      for (int t=0; t<5; t++)
+        printf("%8.4f %8.4f\n", X[r*t], X[1 + r*t]);
+```
+
+### Testcase construction
+
+The next part selects the fixed `smallARMA1` testcase. First inquire about its
+dimensions, then allocate and fill its coefficient arrays. This testcase has
+`p=q=1` and `r=2`.
+
+```c
+      char name[VARMAPACK_TESTCASE_NAME_LEN] = "smallARMA1";
+      int index = 0;
+
+      varmapack_testcase(name, &index, 0, &p, &q, &r, 0, 0, 0, 0);
+      double *A = malloc((p ? p : 1)*r*r*sizeof(*A));
+      double *B = malloc((q ? q : 1)*r*r*sizeof(*B));
+      double *Sig = malloc(r*r*sizeof(*Sig));
+      varmapack_testcase(name, &index, 0, &p, &q, &r, A, B, Sig, 0);
+```
+
+### VARMA simulation
+
+The testcase is simulated with a time-dependent mean and a supplied startup
+path. The last `mu` column repeats to the end, so the mean at t=0 is (0,0) and
+at every subsequent time step is (1,1). Here `nX0=2`, while `MX0=1` broadcasts
+the single startup path. Set `MX0=M` and supply an `r` by `nX0` by `M` array to
+give each replicate its own path.
+
+```c
+      double mu[] = {0, 0, 1, 1};        // r by nmu (time dependent means)
+      double X0[] = {0, 0, 0.1, -0.1};   // r by nX0 (common start for all replicates)
+      double E[2*200*10];                // r by n by M (returns shocks)
+
+      varmapack_sim(A, B, Sig, mu, 2, p, q, r, n, M, X0, 2, 1, X, E, rng);
+```
+
+### Model analysis
+
+Next, `QuickStart.c` simulates a zero-mean realization of `smallARMA1` and
+computes theoretical and sample autocovariances, ordinary and orthogonalized
+impulse responses, and AR and MA spectral radii.
+
+```c
+      varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
+      enum { maxlag = 3 };
+      double Gamma[2*2*(maxlag+1)], Psi[2*2*(maxlag+1)];
+      double Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
+      double rho = varmapack_specrad(A, r, p);
+      double rhoMA = varmapack_ma_specrad(B, r, q);
+      varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
+      varmapack_autocov("N", "ML", r, n, X, maxlag, GammaHat);
+      varmapack_psi(A, B, p, q, r, maxlag, Psi);
+      varmapack_irf(A, B, Sig, p, q, r, maxlag, Theta);
+      printf("AR spectral radius: %.4f\n", rho);
+      printf("MA spectral radius: %.4f\n", rhoMA);
+```
+
+`Gamma`, `Psi`, `Theta`, and `GammaHat` each contain `maxlag + 1` contiguous `r`
+by `r` matrices. The sample call above analyzes the first replicate in `X`; use
+normalization `"C"` instead of `"ML"` for division by `n - k`.
+
+### VARMAX simulation
+
+Finally, the example creates deterministic exogenous testcase data. Its input
+sequence is broadcast to every replicate. To use a different sequence for each
+replicate, set `Mz=M` and let `z` be `n` by `M`.
+
+```c
+      int s = 1;
+      double C[2];
+      double z[200];
+      varmapack_testcasex(s, r, n, C, z);
+      varmapack_simx(A, B, C, Sig, z, 1, p, q, s, r, n, M, X0, 2, 1, X, E, rng);
+      randompack_free(rng);
+      free(Sig);
+      free(B);
+      free(A);
+      return 0;
+    }
+```
+
+### Error checking
+
+Most Varmapack functions return `false` on failure and make a diagnostic
+available through `varmapack_last_error()`. The exceptions are
+`varmapack_specrad()` and `varmapack_ma_specrad()`, which return `NAN` on
+failure. The diagnostic is thread-local, so a failure in one thread does not
+replace the error reported in another. Randompack reports errors through its
+RNG object. The standalone `ErrorCheck.c` in the `examples` folder checks
+both libraries:
+
+```c
+    #include <stdio.h>
+    #include <varmapack.h>
+
+    int main(void) {
+      int status = 0;
+      int r = 2, n = 200, M = 10;
+      double A[] = {0.6, 0, 0.1, 0.4};
+      double Sig[] = {2, 0, 0, 1};
+      double X[2*200*10];
+      randompack_rng *rng = randompack_create(0);
+      if (!rng) {
+        fprintf(stderr, "could not create RNG\n");
+        return 1;
+      }
+      if (!randompack_seed(123, 0, 0, rng)) {
+        fprintf(stderr, "Randompack: %s\n", randompack_last_error(rng));
+        status = 1;
+      }
+      else if (!varmapack_sim(A, 0, Sig, 0, 0, 1, 0, r, n, M, 0, 0, 1, X, 0,
+                               rng)) {
+        fprintf(stderr, "Varmapack: %s\n", varmapack_last_error());
+        status = 1;
+      }
+      randompack_free(rng);
+      return status;
+    }
+```
+
+## Testing
+
+Varmapack includes three Meson test programs:
+
+- `RunTests` provides direct C unit and edge-case tests of the public functions.
+- `AgainstMatlab` compares C results with MATLAB reference outputs.
+- `TestLyapunov` tests the state-space covariance solver used for simulation
+  startup.
+
+Run the C test suite with:
+
+```sh
+    meson test -C build --print-errorlogs
+```
+
+`AgainstMatlab` compares the public numerical functions and simulated series,
+using identical Randompack streams where applicable. The standard suite uses
+the checked-in `tests/matlabcompare.txt` fixture, so MATLAB is not needed to
+run it.
+
+Most of the MATLAB reference functions are based on the thoroughly tested
+MATLAB code from the 2008 ACM TOMS Algorithm 878 package. New reference
+functions were developed mostly independently of the C implementations. MATLAB
+functions are generally easier to write from mathematical algorithm
+descriptions than C functions, making implementation errors less likely. This
+makes the reference implementation a valuable independent cross-check.
+
+When MATLAB is available, regenerate the reference fixture and run the full
+comparison as follows:
+
+```sh
+    matlab -batch "cd('matlab-reference/tests'); run_reference_tests"
+    matlab -batch "addpath('tests'); matlabcompare"
+    meson test -C build AgainstMatlab --print-errorlogs
+```
