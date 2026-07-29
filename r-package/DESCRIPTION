@@ -1,6 +1,6 @@
 Package: varmapack
 Type: Package
-Title: Generate VARMA time series without spin-up
+Title: Generate VARMA Time Series without Spin-Up
 Version: 1.0
 Authors@R: 
     person("Kristján", "Jónasson", , "jonasson@hi.is", role = c("aut", "cre"))
