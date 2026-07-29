@@ -1,0 +1,69 @@
+---
+title: "Varmapack"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Varmapack}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Varmapack simulates Gaussian vector autoregressive-moving-average models with
+exact stationary initialization. The first returned values therefore have the
+model-implied distribution without discarding a burn-in segment.
+
+```{r setup}
+library(varmapack)
+library(randompack)
+```
+
+Create a VARMA model from coefficient matrices and its innovation covariance.
+Matrices with one lag may be supplied directly; arrays use dimensions `r`, `r`,
+and lag.
+
+```{r varma}
+A <- matrix(c(0.5, 0.1,
+              0.0, 0.3), 2, 2)
+B <- matrix(c(0.2, 0.0,
+              0.1, 0.1), 2, 2)
+model <- varmapack_model(A = A, B = B, Sig = diag(2))
+
+rng <- randompack_rng()
+rng$seed(123)
+X <- model$sim(100, nrep = 3, rng = rng)
+dim(X)
+```
+
+The first dimension is the series dimension, the second is time, and the third
+selects the replicate. Requesting shocks returns a named list.
+
+```{r shocks}
+out <- model$sim(20, nrep = 2, rng = rng, return_shocks = TRUE)
+names(out)
+dim(out$E)
+```
+
+Varmapack also supplies theoretical autocovariances, impulse responses, and
+spectral radii directly from the model.
+
+```{r analysis}
+Gamma <- model$acvf(10)
+Psi <- model$psi(10)
+Theta <- model$irf(10)
+model$specrad()
+model$ma_specrad()
+```
+
+VARMAX models use `C` and the corresponding exogenous input sequence `z`.
+They require explicitly supplied starting values.
+
+```{r varmax}
+C <- array(c(0.3, -0.2), c(2, 1, 1))
+varmax <- varmapack_model(A = A, B = B, C = C, Sig = diag(2))
+X0 <- matrix(0, 2, 2)
+z <- matrix(sin(seq_len(100)/10), 1, 100)
+Xmax <- varmax$sim(100, X0 = X0, z = z, rng = rng)
+```

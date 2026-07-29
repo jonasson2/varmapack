@@ -102,4 +102,30 @@ Version strings are updated with:
 scripts/set_version.sh 0.1.0
 ```
 
-R packaging is kept separate for now.
+## R Package
+
+The R package is in `r-package/`. It uses the installed `randompack` R package
+through R's native callable interface, so install the current Randompack R
+package before building Varmapack.
+
+```sh
+cd <varmapack-root>
+scripts/syncR.sh
+R CMD INSTALL --preclean r-package
+```
+
+Run the R tests from the repository root:
+
+```sh
+R -e 'testthat::test_local("r-package")'
+R CMD build r-package
+R CMD check varmapack_*.tar.gz
+```
+
+R documentation is written as roxygen comments in `r-package/R/`. Regenerate
+the manual pages and namespace after changing the R interface:
+
+```sh
+R -e 'devtools::document("r-package")'
+R -e 'devtools::build_readme("r-package")'
+```

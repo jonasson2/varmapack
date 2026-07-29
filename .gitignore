@@ -37,8 +37,13 @@ compile_commands.json
 .Rprofile
 .Rproj.user/
 *.Rproj
+*.Rcheck/
+.Rlib/
 *.tar.gz
 *.tgz
+r-package/docs/
+r-package/README.html
+r-package/src/Makevars
 
 # Python generated files
 dist/
