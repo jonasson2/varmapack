@@ -14,6 +14,11 @@ A runnable version of this sequence is available as ``quickstart.py`` in the
     X = VAR_model.sim(200)
     print(X[0, :5])
 
+Returned arrays have shape ``(nrep, length, r)``: the first dimension selects
+the replicate, the second is time, and the third is the series dimension.
+With ``return_shocks=True``, ``sim`` returns a pair ``(X, E)`` containing the
+series and shocks.
+
 .. code-block:: python
 
     print(varmapack.testcases())

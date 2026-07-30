@@ -49,13 +49,13 @@ X <- model$sim(100, nrep = 3, rng = rng)
 dim(X)
 ```
 
-Returned series have dimensions `r` by length by number of replicates.
-Pass `return_shocks = TRUE` to return a list containing both the series
-and shocks.
+The first dimension is the series dimension, the second is time, and the
+third selects the replicate. Requesting shocks returns a named list.
 
 ``` r
 out <- model$sim(20, nrep = 2, rng = rng, return_shocks = TRUE)
 names(out)
+dim(out$E)
 ```
 
 Built-in testcases return model objects.

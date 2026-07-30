@@ -109,6 +109,10 @@ A = [0.6, 0.1; 0, 0.4];
 X = varmapack.sim(A, [], Sig1, [], n, 1, [], vrng); % one replicate
 disp(X(:, 1:5))
 
+% For this multivariate model, the first dimension is the series dimension,
+% the second is time, and the third selects the replicate. Request a second
+% output from varmapack.sim to return the shocks as E.
+
 % Display all named testcases; then construct smallARMA1; a 2d VARMA(1,1) model
 varmapack.testcase('summary')
 [A, B, Sig] = varmapack.testcase('smallARMA1');
