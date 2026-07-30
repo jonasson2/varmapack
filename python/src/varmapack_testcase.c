@@ -4,7 +4,7 @@
 #include "BlasGateway.h"
 #include "error.h"
 #include "VarmaUtilities.h"
-#include "randompack.h"
+#include "RandompackGateway.h"
 #include "varmapack.h"
 
 static void flipud(int m, int n, double src[], double dst[]);
@@ -180,12 +180,12 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
   }
   else if (*icase == -1) {
     if (A && p>0) for (i=0; i<r*r*p; i++) A[i] = 0.5/(p*r);
-    if (B && q>0) for (i=0; i<r*r*q; i++) B[i] = 1.0/(q*r);     
+    if (B && q>0) for (i=0; i<r*r*q; i++) B[i] = 1.0/(q*r);
   }
   else if (*icase == 0) {
     if (A && p>0) {
       if (!randompack_u01(A, r*r*p, rng)) return fail_error(randompack_last_error(rng));
-      scal(r*r*p, 0.5/(p*r), A, 1); 
+      scal(r*r*p, 0.5/(p*r), A, 1);
       j = 0;
       double specrad = varmapack_specrad(A, r, p);
       if (isnan(specrad)) return false;
@@ -243,7 +243,7 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
 static void flipud(int m, int n, double *src, double *dst) {
   int i, j;
   for (j=0; j<n; j++)
-    for (i=0; i<m; i++) 
+    for (i=0; i<m; i++)
       dst[i + j*m] = src[m-1-i + j*m];
 }
 
@@ -251,7 +251,7 @@ static void hilb(double A[], int n) {
   // Return n by n Hilbert matrix
   int i, j;
   for (j=0; j<n; j++)
-    for (i=0; i<n; i++) 
+    for (i=0; i<n; i++)
       A[i + j*n] = 1.0/(i + j + 1);
 }
 

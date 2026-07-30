@@ -40,6 +40,9 @@ The full documentation is at:
 
 > https://varmapack.readthedocs.io/
 
+For information about the underlying C library, see the
+[C README](https://github.com/jonasson2/varmapack/blob/main/README.md).
+
 For development builds from source, see:
 
 > https://github.com/jonasson2/varmapack/blob/main/DEVELOPMENT.md

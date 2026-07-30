@@ -1,4 +1,4 @@
-/// Main header file for varmapack. 
+/// Main header file for varmapack.
 
 #ifndef VARMAPACK_H
 #define VARMAPACK_H
@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#include "randompack.h"
+#include "RandompackGateway.h"
 #include <stdbool.h>
 #include <stdio.h>
 

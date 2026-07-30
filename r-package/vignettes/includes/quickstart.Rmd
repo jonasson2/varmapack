@@ -1,28 +1,13 @@
----
-title: "Varmapack"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Varmapack}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-```
-
-Varmapack simulates Gaussian vector autoregressive-moving-average models with
-exact stationary initialization. The first returned values therefore have the
-model-implied distribution without discarding a burn-in segment.
+## Quick start
 
 ```{r setup}
 library(varmapack)
 library(randompack)
 ```
 
-Create a VARMA model from coefficient matrices and its innovation covariance.
-Matrices with one lag may be supplied directly; arrays use dimensions `r`, `r`,
-and lag.
+Create a model from coefficient matrices and its innovation covariance. A
+single lag may be supplied as a matrix; multiple lags use an `r` by `r` by lag
+array.
 
 ```{r varma}
 A <- matrix(c(0.5, 0.1,
@@ -46,8 +31,16 @@ names(out)
 dim(out$E)
 ```
 
-Varmapack also supplies theoretical autocovariances, impulse responses, and
-spectral radii directly from the model.
+Built-in testcases return model objects.
+
+```{r testcases}
+varmapack_testcases()
+test_model <- varmapack_testcase("smallARMA1")
+test_model$specrad()
+```
+
+Model methods provide theoretical autocovariances, impulse responses, and the
+AR and MA spectral radii.
 
 ```{r analysis}
 Gamma <- model$acvf(10)
@@ -57,8 +50,15 @@ model$specrad()
 model$ma_specrad()
 ```
 
-VARMAX models use `C` and the corresponding exogenous input sequence `z`.
-They require explicitly supplied starting values.
+The `varmapack_autocov()` function computes sample autocovariances for an
+observed time-series matrix with observations in rows.
+
+```{r autocov}
+varmapack_autocov(t(X[, , 1]), maxlag = 5)
+```
+
+VARMAX models use exogenous coefficient matrices `C` and input values `z`.
+They require fixed starting values `X0`.
 
 ```{r varmax}
 C <- array(c(0.3, -0.2), c(2, 1, 1))

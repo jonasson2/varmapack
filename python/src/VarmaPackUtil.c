@@ -163,7 +163,7 @@ HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r) {
   if (p > 0) xAssert(ALLOC(Aflp, p*rr));
   flipmat(A, Aflp, r, p);
   laset("All", hr, hr, 0.0, 0.0, Psi, hr);
-  
+
   // Compute first block column
   setEye(r, Psi, hr);
   for (i=1; i<h; i++) {

@@ -1,7 +1,7 @@
 Package: varmapack
 Type: Package
 Title: Burn-in-Free Simulation and Analysis of Gaussian VARMA Models
-Version: 1.0
+Version: 0.1.0
 Authors@R: 
     person("Kristján", "Jónasson", , "jonasson@hi.is", role = c("aut", "cre"))
 Description: Simulates Gaussian vector autoregressive-moving-average

@@ -1,4 +1,5 @@
 function build_randompack_mex(randompack_root)
+  here = fileparts(mfilename('fullpath'));
   if nargin < 1 || isempty(randompack_root)
     randompack_root = fullfile(getenv("HOME"), "randompack");
   end
@@ -19,6 +20,6 @@ function build_randompack_mex(randompack_root)
     linkargs = [linkargs, "LDFLAGS=$LDFLAGS -Wl,-rpath," + lib];
   end
   for k = 1:numel(files)
-    mex("-I" + inc, linkargs{:}, files(k));
+    mex("-I" + inc, "-outdir", here, linkargs{:}, fullfile(here, files(k)));
   end
 end

@@ -23,4 +23,11 @@ rsync -av --delete \
 echo "Copying license..."
 cp -f LICENSE r-package/inst/THIRD-PARTY-NOTICES
 
+echo "Generating R mathematical vignette..."
+python3 "$SCRIPT_DIR/process-markdown.py" \
+  --root "$REPO_ROOT" \
+  --drop-first-heading \
+  "$REPO_ROOT/python/docs/math.md" \
+  "$REPO_ROOT/r-package/vignettes/includes/math.Rmd"
+
 echo "Sync complete."

@@ -42,3 +42,15 @@ X, E = model.sim(6, nrep=3, rng=rng, return_shocks=True)
 assert np.allclose(X, E)
 assert np.allclose(X[:, :, 0], X[:, :, 1])
 assert np.all(np.isfinite(X))
+
+r = 20
+p = 5
+A = np.zeros((p, r, r))
+A[0] = 0.1*np.eye(r)
+large = varmapack.Model(A=A, Sig=np.eye(r))
+G = large.acvf(1)
+X = large.sim(6, nrep=2, rng=rng)
+assert G.shape == (2, r, r)
+assert X.shape == (2, 6, r)
+assert np.isfinite(G).all()
+assert np.isfinite(X).all()

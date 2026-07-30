@@ -6,7 +6,7 @@
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
 #include "error.h"
-#include "randompack.h"
+#include "RandompackGateway.h"
 #include "varmapack.h"
 #include "varmapack_config.h"
 

@@ -1,7 +1,46 @@
 #ifndef BLASREF_H
 #define BLASREF_H
 
-#if defined(__GNUC__) && !defined(__clang__)
+#include <stddef.h>
+
+#if defined(SCIPY_OPENBLAS)
+#define daxpy_ scipy_daxpy_
+#define dcopy_ scipy_dcopy_
+#define ddot_ scipy_ddot_
+#define dgeev_ scipy_dgeev_
+#define dgemm_ scipy_dgemm_
+#define dgemv_ scipy_dgemv_
+#define dger_ scipy_dger_
+#define dgetrf_ scipy_dgetrf_
+#define dgetrs_ scipy_dgetrs_
+#define dlacpy_ scipy_dlacpy_
+#define dlamch_ scipy_dlamch_
+#define dlaset_ scipy_dlaset_
+#define dnrm2_ scipy_dnrm2_
+#define dposv_ scipy_dposv_
+#define dpotrf_ scipy_dpotrf_
+#define dpstrf_ scipy_dpstrf_
+#define dscal_ scipy_dscal_
+#define dspr_ scipy_dspr_
+#define dspr2_ scipy_dspr2_
+#define dswap_ scipy_dswap_
+#define dsyev_ scipy_dsyev_
+#define dsymm_ scipy_dsymm_
+#define dsymv_ scipy_dsymv_
+#define dsyr_ scipy_dsyr_
+#define dsyr2k_ scipy_dsyr2k_
+#define dsyrk_ scipy_dsyrk_
+#define dtrmm_ scipy_dtrmm_
+#define dtrmv_ scipy_dtrmv_
+#define dtrsm_ scipy_dtrsm_
+#define dtrsv_ scipy_dtrsv_
+#define idamax_ scipy_idamax_
+#define ilaenv_ scipy_ilaenv_
+#endif
+
+#if defined(SCIPY_OPENBLAS)
+typedef size_t fstrlen;
+#elif defined(__GNUC__) && !defined(__clang__)
 typedef long int fstrlen;
 #else
 typedef int fstrlen;

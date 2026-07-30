@@ -10,12 +10,13 @@ An R interface to the Varmapack C library for simulation and analysis of
 Gaussian VAR, VMA, VARMA, and VARMAX models.
 }
 \seealso{
-Useful links:
 \itemize{
-  \item \url{https://github.com/jonasson2/varmapack}
-  \item Report bugs at \url{https://github.com/jonasson2/varmapack/issues}
+\item \code{vignette("getting-started", package = "varmapack")} for a tutorial.
+\item \code{vignette("mathematical-description", package = "varmapack")} for the
+mathematical description.
+\item \href{https://github.com/jonasson2/varmapack}{Varmapack on GitHub}.
+\item \href{https://github.com/jonasson2/varmapack/issues}{Report bugs}.
 }
-
 }
 \author{
 \strong{Maintainer}: Kristján Jónasson \email{jonasson@hi.is}

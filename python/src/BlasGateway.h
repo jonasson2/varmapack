@@ -123,7 +123,7 @@ static inline void syr2k(char *uplo, char *trans, int n, int k, double alpha, do
   dsyr2k_(uplo, trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc, 1, 1);
 }
 
-static inline void syrk(char *uplo, char *trans, int m, int n, double alpha, double a[], 
+static inline void syrk(char *uplo, char *trans, int m, int n, double alpha, double a[],
           int lda, double beta, double c[], int ldc) {
   dsyrk_(uplo, trans, &m, &n, &alpha, a, &lda, &beta, c, &ldc, 1, 1);
 }
@@ -133,7 +133,7 @@ static inline void trmm(char *side, char *uplo, char *transa, char *diag, int m,
   dtrmm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb, 1, 1, 1, 1);
 }
 
-static inline void trmv(char *uplo, char *transa, char *diag, int n, double a[], int lda, 
+static inline void trmv(char *uplo, char *transa, char *diag, int n, double a[], int lda,
           double x[], int incx) {
   dtrmv_(uplo, transa, diag, &n, a, &lda, x, &incx, 1, 1, 1);
 }
@@ -143,7 +143,7 @@ static inline void trsm(char *side, char *uplo, char *transa, char *diag, int m,
   dtrsm_(side, uplo, transa, diag, &m, &n, &alpha, a, &lda, b, &ldb, 1, 1, 1, 1);
 }
 
-static inline void trsv(char *uplo, char *transa, char *diag, int n, double a[], int lda, 
+static inline void trsv(char *uplo, char *transa, char *diag, int n, double a[], int lda,
           double x[], int incx) {
   dtrsv_(uplo, transa, diag, &n, a, &lda, x, &incx, 1, 1, 1);
 }

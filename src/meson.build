@@ -4,7 +4,7 @@ src_files = files( 'FindW.c', 'VarmaPackUtil.c', 'error.c', 'exog.c', 'sb03mdGat
   'varmapack_ma_specrad.c', 'varmapack_testcase.c', 'varmapack_testcasex.c',
   'rp_dpstrf.c', )
 
-sb03md_fortran_files = files( 'sb03md-complete.f', )
+sb03md_fortran_files = files( 'sb03md-complete.F', )
 
 lib_kwargs = {
   'include_directories' : inc, 'dependencies' : [blas_dep, randompack_dep],

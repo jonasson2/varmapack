@@ -89,7 +89,7 @@
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 #include "VarmaPackUtil.h"
-#include "randompack.h"
+#include "RandompackGateway.h"
 #include "varmapack.h"
 
 static void addMean(double X[], double mu[], int nmu, int r, int n, int M);

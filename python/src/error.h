@@ -41,10 +41,12 @@ static inline void xPrintAssertion(char *assertion, char *file, int line) {
   int nmax = 200 - (strlen(file) + strlen(m1) + strlen(m2) + 25 + strlen(m3));
   int n = (int)strlen(assertion);
   if (n <= nmax) {
-    sprintf(msg, "%s %s%s %d %s %s", m1, assertion, m2, line, m3, file);
+    snprintf(msg, sizeof(msg), "%s %s%s %d %s %s", m1, assertion, m2, line, m3,
+             file);
   }
   else {
-    sprintf(msg, "%s %.*s...%s %d %s %s", m1, nmax, assertion, m2, line, m3, file);
+    snprintf(msg, sizeof(msg), "%s %.*s...%s %d %s %s", m1, nmax, assertion, m2,
+             line, m3, file);
   }
   xErrorExit(msg);
 }

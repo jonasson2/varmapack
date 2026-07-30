@@ -27,7 +27,7 @@ This software includes or adapts code from the following projects:
 
 SLICOT
 The SLICOT Team — https://github.com/SLICOT/SLICOT-Reference — BSD-3-Clause
-File: src/sb03md-complete.f
+File: src/sb03md-complete.F
 
 LAPACK routines
 Netlib LAPACK — https://www.netlib.org/lapack/ — BSD-style

@@ -40,15 +40,15 @@
 #define dbgp_conclude_()                        \
  printf("\n");                                  \
  fflush(stdout);
-    
-// Print only trace info                        
+
+// Print only trace info
 #define print0()                                \
  do { if (DEBUGON) {                            \
      dbgp_prepare_(fmt,"");                     \
      dbgp_conclude_();                          \
    }} while(0)
 
-// Print header                                 
+// Print header
 #define printh(s)                               \
  do {                                           \
    if (DEBUGON) {                               \
@@ -58,7 +58,7 @@
    }                                            \
  } while(0)
 
-// Print string                                 
+// Print string
 #define prints(x)                               \
  do { if (DEBUGON) {                            \
      dbgp_prepare_(fmt,"");                     \
@@ -275,4 +275,3 @@
    }} while (0)
 
 #endif
-

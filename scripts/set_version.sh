@@ -20,5 +20,7 @@ sed -i.bak -E "s/^  version: '[^']*'/  version: '$VER'/" python/meson.build
 rm -f python/meson.build.bak
 sed -i.bak -E "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"$VER\"/" python/pyproject.toml
 rm -f python/pyproject.toml.bak
+sed -i.bak -E "s/^Version:[[:space:]]*.*/Version: $VER/" r-package/DESCRIPTION
+rm -f r-package/DESCRIPTION.bak
 
 echo "Version set to $VER"

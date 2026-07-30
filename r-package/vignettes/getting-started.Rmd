@@ -1,0 +1,19 @@
+---
+title: "Getting Started with Varmapack"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with Varmapack}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Varmapack simulates Gaussian vector autoregressive-moving-average models with
+exact stationary initialization. The first returned values therefore have the
+model-implied distribution without discarding a burn-in segment.
+
+```{r, child = "includes/quickstart.Rmd"}
+```

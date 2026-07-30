@@ -8,10 +8,11 @@ DTYPE_F64 = np.dtype(np.float64)
 RNG_CAPSULE_NAME = b"randompack.randompack_rng"
 cdef const char *RNG_CAPSULE_CNAME = "randompack.randompack_rng"
 
-cdef extern from "randompack.h":
+cdef extern from "RandompackPythonGateway.h":
     ctypedef struct randompack_rng
-    randompack_rng *randompack_create(const char *engine)
-    void randompack_free(randompack_rng *rng)
+    int randompack_PY_initialize() except -1
+    randompack_rng *randompack_PY_create(const char *engine)
+    void randompack_PY_free(randompack_rng *rng)
 
 cdef extern from "varmapack.h":
     enum:
@@ -39,6 +40,7 @@ cdef extern from "varmapack.h":
     double varmapack_specrad(double *A, int r, int p)
     double varmapack_ma_specrad(double *B, int r, int q)
 
+randompack_PY_initialize()
 np.import_array()
 
 
@@ -116,7 +118,7 @@ cdef randompack_rng *_rng_from_object(object rng, bint *owned):
     cdef randompack_rng *ptr
     owned[0] = False
     if rng is None:
-        ptr = randompack_create(NULL)
+        ptr = randompack_PY_create(NULL)
         if ptr == NULL:
             raise MemoryError("randompack_create failed")
         owned[0] = True
@@ -334,7 +336,7 @@ cdef object _testcase(object which, object p0, object q0, object r0,
             raise VarmapackError(_error_message())
     finally:
         if owned:
-            randompack_free(rngptr)
+            randompack_PY_free(rngptr)
     return _make_model_internal(A, B, Sig, None, p, q, r)
 
 
@@ -808,7 +810,7 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
             raise VarmapackError(_error_message())
     finally:
         if owned:
-            randompack_free(rngptr)
+            randompack_PY_free(rngptr)
     if return_shocks:
         return X, E
     return X

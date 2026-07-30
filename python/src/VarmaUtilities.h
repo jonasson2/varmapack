@@ -18,7 +18,7 @@ static inline void copytranspose(int m, int n, double A[], int ldA, double B[], 
     copy(m, A1j, 1, Bj1, ldB);
     A1j += ldA;
     Bj1++;
-  }  
+  }
 }
 
 static inline double relabsdiff(double a[], double b[], int n) {
@@ -50,7 +50,7 @@ static inline void subtractmat(int m, int n, double A[], int ldA, double B[], in
   double *Ai, *Bi;
   for (i=0; i<n; i++) {
     Ai = A + ldA*i;
-    Bi = B + ldB*i;    
+    Bi = B + ldB*i;
     axpy(m, -1.0, Ai, 1, Bi, 1);
   }
 }
@@ -89,7 +89,7 @@ static inline void addmat
         axpy(m-i, 1.0, Ai, 1, Bi, 1);
       }
       break;
-    case('U'): case('u'):      
+    case('U'): case('u'):
       for (i=0; i<n; i++) {
         Ai = A + ldA*i;
         Bi = B + ldB*i;
@@ -135,7 +135,7 @@ static inline void aplusat(int n, double A[], int ldA) {
 }
 
 static inline void copylowertoupper(int n, double A[], int ldA) {
-  // Set strictly upper triangle of n × n matrix A to strictly lower triangle of 
+  // Set strictly upper triangle of n × n matrix A to strictly lower triangle of
   // its transpose.
   int i;
   for (i=1; i<n; i++) {
