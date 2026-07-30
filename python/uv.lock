@@ -183,6 +183,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=1.22" },
+    { name = "numpy", marker = "python_full_version >= '3.14' or platform_machine != 'aarch64'", specifier = ">=1.22" },
+    { name = "numpy", marker = "python_full_version < '3.14' and platform_machine == 'aarch64'", specifier = ">=1.22,<2.3" },
     { name = "randompack", specifier = ">=0.1.9" },
 ]
