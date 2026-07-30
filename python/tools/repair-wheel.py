@@ -16,11 +16,11 @@ def main():
     libdir = Path(scipy_openblas32.get_lib_dir()).resolve()
     environment = os.environ.copy()
     if sys.platform.startswith("linux"):
-        old_path = environment.get("AUDITWHEEL_LD_LIBRARY_PATH", "")
+        old_path = environment.get("LD_LIBRARY_PATH", "")
         paths = [str(libdir)]
         if old_path:
             paths.append(old_path)
-        environment["AUDITWHEEL_LD_LIBRARY_PATH"] = os.pathsep.join(paths)
+        environment["LD_LIBRARY_PATH"] = os.pathsep.join(paths)
         command = ["auditwheel", "repair", "-w", str(destination), str(wheel)]
     elif sys.platform == "win32":
         command = [
