@@ -46,8 +46,8 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
   FREE(C);
 }
 
-static void check_case7_support(void) {
-  int p = 0, q = 0, r = 0, icase = 7, h, rh, n = 5, M = 1, info, nulls = 0;
+static void check_case_support(int icase, double support_tol) {
+  int p = 0, q = 0, r = 0, h, rh, n = 5, M = 1, info, nulls = 0;
   char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
   double *A = 0, *B = 0, *Sig = 0, *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
   double *work = 0, *X = 0, *E = 0;
@@ -87,14 +87,14 @@ static void check_case7_support(void) {
     for (int i=0; i<rh; i++) {
       nr += fabs(dot(rh, R + i, rh, Eig + k*rh, 1));
     }
-    xCheck(nr < 1e-10);
+    xCheck(nr < support_tol);
   }
   for (int j=0; j<M; j++) {
     double *Ej = E + j*r*n;
     for (int k=0; k<nulls; k++) {
       double d = dot(rh, Eig + k*rh, 1, Ej, 1);
       d -= dot(rh, Eig + k*rh, 1, e, 1);
-      xCheck(fabs(d) < 1e-10);
+      xCheck(fabs(d) < support_tol);
     }
   }
   randompack_free(rng);
@@ -112,5 +112,7 @@ static void check_case7_support(void) {
 }
 
 void TestPsdCondCov(void) {
-  check_case7_support();
+  // Case 4 has a numerical null direction that varies modestly by platform.
+  check_case_support(4, 1e-6);
+  check_case_support(7, 1e-10);
 }

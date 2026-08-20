@@ -40,7 +40,9 @@ static void check_norm_relative(char *what, int icase, double diff, double tol) 
 }
 
 static bool pathwise_conditional_check(int icase) {
-  return icase != 7;
+  // Rank-deficient conditional covariances can consume a platform-dependent
+  // number of normals, so their seeded paths are not portable.
+  return icase != 4 && icase != 7;
 }
 
 static bool compare_reduced_m(FILE *fid, int n) {

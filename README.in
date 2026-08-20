@@ -24,6 +24,13 @@ The public header file `varmapack.h` serves as a compact reference for the C
 API: all user-facing functions are declared there, with comments describing the
 role of each parameter.
 
+A fixed seed gives reproducible simulation paths for a fixed compiler, BLAS
+library, and Randompack build. Bitwise agreement across platforms is not
+guaranteed when a conditional startup covariance is rank deficient: floating
+point factorization can select a different numerical rank and therefore consume
+a different number of normal variates. The resulting paths remain draws from
+the same conditional distribution.
+
 A manuscript about Varmapack is being prepared and expected to be submitted to
 the journal SoftwareX. [TODO: fill in details]
 
