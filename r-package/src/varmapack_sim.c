@@ -52,6 +52,9 @@
 //   startup covariance of x to be positive definite. With X0 and a
 //   nonstationary pure AR model, no latent startup shocks are needed; future
 //   shocks are drawn and the recurrence is run forward from the supplied X0.
+//   For a nonstationary model with MA terms, startup shocks are drawn
+//   conditionally on the residual equations implied by X0. This requires
+//   positive-definite Sig.
 //
 // MATRIX STORAGE SCHEME
 //   All matrices are stored in column-major order, so that for example the
@@ -63,7 +66,8 @@
 //   singular positive-semidefinite startup covariance. Supplying X0 requires
 //   this covariance to be positive definite. Nonstationary pure AR models can
 //   be simulated with X0, because no latent startup shocks are needed for
-//   forward recursion. Models with MA terms and specified X0 must be stationary.
+//   forward recursion. Nonstationary models with MA terms require X0 and
+//   positive-definite Sig.
 //
 // FAILURES
 //   If the series is nonstationary without X0, or another recoverable error is
@@ -99,10 +103,13 @@ static bool buildStartupCovar(double A[], double B[], double Sig[], int p, int q
 static bool startUnconditional(double A[], double B[], double Sig[], double SS[],
                                double E[], int ldE, double X[], int p, int q,
                                int r, int h, int n, int M, randompack_rng *rng);
-static bool startFromX0(double A[], double Sig[], double X0[], double mu[], int nmu,
+static bool startFromX0(double A[], double B[], double Sig[], double X0[], double mu[],
+                        int nmu,
                         double C[], double SS[], double E[], int ldE, bool returnE,
                         bool stationary, double X[], int p, int q, int r, int h,
                         int n, int M, int MX0, randompack_rng *rng);
+static void startupResidual(double A[], double X[], int p, int r, int h, int t0,
+                            int rn, int M, double residual[]);
 static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[], bool
                          rollingE, int ldE, double X[], int p, int q, int r,
                          int n, int M, int h, randompack_rng *rng);
@@ -145,8 +152,6 @@ bool varmapack_sim(double A[], double B[], double Sig[], double mu[], int nmu,
   bool stationary = rho < 1;
   if (!X0Given && !stationary)
     return fail_error("nonstationary model");
-  if (X0Given && !stationary && q > 0)
-    return fail_error("nonstationary model with MA term(s) and specified X0");
   if (!X0Given && p == 0 && q == 0) { // White noise can be drawn directly into X.
     if (!randompack_mvn("T", 0, Sig, r, nM, X, r, 0, rng)) goto random_fail;
     if (returnE) lacpy("All", rn, M, X, rn, E, rn); // and copy it to E
@@ -162,8 +167,8 @@ bool varmapack_sim(double A[], double B[], double Sig[], double mu[], int nmu,
     if (!buildStartupCovar(A, B, Sig, p, q, r, h, C, SS)) goto fail;
   }
   if (X0Given) {
-    if (!startFromX0(A, Sig, X0, mu, nmu, C, SS, E, ldE, returnE, stationary, X, p, q,
-                     r, h, n, M, MX0, rng)) goto fail;
+    if (!startFromX0(A, B, Sig, X0, mu, nmu, C, SS, E, ldE, returnE, stationary, X,
+                     p, q, r, h, n, M, MX0, rng)) goto fail;
   }
   else { // Unconditional exact startup: draw X[:h] given E[:h].
     if (!startUnconditional(A, B, Sig, SS, E, ldE, X, p, q, r, h, n, M, rng)) {
@@ -308,7 +313,8 @@ done:
   return ok;
 }
 
-static bool startFromX0(double A[], double Sig[], double X0[], double mu[], int nmu,
+static bool startFromX0(double A[], double B[], double Sig[], double X0[], double mu[],
+                        int nmu,
                         double C[], double SS[], double E[], int ldE, bool returnE,
                         bool stationary, double X[], int p, int q, int r, int h,
                         int n, int M, int MX0, randompack_rng *rng) {
@@ -332,12 +338,46 @@ static bool startFromX0(double A[], double Sig[], double X0[], double mu[], int 
     copy(rh, X0j, 1, X + (size_t)j*rn, 1);
     subtractMean(X + (size_t)j*rn, mu, nmu, r, h, 1, rn);
   }
-  if (!stationary) {
+  if (!stationary && q == 0) {
     if (returnE) {
       for (int j=0; j<M; j++) setzero(rh, E + (size_t)j*ldE);
     }
-    FREE(x0bar);
     return true;
+  }
+  if (!stationary) {
+    double *Eall = 0, *residual = 0;
+    int firstActiveShock = p - q;
+    int firstShockTime = imin(firstActiveShock, 0);
+    int residualLength, ldEall;
+    size_t residualCount, eallCount;
+    if (firstShockTime < h - INT_MAX ||
+        !intProduct(r, h - p, &residualLength) ||
+        !intProduct(r, h - firstShockTime, &ldEall) ||
+        !sizeProduct((size_t)residualLength, (size_t)M, &residualCount) ||
+        !sizeProduct((size_t)ldEall, (size_t)M, &eallCount)) {
+      return fail_error("problem size too large");
+    }
+    if (!requirePositiveDefinite(Sig, r)) return false;
+    if (!ALLOC(Eall, eallCount)) goto nonstationary_alloc_fail;
+    if (residualLength > 0 && !ALLOC(residual, residualCount)) {
+      goto nonstationary_alloc_fail;
+    }
+    if (residualLength > 0)
+      startupResidual(A, X, p, r, h, p, rn, M, residual);
+    if (!drawConditionalStartupShocks(B, Sig, residual, q, r, h, p,
+                                      firstShockTime, firstActiveShock, M,
+                                      Eall, ldEall, rng)) goto nonstationary_fail;
+    for (int j=0; j<M; j++) {
+      copy(rh, Eall + (size_t)j*ldEall + (size_t)(-firstShockTime)*r, 1,
+           E + (size_t)j*ldE, 1);
+    }
+    FREE(residual); FREE(Eall);
+    return true;
+nonstationary_alloc_fail:
+    fail_error("allocation failed");
+nonstationary_fail:
+    FREE(residual); FREE(Eall);
+    return false;
   }
   if (!ALLOC(CC, squareCount)) goto alloc_fail;
   if (!ALLOC(x0bar, rh)) goto alloc_fail;
@@ -375,6 +415,23 @@ alloc_fail:
 fail:
   FREE(R); FREE(wrk); FREE(e); FREE(x0bar); FREE(CC);
   return ok;
+}
+
+static void startupResidual(double A[], double X[], int p, int r, int h, int t0,
+                            int rn, int M, double residual[]) {
+  int rm = r*(h - t0);
+  for (int j=0; j<M; j++) {
+    double *Xj = X + (size_t)j*rn;
+    double *rj = residual + (size_t)j*rm;
+    for (int t=t0; t<h; t++) {
+      double *rt = rj + r*(t - t0);
+      copy(r, Xj + r*t, 1, rt, 1);
+      for (int i=1; i<=p; i++) {
+        gemv("NoT", r, r, -1, A + (size_t)(i - 1)*r*r, r, Xj + r*(t - i),
+             1, 1, rt, 1);
+      }
+    }
+  }
 }
 
 static bool tailSimulate(double Aflp[], double Bflp[], double Sig[], double E[], bool

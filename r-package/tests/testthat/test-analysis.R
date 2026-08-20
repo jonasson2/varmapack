@@ -7,11 +7,14 @@ test_that("model analysis methods return expected AR(1) quantities", {
   expect_equal(drop(model$irf(2)), c(1, 0.5, 0.25), tolerance = 1e-12)
 })
 
-test_that("sample autocovariance uses observations in rows", {
-  X <- cbind(1:8, 2*(1:8))
+test_that("sample autocovariance uses series in rows", {
+  X <- rbind(1:8, 2*(1:8))
   C <- varmapack_autocov(X, maxlag = 1)
   expect_equal(dim(C), c(2L, 2L, 2L))
   expect_equal(C[1, 2, 1], 2*C[1, 1, 1])
+  Xc <- X - rowMeans(X)
+  expected <- Xc[, 2:8] %*% t(Xc[, 1:7])/8
+  expect_equal(C[, , 2], expected)
   expect_error(varmapack_autocov(X, maxlag = 8))
 })
 

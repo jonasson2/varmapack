@@ -10,15 +10,8 @@
 #include "varmapack.h"
 #include "varmapack_config.h"
 
-static void buildH(double B[], int q, int r, int h, int t0, int firstShockTime,
-                   double H[]);
 static void startupResidual(double A[], double C[], double z[], double X0[], int p,
                             int s, int d, int r, int h, int t0, double residual[]);
-static bool drawStartupShocks(double A[], double B[], double C[], double Sig[],
-                              double z[], int Mz, double X0[], int MX0, double Eall[],
-                              int p, int q, int s, int d, int r, int n, int h, int t0,
-                              int firstShockTime, int firstActiveShock, int ldE,
-                              int M, randompack_rng *rng);
 static bool forwardSimx(double Aflp[], double Bflp[], double C[], double Sig[],
                         double z[], int Mz, double Eall[], int ldE, double X[], int p,
                         int q, int s, int d, int r, int n, int M, int h, int rn,
@@ -27,18 +20,17 @@ static bool validSimxSizes(int p, int q, int s, int d, int r, int n, int M, int 
                            int *t0, int *firstActiveShock, int *firstShockTime,
                            int *rh, int *rn, int *ldE, size_t *eCount,
                            size_t *aCount, size_t *bCount);
-static bool requirePositiveDefinite(double Sig[], int r, size_t count);
 
 bool varmapack_simx(double A[], double B[], double C[], double Sig[], double z[],
                     int Mz, int p, int q, int s, int d, int r, int n, int M, double X0[],
                     int h, int MX0, double X[], double E[], randompack_rng *rng)
 {
-  double *Eall = 0, *Aflp = 0, *Bflp = 0;
-  int t0, firstActiveShock, firstShockTime, rh, ldE, rn;
-  size_t eCount, aCount, bCount, sigCount;
+  double *Eall = 0, *Aflp = 0, *Bflp = 0, *residual = 0;
+  int t0, firstActiveShock, firstShockTime, residualLength, rh, ldE, rn;
+  size_t eCount, aCount, bCount, residualCount;
   clear_error();
   if ((p > 0 && A == 0) || (q > 0 && B == 0) || (s > 0 && C == 0) ||
-      (s > 0 && z == 0) || Sig == 0 || X0 == 0 || X == 0 || rng == 0) {
+      (s > 0 && z == 0) || Sig == 0 || (h > 0 && X0 == 0) || X == 0 || rng == 0) {
     return fail_error("invalid argument");
   }
   if (p < 0 || q < 0 || s < 0 || d < 0 || (s == 0 && d != 0) ||
@@ -46,27 +38,39 @@ bool varmapack_simx(double A[], double B[], double C[], double Sig[], double z[]
       (Mz != 1 && Mz != M) || (MX0 != 1 && MX0 != M)) {
     return fail_error("invalid argument");
   }
-  if (h <= imax(p, s > 0 ? s - 1 : 0) || n < h) {
+  if (h < imax(imax(p, q), s > 0 ? s - 1 : 0) || n < h) {
     return fail_error("invalid argument");
   }
   if (!validSimxSizes(p, q, s, d, r, n, M, h, &t0, &firstActiveShock,
                       &firstShockTime, &rh, &rn, &ldE, &eCount, &aCount, &bCount)) {
     return fail_error("problem size too large");
   }
-  if (!sizeProduct((size_t)r, (size_t)r, &sigCount))
+  if (!intProduct(r, h - t0, &residualLength) ||
+      !sizeProduct((size_t)residualLength, (size_t)M, &residualCount)) {
     return fail_error("problem size too large");
-  if (!requirePositiveDefinite(Sig, r, sigCount)) return false;
+  }
+  if (!requirePositiveDefinite(Sig, r)) return false;
   if (!ALLOC(Eall, eCount)) goto alloc_fail;
   if (p > 0 && !ALLOC(Aflp, aCount)) goto alloc_fail;
   if (q > 0 && !ALLOC(Bflp, bCount)) goto alloc_fail;
+  if (residualLength > 0 && !ALLOC(residual, residualCount)) goto alloc_fail;
   flipmat(A, Aflp, r, p);
   flipmat(B, Bflp, r, q);
-  for (int j=0; j<M; j++) {
-    double *X0j = X0 + (MX0 == 1 ? 0 : (size_t)j*rh);
-    copy(rh, X0j, 1, X + (size_t)j*rn, 1);
+  if (h > 0) {
+    for (int j=0; j<M; j++) {
+      double *X0j = X0 + (MX0 == 1 ? 0 : (size_t)j*rh);
+      copy(rh, X0j, 1, X + (size_t)j*rn, 1);
+    }
   }
-  if (!drawStartupShocks(A, B, C, Sig, z, Mz, X0, MX0, Eall, p, q, s, d, r, n, h, t0,
-                         firstShockTime, firstActiveShock, ldE, M, rng)) {
+  for (int j=0; j<M; j++) {
+    double *zj = s > 0 ? z + (Mz == 1 ? 0 : (size_t)j*d*n) : 0;
+    double *X0j = h > 0 ? X0 + (MX0 == 1 ? 0 : (size_t)j*rh) : 0;
+    startupResidual(A, C, zj, X0j, p, s, d, r, h, t0,
+                    residualLength > 0 ? residual + (size_t)j*residualLength : 0);
+  }
+  if (!drawConditionalStartupShocks(B, Sig, residual, q, r, h, t0,
+                                    firstShockTime, firstActiveShock, M, Eall,
+                                    ldE, rng)) {
     goto fail;
   }
   if (!forwardSimx(Aflp, Bflp, C, Sig, z, Mz, Eall, ldE, X, p, q, s, d, r, n, M, h,
@@ -79,12 +83,12 @@ bool varmapack_simx(double A[], double B[], double C[], double Sig[], double z[]
             E + (size_t)j*rn, rn);
     }
   }
-  FREE(Bflp); FREE(Aflp); FREE(Eall);
+  FREE(residual); FREE(Bflp); FREE(Aflp); FREE(Eall);
   return true;
 alloc_fail:
   fail_error("allocation failed");
 fail:
-  FREE(Bflp); FREE(Aflp); FREE(Eall);
+  FREE(residual); FREE(Bflp); FREE(Aflp); FREE(Eall);
   return false;
 }
 
@@ -112,51 +116,13 @@ static bool validSimxSizes(int p, int q, int s, int d, int r, int n, int M, int 
       !sizeProduct(cCount, (size_t)s, &cCount) ||
       !sizeProduct((size_t)d, (size_t)n, &zCount) ||
       !sizeProduct(zCount, (size_t)M, &zCount)) return false;
-  if (q > 0 &&
+  if (q > 0 && m > 0 &&
       (!sizeProduct((size_t)rm, (size_t)re, &hCount) ||
        !sizeProduct((size_t)r2, (size_t)(q + 1), &wlagCount) ||
        !sizeProduct((size_t)rm, (size_t)rm, &wCount) ||
        !sizeProduct((size_t)re, (size_t)re, &rCount) ||
        !sizeProduct((size_t)imax(rm, re), (size_t)r, &workCount))) return false;
   return true;
-}
-
-static bool requirePositiveDefinite(double Sig[], int r, size_t count) {
-  double *L = 0;
-  bool triangular;
-  if (!ALLOC(L, count)) return fail_error("allocation failed");
-  if (!psdFactor(Sig, r, L, &triangular)) {
-    FREE(L);
-    return false;
-  }
-  FREE(L);
-  if (!triangular) {
-    return fail_error(
-      "cannot condition on X0: shock covariance is not positive definite");
-  }
-  return true;
-}
-
-static void buildH(double B[], int q, int r, int h, int t0, int firstShockTime,
-                   double H[]) {
-  int m = h - t0;
-  int nE0 = h - firstShockTime;
-  int rm = r*m;
-  laset("All", rm, r*nE0, 0, 0, H, rm);
-  for (int t=t0; t<h; t++) {
-    int row = r*(t - t0);
-    for (int ell=firstShockTime; ell<h; ell++) {
-      int lag = t - ell;
-      int col = r*(ell - firstShockTime);
-      double *Hij = H + (size_t)col*rm + row;
-      if (lag == 0) {
-        for (int k=0; k<r; k++) Hij[k + (size_t)k*rm] = 1;
-      }
-      else if (1 <= lag && lag <= q) {
-        lacpy("All", r, r, B + (size_t)(lag - 1)*r*r, r, Hij, rm);
-      }
-    }
-  }
 }
 
 static void startupResidual(double A[], double C[], double z[], double X0[], int p,
@@ -172,98 +138,6 @@ static void startupResidual(double A[], double C[], double z[], double X0[], int
            1, rt, 1);
     }
   }
-}
-
-static bool drawStartupShocks(double A[], double B[], double C[], double Sig[],
-                              double z[], int Mz, double X0[], int MX0, double Eall[],
-                              int p, int q, int s, int d, int r, int n, int h, int t0,
-                              int firstShockTime, int firstActiveShock, int ldE,
-                              int M, randompack_rng *rng) {
-  int info;
-  int m = h - t0;
-  int nPrefix = imax(firstActiveShock, 0);
-  int activeOffset = r*(firstActiveShock - firstShockTime);
-  int nActive = h - firstActiveShock;
-  int rm = r*m;
-  int re = r*nActive;
-  bool ok = true;
-  double *H = 0, *HD = 0, *Wlag = 0, *W = 0, *K = 0, *R = 0, *work = 0;
-  double *residual = 0, *Ehat = 0;
-  for (int j=0; j<M; j++) {
-    if (nPrefix > 0 &&
-        !randompack_mvn("T", 0, Sig, r, nPrefix, Eall + (size_t)j*ldE, r, 0, rng)) {
-      ok = fail_error(randompack_last_error(rng));
-      goto done;
-    }
-  }
-  if (q == 0) {
-    if (!ALLOC(residual, rm)) goto alloc_fail;
-    for (int j=0; j<M; j++) {
-      double *zj = s > 0 ? z + (Mz == 1 ? 0 : (size_t)j*d*n) : 0;
-      double *X0j = X0 + (MX0 == 1 ? 0 : (size_t)j*r*h);
-      startupResidual(A, C, zj, X0j, p, s, d, r, h, t0, residual);
-      copy(rm, residual, 1, Eall + (size_t)j*ldE + activeOffset, 1);
-    }
-    FREE(residual);
-    return true;
-  }
-  size_t hCount, wlagCount, wCount, rCount, workCount;
-  if (!sizeProduct((size_t)rm, (size_t)re, &hCount) ||
-      !sizeProduct((size_t)r, (size_t)r, &wlagCount) ||
-      !sizeProduct(wlagCount, (size_t)(q + 1), &wlagCount) ||
-      !sizeProduct((size_t)rm, (size_t)rm, &wCount) ||
-      !sizeProduct((size_t)re, (size_t)re, &rCount) ||
-      !sizeProduct((size_t)imax(rm, re), (size_t)r, &workCount)) {
-    return fail_error("problem size too large");
-  }
-  if (!ALLOC(H, hCount)) goto alloc_fail;
-  if (!ALLOC(HD, hCount)) goto alloc_fail;
-  if (!ALLOC(Wlag, wlagCount)) goto alloc_fail;
-  if (!ALLOC(W, wCount)) goto alloc_fail;
-  if (!ALLOC(K, hCount)) goto alloc_fail;
-  if (!ALLOC(R, rCount)) goto alloc_fail;
-  if (!ALLOC(work, workCount)) goto alloc_fail;
-  if (!ALLOC(residual, rm)) goto alloc_fail;
-  if (!ALLOC(Ehat, re)) goto alloc_fail;
-  buildH(B, q, r, h, t0, firstActiveShock, H);
-  lacpy("All", rm, re, H, rm, HD, rm);
-  postmultiplySigmaPrime(HD, rm, rm, nActive, Sig, r, work);
-  if (!FindW(B, Sig, q, r, Wlag)) {
-    ok = varmapack_last_error() ? false : fail_error("allocation failed");
-    goto done;
-  }
-  WBuild(Wlag, q, r, m, W);
-  potrf("Low", rm, W, rm, &info);
-  if (info > 0) { ok = fail_error("singular matrix"); goto done; }
-  if (info < 0) { ok = fail_error("internal error"); goto done; }
-  lacpy("All", rm, re, HD, rm, K, rm);
-  trsm("Left", "Low", "NoT", "NonUnit", rm, re, 1, W, rm, K, rm);
-  trsm("Left", "Low", "Trans", "NonUnit", rm, re, 1, W, rm, K, rm);
-  laset("All", re, re, 0, 0, R, re);
-  for (int j=0; j<nActive; j++)
-    lacpy("All", r, r, Sig, r, R + (size_t)j*r*((size_t)re + 1), re);
-  gemm("Trans", "NoT", re, re, rm, -1, HD, rm, K, rm, 1, R, re);
-  for (int j=0; j<M; j++) {
-    double *zj = s > 0 ? z + (Mz == 1 ? 0 : (size_t)j*d*n) : 0;
-    double *X0j = X0 + (MX0 == 1 ? 0 : (size_t)j*r*h);
-    startupResidual(A, C, zj, X0j, p, s, d, r, h, t0, residual);
-    trsv("Low", "NoT", "NonUnit", rm, W, rm, residual, 1);
-    trsv("Low", "Trans", "NonUnit", rm, W, rm, residual, 1);
-    gemv("Trans", rm, re, 1, HD, rm, residual, 1, 0, Ehat, 1);
-    if (!randompack_mvn("T", Ehat, R, re, 1,
-                        Eall + (size_t)j*ldE + activeOffset, ldE,
-                        0, rng)) {
-      ok = fail_error(randompack_last_error(rng));
-      goto done;
-    }
-  }
-  goto done;
-alloc_fail:
-  ok = fail_error("allocation failed");
-done:
-  FREE(Ehat); FREE(residual); FREE(work); FREE(R); FREE(K); FREE(W); FREE(Wlag);
-  FREE(HD); FREE(H);
-  return ok;
 }
 
 static bool forwardSimx(double Aflp[], double Bflp[], double C[], double Sig[],

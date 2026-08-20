@@ -47,6 +47,13 @@ HIDDEN void WBuild(double Wlag[], int q, int r, int nW, double W[]);
 HIDDEN void postmultiplySigmaPrime(double Y[], int ldY, int m, int h, double Sig[],
                                    int r, double Work[]);
 
+HIDDEN bool drawConditionalStartupShocks(
+  double B[], double Sig[], double residual[], int q, int r, int h, int t0,
+  int firstShockTime, int firstActiveShock, int M, double E[], int ldE,
+  randompack_rng *rng);
+
+HIDDEN bool requirePositiveDefinite(double Sig[], int r);
+
 HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r);
 // TODO: doc
 

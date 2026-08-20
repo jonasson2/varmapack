@@ -216,6 +216,9 @@ build/benchmark/TimeBreakEven -t 0.05 | \
   awk -f benchmark/SummarizeBreakEven.awk
 ```
 
+Cross-platform crossover results, including the averaged cutoffs used for
+automatic solver selection, are recorded in `vyw-slicot-breakeven.txt`.
+
 All benchmark programs accept `-h` for workload and timing options.
 
 ## Releases

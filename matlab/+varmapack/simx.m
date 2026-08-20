@@ -9,13 +9,14 @@ function [X, E] = simx(A, B, C, z, Sig, n, M, X0, h, rng)
 %   has shape r-by-(d*s). Each z(t) is a d-vector. z has shape d-by-n to
 %   broadcast a common path or d-by-n-by-M for replicate-specific paths. The
 %   historical scalar forms n-by-1 and n-by-M are also accepted. C=[] specifies
-%   no exogenous terms. X0 is r-by-h or r-by-h-by-M.
+%   no exogenous terms. X0 is r-by-h or r-by-h-by-M. It may be empty when
+%   max(p,q,s-1) is zero.
 %
 %   The formula time axis is zero-based: X0(:,1) is x(0), and z(1,:) is z(0).
 %   MATLAB column h+1 is therefore formula time h.
 %
-%   M defaults to 1 and h defaults to size(X0,2). X0 is required, n must be at
-%   least h, and h must be greater than max(p,s-1).
+%   M defaults to 1 and h defaults to size(X0,2). The minimum startup length is
+%   max(p,q,s-1), and n must be at least h.
 %
 %   rng is a VARMAPACK.RNG object. If it is omitted or empty, a temporary
 %   randomized generator is created for this call.
@@ -28,9 +29,7 @@ function [X, E] = simx(A, B, C, z, Sig, n, M, X0, h, rng)
   if isempty(B), B = zeros(r, 0); end
   if isempty(C), C = zeros(r, 0); end
   if nargin < 7 || isempty(M), M = 1; end
-  if nargin < 8 || isempty(X0)
-    error('varmapack_simx: X0 must be specified');
-  end
+  if nargin < 8 || isempty(X0), X0 = zeros(r, 0); end
   if nargin < 9 || isempty(h), h = size(X0, 2); end
   [C, z] = normalize_exogenous(C, z, r, n, M);
   temporary_rng = [];

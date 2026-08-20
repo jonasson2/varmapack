@@ -69,6 +69,18 @@ assert np.allclose(model2_single.B, B2)
 X0shared = np.array([[1.0, 2.0], [3.0, 4.0]])
 Xshared = model2.sim(4, nrep=2, X0=X0shared, rng=rng)
 assert np.allclose(Xshared[:, :2, :], X0shared)
+
+nonstationary = varmapack.Model(A=np.array([[[1.25]]]),
+                                B=np.array([[[0.5]]]), Sig=np.array([[1.0]]))
+X0nonstationary = np.array([[2.0], [3.0], [4.0]])
+rng.seed(46)
+Xnonstationary, Enonstationary = nonstationary.sim(
+    6, X0=X0nonstationary, rng=rng, return_shocks=True)
+assert np.allclose(Xnonstationary[0, :3, 0], X0nonstationary[:, 0])
+for t in range(1, 6):
+    expected = (1.25*Xnonstationary[0, t - 1, 0] + Enonstationary[0, t, 0] +
+                0.5*Enonstationary[0, t - 1, 0])
+    assert np.allclose(Xnonstationary[0, t, 0], expected)
 Psi2 = model2.psi(2)
 Psi2_expected = np.array([
     [[1.0, 0.0], [0.0, 1.0]], [[0.6, 0.8], [1.0, 1.2]], [[0.26, 0.32], [0.58, 0.72]], ])

@@ -1,6 +1,7 @@
 src_files = files( 'FindW.c', 'VarmaPackUtil.c', 'error.c', 'exog.c', 'sb03mdGateway.c',
   'Lyapunov.c', 'VYW.c', 'varmapack_sim.c', 'varmapack_simx.c', 'varmapack_acvf.c',
-  'varmapack_autocov.c', 'varmapack_psi.c', 'varmapack_specrad.c',
+  'varmapack_autocov.c', 'varmapack_cov2corr.c', 'varmapack_psi.c',
+  'varmapack_specrad.c',
   'varmapack_ma_specrad.c', 'varmapack_testcase.c', 'varmapack_testcasex.c',
   'rp_dpstrf.c', )
 

@@ -12,6 +12,7 @@ void TestPsi(void);
 void TestAcvf(void);
 void TestAutocov(void);
 void TestAutocovEdgeCases(void);
+void TestCov2corr(void);
 void TestSimEdgeCases(void);
 void TestSimxEdgeCases(void);
 void TestFromMatlab(void);

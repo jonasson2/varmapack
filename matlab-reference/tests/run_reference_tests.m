@@ -38,6 +38,7 @@ function run_reference_tests(varargin)
   test_ref_varma_testcase;
   test_ref_varma_testcasex;
   test_ref_varma_sim(cases, M, n, showTable);
+  test_ref_varma_sim_nonstationary;
   test_ref_acvf_autocov_specrad;
   test_ref_psi_irf;
   test_ref_varma_simx;

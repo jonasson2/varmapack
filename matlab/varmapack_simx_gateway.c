@@ -33,7 +33,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   X0 = get_double_array(prhs[7], "X0");
   mwSize ndimsX0 = mxGetNumberOfDimensions(prhs[7]);
   const mwSize *dimsX0 = mxGetDimensions(prhs[7]);
-  if (mxIsEmpty(prhs[7]) || ndimsX0 > 3 || dimsX0[0] != r || dimsX0[1] != h) {
+  if (ndimsX0 > 3 || dimsX0[0] != r || dimsX0[1] != h) {
     mexErrMsgIdAndTxt("varmapack:simx:X0", "X0 must have shape r-by-h or r-by-h-by-M");
   }
   if (ndimsX0 == 3) {

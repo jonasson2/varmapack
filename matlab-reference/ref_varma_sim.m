@@ -17,8 +17,9 @@
 %  may instead be an r by nX0 common fixed startup path or an r by nX0 by M
 %  array of replicate-specific paths, where max(p,q) <= nX0 <= n. For
 %  stationary models, the resulting paths have the exact conditional
-%  distribution given X0. A nonstationary model is allowed only when q=0 and
-%  X0 is supplied.
+%  distribution given X0. A nonstationary model requires X0. With MA terms,
+%  startup shocks are drawn conditionally on the residual equations implied by
+%  X0; Sig must then be positive definite.
 %
 %  rng is a Randompack RNG handle. e0 is for the AgainstMatlab comparison tests
 %  only: an r by nE0 fixed startup shock path used for exact comparisons with
@@ -57,10 +58,6 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0)
   end
   returnE = nargout >= 2;
   rollingE = ~returnE;
-  [~, G] = find_CG(A, B, Sig);
-  PLU = vyw_factorize(A);
-  assert(isempty(PLU) || isempty(PLU{1}) || PLU{1}(1) ~= 0)  % vyw_factorize ok
-  S = vyw_solve(A, PLU, G);
 
   % Check size of provided start vectors, set h to their size if ok
   if ~isempty(X0)
@@ -77,7 +74,40 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0)
     if ~isempty(X0), assert(nX0 == ne0); end
     h = ne0;
   end
+  if ~isempty(X0) && q > 0 && ref_varma_specrad(A) >= 1
+    if ~isempty(e0)
+      error('e0 is not supported for nonstationary models with MA terms');
+    end
+    Mu0 = meanpath(mu, r, h);
+    if ndims(X0) < 3
+      X0bar = X0 - Mu0;
+    else
+      X0bar = X0 - repmat(Mu0, [1, 1, M]);
+    end
+    if returnE
+      [X, E] = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M,
+                               X0bar, h, rng);
+    else
+      X = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M,
+                          X0bar, h, rng);
+      E = [];
+    end
+    Mu = meanpath(mu, r, n);
+    if r==1 && M==1
+      X = reshape(X, 1, n) + Mu;
+    elseif r==1
+      X = reshape(X, n, M) + repmat(Mu', 1, M);
+    else
+      X = reshape(X, r, n, M) + repmat(Mu, [1, 1, M]);
+    end
+    return
+  end
   e0 = e0(:);
+
+  [~, G] = find_CG(A, B, Sig);
+  PLU = vyw_factorize(A);
+  assert(isempty(PLU) || isempty(PLU{1}) || PLU{1}(1) ~= 0)  % vyw_factorize ok
+  S = vyw_solve(A, PLU, G);
 
   SS = S_build(S, A, G, h);
   if rollingE

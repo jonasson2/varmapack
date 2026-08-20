@@ -39,7 +39,7 @@ function test_ref_varma_simx_multipath()
 end
 
 function test_ref_varma_simx_vector()
-  n = 6; M = 2; h = 2;
+  n = 6; M = 2; h = 1;
   A = [0.3, 0.1; -0.1, 0.2];
   B = [0.2, 0; 0.1, -0.2];
   C = [0.5, -0.2, 0.1, 0.3; -0.4, 0.2, 0.2, 0.1];
@@ -66,5 +66,12 @@ function test_ref_varma_simx_vector()
         C(:,1:2)*zmulti(:,t,j) + C(:,3:4)*zmulti(:,t-1,j);
       ascertain(almostequal(X(:,t,j), expected, 1e-12));
     end
+  end
+  randompack_seed(rng, 44);
+  Czero = 0.5*eye(2);
+  [Xzero, Ezero] = ref_varma_simx([], [], Czero, z, Sig, n, M, zeros(2, 0), ...
+                                  0, rng);
+  for j = 1:M
+    ascertain(almostequal(Xzero(:,:,j), Ezero(:,:,j) + Czero*z, 1e-12));
   end
 end

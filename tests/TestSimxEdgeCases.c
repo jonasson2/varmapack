@@ -46,6 +46,42 @@ static void check_arx_recursion(void) {
   randompack_free(rng);
 }
 
+static void check_minimum_startup(void) {
+  int p = 1, q = 1, s = 2, r = 1, n = 6, M = 2, h = 1;
+  double A[] = {0.6}, B[] = {0.2}, C[] = {0.4, -0.1}, Sig[] = {1};
+  double z[] = {1, -1, 2, -2, 3, -3}, X0[] = {0.5}, X[12], E[12];
+  randompack_rng *rng = seededRng(109);
+  bool ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M,
+                           X0, h, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  for (int j=0; j<M; j++) {
+    xCheck(fabs(X[j*n] - X0[0]) < 1e-12);
+    for (int t=h; t<n; t++) {
+      int it = j*n + t;
+      double expected = A[0]*X[it-1] + E[it] + B[0]*E[it-1] +
+                        C[0]*z[t] + C[1]*z[t-1];
+      xCheck(fabs(X[it] - expected) < 1e-12);
+    }
+  }
+  randompack_free(rng);
+}
+
+static void check_zero_startup(void) {
+  int p = 0, q = 0, s = 1, r = 1, n = 5, M = 2, h = 0;
+  double C[] = {0.5}, Sig[] = {1}, z[] = {1, 2, 3, 4, 5}, X[10], E[10];
+  randompack_rng *rng = seededRng(110);
+  bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
+                           0, h, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  for (int j=0; j<M; j++) {
+    for (int t=0; t<n; t++) {
+      int it = j*n + t;
+      xCheck(fabs(X[it] - E[it] - C[0]*z[t]) < 1e-12);
+    }
+  }
+  randompack_free(rng);
+}
+
 static void check_varma_without_exog(void) {
   int p = 2, q = 1, s = 0, r = 1, n = 7, M = 2, h = 3;
   double A[] = {0.4, -0.1};
@@ -207,7 +243,7 @@ static void check_invalid_input(void) {
   checkVarmapackFailure(ok);
   ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, 0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
-  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, 1, 1, X, E, rng);
+  ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M, X0, 0, 1, X, E, rng);
   checkVarmapackFailure(ok);
   ok = varmapack_simx(A, B, C, Sig, z, 3, p, q, s, 1, r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackFailure(ok);
@@ -237,6 +273,8 @@ static void check_oversized_dimensions(void) {
 void TestSimxEdgeCases(void) {
   check_white_noise_with_exog();
   check_arx_recursion();
+  check_minimum_startup();
+  check_zero_startup();
   check_varma_without_exog();
   check_singular_sigma();
   check_no_return_shocks_reproducible();

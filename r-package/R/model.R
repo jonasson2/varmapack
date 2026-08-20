@@ -26,11 +26,15 @@
 #' matrix or an `r` by `nX0` by `nrep` array. Its second dimension must be at
 #' least `max(p, q)`, and its third dimension, when present, must be 1 or
 #' `nrep`.
+#' Nonstationary VARMA models require `X0`; with MA terms, `Sig` must be
+#' positive definite and startup shocks are conditioned on the residual
+#' equations implied by the supplied history.
 #'
-#' For VARMAX models, both `X0` and `z` are required. `X0` has the same form,
-#' with its second dimension larger than `max(p, s - 1)`. The exogenous input
-#' `z` is a `d` by `length` matrix or a `d` by `length` by `nrep` array. Its
-#' third dimension, when present, must be 1 or `nrep`.
+#' For VARMAX models, `z` is required. `X0` has the same form and its second
+#' dimension must be at least `max(p, q, s - 1)`. It may be omitted when this
+#' minimum is zero. The exogenous input `z` is a `d` by `length` matrix or a `d`
+#' by `length` by `nrep` array. Its third dimension, when present, must be 1 or
+#' `nrep`.
 #'
 #' Pass a `randompack::randompack_rng()` object through `rng` to control the
 #' random stream. When it is omitted, Varmapack uses a temporary randomized
@@ -196,8 +200,8 @@ VarmapackModel <- R6::R6Class(
         X0 <- .vp_start_values(X0, self$r, nrep, max(self$p, self$q), FALSE)
       }
       else {
-        X0 <- .vp_start_values(X0, self$r, nrep, max(self$p, self$s - 1L) + 1L,
-                               TRUE)
+        minimum <- max(self$p, self$q, self$s - 1L)
+        X0 <- .vp_start_values(X0, self$r, nrep, minimum, minimum > 0L)
         z <- .vp_exogenous_input(z, self$d, length, nrep)
       }
       .Call("varmapack_sim_R", self$A, self$B, self$C, self$Sig, self$mu, X0, z,

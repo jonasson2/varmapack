@@ -187,6 +187,9 @@ lags are concatenated horizontally:
 - The mean `mu` has shape `r` by `nmu`, where `nmu <= n`; the last supplied
   column repeats to the end. Use `[]` or `0` for zero mean.
 - Startup values `X0` have shape `r` by `nX0` or `r` by `nX0` by `M`.
+- Nonstationary VARMA simulation requires `X0`. With MA terms, `Sig` must be
+  positive definite and startup shocks are conditioned on the residual
+  equations implied by the supplied history.
 - Exogenous inputs `z` have shape `d` by `n` or `d` by `n` by `M`.
   The scalar `d=1` forms `n` by `1` and `n` by `M` are also accepted.
 - For `r > 1`, simulated series and returned shocks have shape `r` by `n` by

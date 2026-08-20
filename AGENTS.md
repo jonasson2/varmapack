@@ -36,6 +36,23 @@ ARCHITECTURE
 - Meson/Ninja drive builds
 
 ---------------------------
+LATEX WORKFLOW
+---------------------------
+- Treat .tex and .bib files as editable sources. Treat LaTeX-generated files
+  (including PDFs and auxiliary files) as build artefacts; do not edit them.
+- Prefer $...$ to \(...\) and $$...$$ to \[...\] for mathematical notation.
+- Do not externally edit a source file while its editor buffer has unsaved
+  changes. Save first; after an external edit, reload the buffer before editing
+  it locally again.
+- Use one build command from the document directory. Build when requested or
+  when needed to verify a change.
+- After any change that affects paper.tex or one of its included figures or
+  listings, rebuild paper.pdf and refresh it in Skim without waiting for a
+  separate request.
+- Refresh editor reference/citation caches after changes to labels or
+  bibliography data.
+
+---------------------------
 OUTPUT
 ---------------------------
 - Keep responses concise, technical, and style-compliant.

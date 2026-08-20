@@ -111,7 +111,8 @@ SEXP varmapack_sim_R(SEXP A, SEXP B, SEXP C, SEXP Sig, SEXP mu, SEXP X0, SEXP z,
   if (s) {
     ok = varmapack_simx(Rf_isNull(A) ? 0 : REAL(A), Rf_isNull(B) ? 0 : REAL(B),
                         REAL(C), REAL(Sig), REAL(z), Mz, p, q, s, d, r, n, M,
-                        REAL(X0), h, MX0, REAL(X), return_shocks ? REAL(E) : 0, rng);
+                        Rf_isNull(X0) ? 0 : REAL(X0), h, MX0, REAL(X),
+                        return_shocks ? REAL(E) : 0, rng);
   }
   else {
     ok = varmapack_sim(Rf_isNull(A) ? 0 : REAL(A), Rf_isNull(B) ? 0 : REAL(B),
@@ -192,12 +193,12 @@ SEXP varmapack_ma_specrad_R(SEXP B, SEXP Sig) {
 }
 
 SEXP varmapack_autocov_R(SEXP X, SEXP maxlag_, SEXP norm) {
-  int n = get_dim(X, 0);
-  int r = get_dim(X, 1);
+  int r = get_dim(X, 0);
+  int n = get_dim(X, 1);
   int maxlag = Rf_asInteger(maxlag_);
   const char *norm_string = CHAR(STRING_ELT(norm, 0));
   SEXP C = PROTECT(Rf_alloc3DArray(REALSXP, r, r, maxlag + 1));
-  bool ok = varmapack_autocov("T", norm_string, r, n, REAL(X), maxlag, REAL(C));
+  bool ok = varmapack_autocov("N", norm_string, r, n, REAL(X), maxlag, REAL(C));
   check_ok(ok, 1);
   UNPROTECT(1);
   return C;

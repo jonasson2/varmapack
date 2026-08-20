@@ -19,7 +19,9 @@ function [X, E] = sim(A, B, Sig, mu, n, M, X0, rng)
 %   may instead be r-by-nX0 for a common fixed startup path or r-by-nX0-by-M
 %   for replicate-specific paths, where max(p,q) <= nX0 <= n. For stationary
 %   models, the resulting paths have the exact conditional distribution given
-%   X0. A nonstationary model is allowed only when q=0 and X0 is supplied.
+%   X0. A nonstationary model requires X0. With MA terms, its startup shocks are
+%   drawn conditionally on the residual equations implied by X0; Sig must then
+%   be positive definite.
 %
 %   rng is a VARMAPACK.RNG object. If it is omitted or empty, a temporary
 %   randomized generator is created for this call.

@@ -51,10 +51,10 @@ model$ma_specrad()
 ```
 
 The `varmapack_autocov()` function computes sample autocovariances for an
-observed time-series matrix with observations in rows.
+observed time-series matrix with variables in rows.
 
 ```{r autocov}
-varmapack_autocov(t(X[, , 1]), maxlag = 5)
+varmapack_autocov(X[, , 1], maxlag = 5)
 ```
 
 VARMAX models use exogenous coefficient matrices `C` and input values `z`.

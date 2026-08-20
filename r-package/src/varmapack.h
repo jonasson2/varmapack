@@ -35,6 +35,7 @@ bool varmapack_sim ( // Simulate VARMA time series
   randompack_rng *rng // in/out  random number generator
   );
   // Stationary simulation with X0 requires positive-definite startup covariance.
+  // Nonstationary simulation requires X0; with MA terms Sig must be positive definite.
   // See varmapack_sim.c for details.
 
 bool varmapack_simx ( // Simulate VARMAX time series
@@ -51,8 +52,8 @@ bool varmapack_simx ( // Simulate VARMAX time series
   int r,        // in      dimension of each x(t)
   int n,        // in      length of each generated series
   int M,        // in      number of replicates to generate
-  double X0[],  // in      r×h×MX0 fixed startup values x(0),...,x(h-1)
-  int h,        // in      number of fixed startup values, h > max(p,s-1)
+  double X0[],  // in      r×h×MX0 fixed startup values, or 0 when h is 0
+  int h,        // in      number of fixed startup values, h >= max(p,q,s-1)
   int MX0,      // in      number of X0 startup paths, must be 1 or M
   double X[],   // out     r×n×M generated series
   double E[],   // out     r×n×M shock series, or 0 to skip

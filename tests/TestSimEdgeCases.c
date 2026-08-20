@@ -191,6 +191,28 @@ static void check_singular_startup_covariance(void) {
   randompack_free(rng);
 }
 
+static void check_singular_conditional_covariance(void) {
+  int p = 1, q = 0, r = 2, n = 5, M = 3;
+  double A[] = {
+    0.1, 0.1, 0.1, 0.1
+  };
+  double Sig[] = {
+    2, 0, 0, 2
+  };
+  double X[30], E[30];
+  bool ok;
+  randompack_rng *rng = seededRng(59);
+  ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  for (int j=0; j<M; j++) {
+    int offset = j*r*n;
+    double u0 = X[offset] - E[offset];
+    double u1 = X[offset + 1] - E[offset + 1];
+    xCheck(fabs(u0 - u1) < 1e-12);
+  }
+  randompack_free(rng);
+}
+
 static void check_nonstationary_without_X0(void) {
   int p = 1, q = 0, r = 1, n = 5, M = 1;
   double A[] = {1.25};
@@ -311,12 +333,36 @@ static void check_nonstationary_arma_with_X0(void) {
   double A[] = {1.25};
   double B[] = {0.5};
   double Sig[] = {1};
-  double X0[] = {2};
+  double X0[] = {2, 3, 4};
   double X[6], E[6];
   bool ok;
   randompack_rng *rng = seededRng(21);
-  ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 1, 1, X, E, rng);
-  checkVarmapackFailure(ok);
+  ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  checkArraySame(X, X0, 3);
+  for (int t=1; t<n; t++) {
+    xCheck(fabs(X[t] - (A[0]*X[t - 1] + E[t] + B[0]*E[t - 1])) < 1e-12);
+  }
+  randompack_free(rng);
+}
+
+static void check_nonstationary_arma_with_presample_shocks(void) {
+  int p = 1, q = 3, r = 1, n = 6, M = 1;
+  double A[] = {1.25};
+  double B[] = {0.3, -0.1, 0.2};
+  double Sig[] = {1};
+  double X0[] = {2, 3, 4, 5};
+  double X[6], E[6];
+  bool ok;
+  randompack_rng *rng = seededRng(22);
+  ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 4, 1, X, E, rng);
+  checkVarmapackSuccess(ok);
+  checkArraySame(X, X0, 4);
+  for (int t=3; t<n; t++) {
+    double expected = A[0]*X[t - 1] + E[t] + B[0]*E[t - 1];
+    expected += B[1]*E[t - 2] + B[2]*E[t - 3];
+    xCheck(fabs(X[t] - expected) < 1e-12);
+  }
   randompack_free(rng);
 }
 
@@ -403,11 +449,13 @@ void TestSimEdgeCases(void) {
   check_conditional_ma_recursion();
   check_singular_sigma();
   check_singular_startup_covariance();
+  check_singular_conditional_covariance();
   check_nonstationary_without_X0();
   check_indefinite_sigma();
   check_nonstationary_with_X0();
   check_multipath_X0();
   check_nonstationary_arma_with_X0();
+  check_nonstationary_arma_with_presample_shocks();
   check_reproducibility();
   check_rng_state_advances();
   check_nX0_longer_than_h();

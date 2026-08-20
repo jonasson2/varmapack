@@ -39,11 +39,15 @@ For VARMA models, \code{X0} is optional. If provided, it is an \code{r} by \code
 matrix or an \code{r} by \code{nX0} by \code{nrep} array. Its second dimension must be at
 least \code{max(p, q)}, and its third dimension, when present, must be 1 or
 \code{nrep}.
+Nonstationary VARMA models require \code{X0}; with MA terms, \code{Sig} must be
+positive definite and startup shocks are conditioned on the residual
+equations implied by the supplied history.
 
-For VARMAX models, both \code{X0} and \code{z} are required. \code{X0} has the same form,
-with its second dimension larger than \code{max(p, s - 1)}. The exogenous input
-\code{z} is a \code{d} by \code{length} matrix or a \code{d} by \code{length} by \code{nrep} array. Its
-third dimension, when present, must be 1 or \code{nrep}.
+For VARMAX models, \code{z} is required. \code{X0} has the same form and its second
+dimension must be at least \code{max(p, q, s - 1)}. It may be omitted when this
+minimum is zero. The exogenous input \code{z} is a \code{d} by \code{length} matrix or a \code{d}
+by \code{length} by \code{nrep} array. Its third dimension, when present, must be 1 or
+\code{nrep}.
 
 Pass a \code{randompack::randompack_rng()} object through \code{rng} to control the
 random stream. When it is omitted, Varmapack uses a temporary randomized

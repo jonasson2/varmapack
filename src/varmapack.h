@@ -35,6 +35,7 @@ bool varmapack_sim ( // Simulate VARMA time series
   randompack_rng *rng // in/out  random number generator
   );
   // Stationary simulation with X0 requires positive-definite startup covariance.
+  // Nonstationary simulation requires X0; with MA terms Sig must be positive definite.
   // See varmapack_sim.c for details.
 
 bool varmapack_simx ( // Simulate VARMAX time series
@@ -51,8 +52,8 @@ bool varmapack_simx ( // Simulate VARMAX time series
   int r,        // in      dimension of each x(t)
   int n,        // in      length of each generated series
   int M,        // in      number of replicates to generate
-  double X0[],  // in      r×h×MX0 fixed startup values x(0),...,x(h-1)
-  int h,        // in      number of fixed startup values, h > max(p,s-1)
+  double X0[],  // in      r×h×MX0 fixed startup values, or 0 when h is 0
+  int h,        // in      number of fixed startup values, h >= max(p,q,s-1)
   int MX0,      // in      number of X0 startup paths, must be 1 or M
   double X[],   // out     r×n×M generated series
   double E[],   // out     r×n×M shock series, or 0 to skip
@@ -110,6 +111,15 @@ bool varmapack_autocov( // Sample autocovariance of observed data
   double C[]);        // out  r×r×(maxlag+1), Ck = Cov(x(t), x(t−k))
   // For "N", x(t) is in column t; for "T", x(t) is in row t. Initial letters are
   // case-insensitive, BLAS-style.
+
+bool varmapack_cov2corr( // Convert a covariance sequence to correlations
+  double cov[], // in   r×r×(maxlag+1), with variances on the diagonal of cov(:,:,0)
+  int r,        // in   dimension of each observation
+  int maxlag,   // in   largest lag in cov
+  double corr[]);// out  same shape as cov; may equal cov for in-place conversion
+  // Every lag is scaled using the variances in cov(:,:,0). If corr != cov, the
+  // arrays must not overlap. Positive-lag values are not clipped to [-1,1]; in
+  // particular, corrected sample autocovariances can produce values outside it.
 
 bool varmapack_testcase( // Create testcase for VARMA calculation
   char *name,    // in/out  testcase name, "rho" to use rho, or "max" for max-inquiry

@@ -108,6 +108,9 @@ Array shapes
 - The mean ``mu`` has shape ``(r,)`` or ``(nmu, r)`` where ``nmu`` ≤
   ``length``; the last supplied row repeats to the end.
 - Startup values ``X0`` have shape ``(nX0, r)`` or ``(nrep, nX0, r)``.
+- Nonstationary VARMA simulation requires ``X0``. With MA terms, ``Sig`` must
+  be positive definite and startup shocks are conditioned on the implied
+  residual equations.
 - For scalar exogenous input, ``z`` has shape ``(length,)`` or
   ``(nrep, length)``. For d-dimensional input, it has shape ``(length, d)``
   or ``(nrep, length, d)``.

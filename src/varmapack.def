@@ -2,6 +2,7 @@ LIBRARY varmapack
 EXPORTS
   varmapack_acvf
   varmapack_autocov
+  varmapack_cov2corr
   varmapack_irf
   varmapack_ma_specrad
   varmapack_psi

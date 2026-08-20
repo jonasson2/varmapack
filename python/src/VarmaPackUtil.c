@@ -11,6 +11,8 @@
 static int slicotCutoff(int p, int q);
 static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,
                     int r, int n);
+static void buildStartupH(double B[], int q, int r, int h, int t0,
+                          int firstShockTime, double H[]);
 
 HIDDEN void FindC( // Calculate Ci = cov(x(t), eps(t-i))
   double A[],   // in   r×r×p, autoregressive parameter matrices
@@ -265,4 +267,139 @@ fail:
 alloc_fail:
   ok = fail_error("allocation failed");
   goto fail;
+}
+
+HIDDEN bool drawConditionalStartupShocks(
+  double B[], double Sig[], double residual[], int q, int r, int h, int t0,
+  int firstShockTime, int firstActiveShock, int M, double E[], int ldE,
+  randompack_rng *rng) {
+  int info, m = h - t0, nPrefix = imax(firstActiveShock, 0);
+  int activeOffset = r*(firstActiveShock - firstShockTime);
+  int nActive = h - firstActiveShock, rm = r*m, re = r*nActive;
+  bool ok = true;
+  double *H = 0, *HD = 0, *Wlag = 0, *W = 0, *K = 0, *R = 0, *work = 0;
+  double *Ehat = 0, *residualWork = 0;
+  size_t hCount, wlagCount, wCount, rCount, workCount;
+  if (m == 0) {
+    int nStartup = h - firstShockTime;
+    for (int j=0; j<M; j++) {
+      if (nStartup > 0 && !randompack_mvn("T", 0, Sig, r, nStartup,
+          E + (size_t)j*ldE, r, 0, rng)) return fail_error(randompack_last_error(rng));
+    }
+    return true;
+  }
+  for (int j=0; j<M; j++) {
+    if (nPrefix > 0 && !randompack_mvn("T", 0, Sig, r, nPrefix,
+        E + (size_t)j*ldE, r, 0, rng)) {
+      ok = fail_error(randompack_last_error(rng));
+      goto done;
+    }
+  }
+  if (q == 0) {
+    for (int j=0; j<M; j++) {
+      copy(rm, residual + (size_t)j*rm, 1,
+           E + (size_t)j*ldE + activeOffset, 1);
+    }
+    return true;
+  }
+  if (!sizeProduct((size_t)rm, (size_t)re, &hCount) ||
+      !sizeProduct((size_t)r, (size_t)r, &wlagCount) ||
+      !sizeProduct(wlagCount, (size_t)(q + 1), &wlagCount) ||
+      !sizeProduct((size_t)rm, (size_t)rm, &wCount) ||
+      !sizeProduct((size_t)re, (size_t)re, &rCount) ||
+      !sizeProduct((size_t)imax(rm, re), (size_t)r, &workCount)) {
+    return fail_error("problem size too large");
+  }
+  if (!ALLOC(H, hCount)) goto alloc_fail;
+  if (!ALLOC(HD, hCount)) goto alloc_fail;
+  if (!ALLOC(Wlag, wlagCount)) goto alloc_fail;
+  if (!ALLOC(W, wCount)) goto alloc_fail;
+  if (!ALLOC(K, hCount)) goto alloc_fail;
+  if (!ALLOC(R, rCount)) goto alloc_fail;
+  if (!ALLOC(work, workCount)) goto alloc_fail;
+  if (!ALLOC(Ehat, re)) goto alloc_fail;
+  if (!ALLOC(residualWork, rm)) goto alloc_fail;
+  buildStartupH(B, q, r, h, t0, firstActiveShock, H);
+  lacpy("All", rm, re, H, rm, HD, rm);
+  postmultiplySigmaPrime(HD, rm, rm, nActive, Sig, r, work);
+  if (!FindW(B, Sig, q, r, Wlag)) {
+    ok = varmapack_last_error() ? false : fail_error("allocation failed");
+    goto done;
+  }
+  WBuild(Wlag, q, r, m, W);
+  potrf("Low", rm, W, rm, &info);
+  if (info > 0) { ok = fail_error("singular matrix"); goto done; }
+  if (info < 0) { ok = fail_error("internal error"); goto done; }
+  lacpy("All", rm, re, HD, rm, K, rm);
+  trsm("Left", "Low", "NoT", "NonUnit", rm, re, 1, W, rm, K, rm);
+  trsm("Left", "Low", "Trans", "NonUnit", rm, re, 1, W, rm, K, rm);
+  laset("All", re, re, 0, 0, R, re);
+  for (int j=0; j<nActive; j++)
+    lacpy("All", r, r, Sig, r, R + (size_t)j*r*((size_t)re + 1), re);
+  gemm("Trans", "NoT", re, re, rm, -1, HD, rm, K, rm, 1, R, re);
+  for (int j=0; j<M; j++) {
+    double *rj = residual + (size_t)j*rm;
+    copy(rm, rj, 1, residualWork, 1);
+    trsv("Low", "NoT", "NonUnit", rm, W, rm, residualWork, 1);
+    trsv("Low", "Trans", "NonUnit", rm, W, rm, residualWork, 1);
+    gemv("Trans", rm, re, 1, HD, rm, residualWork, 1, 0, Ehat, 1);
+    if (!randompack_mvn("T", Ehat, R, re, 1,
+        E + (size_t)j*ldE + activeOffset, ldE, 0, rng)) {
+      ok = fail_error(randompack_last_error(rng));
+      goto done;
+    }
+    for (int t=t0; t<h; t++) {
+      double *Et = E + (size_t)j*ldE + r*(t - firstShockTime);
+      copy(r, rj + r*(t - t0), 1, Et, 1);
+      for (int i=1; i<=q; i++) {
+        gemv("NoT", r, r, -1, B + (size_t)(i - 1)*r*r, r,
+             E + (size_t)j*ldE + r*(t - i - firstShockTime), 1, 1, Et, 1);
+      }
+    }
+  }
+  goto done;
+alloc_fail:
+  ok = fail_error("allocation failed");
+done:
+  FREE(residualWork); FREE(Ehat); FREE(work); FREE(R); FREE(K); FREE(W); FREE(Wlag);
+  FREE(HD); FREE(H);
+  return ok;
+}
+
+HIDDEN bool requirePositiveDefinite(double Sig[], int r) {
+  double *L = 0;
+  bool triangular;
+  size_t count;
+  if (!sizeProduct((size_t)r, (size_t)r, &count))
+    return fail_error("problem size too large");
+  if (!ALLOC(L, count)) return fail_error("allocation failed");
+  if (!psdFactor(Sig, r, L, &triangular)) {
+    FREE(L);
+    return false;
+  }
+  FREE(L);
+  if (!triangular) {
+    return fail_error(
+      "cannot condition on X0: shock covariance is not positive definite");
+  }
+  return true;
+}
+
+static void buildStartupH(double B[], int q, int r, int h, int t0,
+                          int firstShockTime, double H[]) {
+  int m = h - t0, nE0 = h - firstShockTime, rm = r*m;
+  laset("All", rm, r*nE0, 0, 0, H, rm);
+  for (int t=t0; t<h; t++) {
+    int row = r*(t - t0);
+    for (int ell=firstShockTime; ell<h; ell++) {
+      int lag = t - ell, col = r*(ell - firstShockTime);
+      double *Hij = H + (size_t)col*rm + row;
+      if (lag == 0) {
+        for (int k=0; k<r; k++) Hij[k + (size_t)k*rm] = 1;
+      }
+      else if (1 <= lag && lag <= q) {
+        lacpy("All", r, r, B + (size_t)(lag - 1)*r*r, r, Hij, rm);
+      }
+    }
+  }
 }

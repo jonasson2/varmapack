@@ -43,30 +43,35 @@ $p$ are zero and $s > 0$ the models are designated VARX or VMAX.
 ## Simulation start
 
 There are two possibilities to start VARMA simulation with Varmapack: (a) by
-drawing both shocks $\varepsilon_t$ and series values $x_t$ from the exact joint
+drawing both shocks $\varepsilon_t$ and states $x_t$ from the exact joint
 distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$ where
-$h=\max(p,q)$, and (b) by specifying $h$ initial values of the series and
-drawing the first $h$ shocks from the conditional distribution of
-$(\varepsilon|x)$,
-where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
-has the correct distribution from the first term, so there is no need for
-discarding a burn-in start segment. In case (b), the simulated values have the
-exact conditional distribution given the supplied starting values. A
-nonstationary pure VAR model ($q=0$) can also be simulated from supplied
-starting values, but a model with MA terms must be stationary.
-For a stationary model with supplied starting values, the covariance of the
-startup segment must be positive definite. When that covariance is singular
-positive semidefinite, simulation is supported only without supplied starting
-values.
+$h=\max(p,q)$, and (b) by specifying $h \geq\max(p,q)$ initial values of the
+series and drawing the first $h$ shocks from the conditional distribution of
+$(\varepsilon|x)$.
 
-For VARMAX simulation, drawing initial values of the series randomly is not
-possible. It is necessary to supply the $h$ initial values $x_t$ for
-$t=0,\ldots,h-1$, where $h > \max(p,s-1)$, and in addition the whole sequence
-of exogenous values
-$z_t, t=0,\ldots,n-1$ must be specified, where $n$ is the number of $x_t$ terms
-to be generated. The initial shocks are again drawn from the exact conditional
-distribution of $(\varepsilon|x,z)$, alleviating the need for burn-in discarding. The
-shock covariance $\Sigma$ must be positive definite.
+For a stationary model, both (a) and (b) are possible. In case (a), the
+simulated series has its exact unconditional distribution from the first term;
+in case (b), it has its exact conditional distribution given the supplied
+starting values. Thus, no burn-in segment needs to be discarded. In case (b),
+the covariance of the startup states must be positive definite.
+
+For a nonstationary model, starting values must be supplied. For a pure VAR
+model ($q=0$), the recurrence simply runs forward from those values. If MA terms
+are present, the startup innovations are drawn from their theoretical
+distribution conditional on any linear constraints implied by the supplied
+states; in this case, $\Sigma$ must be positive definite. In the other VARMA
+simulation cases, $\Sigma$ may be positive semidefinite and singular.
+
+With VARMAX simulation, choose $h\geq\max(p,q,s-1)$ and supply the startup
+states $x_t$, $t=0,\ldots,h-1$, together with the whole sequence of exogenous
+values $z_t$, $t=0,\ldots,n-1$. When $h=0$, the startup segment is empty and no
+states need be supplied. As for nonstationary VARMA with MA terms, $\Sigma$ must
+be positive definite. The startup innovations are drawn from their theoretical
+distribution conditional on any constraints imposed by the model and the
+supplied states and exogenous sequence. Although $h=\max(p,q,s-1)$ is
+sufficient, a larger $h$ should be used when a longer joint history of $x_t$ and
+$z_t$ is available, since it provides more information for drawing the
+innovations.
 
 ## Autocovariances
 

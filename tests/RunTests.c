@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
   run_test("varmapack_acvf",     TestAcvf);
   run_test("varmapack_autocov",  TestAutocov);
   run_test("autocov edge cases", TestAutocovEdgeCases);
+  run_test("varmapack_cov2corr",  TestCov2corr);
   run_test("sim edge cases",     TestSimEdgeCases);
   run_test("simx edge cases",    TestSimxEdgeCases);
   run_test("PSD cond covariance", TestPsdCondCov);

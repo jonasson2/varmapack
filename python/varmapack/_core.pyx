@@ -237,25 +237,23 @@ cdef object _testcases():
 
 cdef object _autocov(object X0, int maxlag, str norm):
     cdef np.ndarray X
-    cdef np.ndarray Xc
     cdef np.ndarray C
     cdef bytes normbytes = norm.encode("utf-8")
     cdef bint ok
     cdef int n
     cdef int r
-    X = np.asarray(X0, dtype=DTYPE_F64)
+    X = np.ascontiguousarray(X0, dtype=DTYPE_F64)
     if X.ndim != 2:
         raise ValueError("X must have shape (n, r)")
     n = X.shape[0]
     r = X.shape[1]
-    Xc = X.T.copy()
     C = np.empty((maxlag + 1, r, r), dtype=DTYPE_F64)
     ok = varmapack_autocov(
-        "T", normbytes, r, n, <double *>np.PyArray_DATA(Xc), maxlag,
+        "N", normbytes, r, n, <double *>np.PyArray_DATA(X), maxlag,
         <double *>np.PyArray_DATA(C))
     if not ok:
         raise VarmapackError(_error_message())
-    return C.transpose(0, 2, 1).copy()
+    return C.transpose(0, 2, 1)
 
 
 cdef object _testcase(object which, object p0, object q0, object r0,
@@ -524,7 +522,9 @@ cdef class Model:
         X0 : array_like, optional
             Fixed startup values. For VARMA, shapes ``(nX0, r)`` and
             ``(nrep, nX0, r)`` are accepted. For VARMAX, ``X0`` is required
-            and must contain the fixed startup block.
+            when ``max(p, q, s - 1)`` is positive and must contain at least
+            that many fixed startup values. Nonstationary VARMA models also
+            require ``X0``; with MA terms, ``Sig`` must be positive definite.
         z : array_like, optional
             Exogenous input for VARMAX models. Scalar inputs use shapes
             ``(length,)`` and ``(nrep, length)``. Vector inputs use
@@ -729,6 +729,7 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
     cdef int Mz = 1
     cdef int nmu = 0
     cdef int h
+    cdef int min_h
     if model.Aarr is not None:
         Aptr = <double *>np.PyArray_DATA(model.Aarr)
     if model.Barr is not None:
@@ -781,8 +782,11 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
     if model.Carr is not None:
         if zptr == NULL:
             raise ValueError("z must be supplied for VARMAX simulation")
-        if X0ptr == NULL:
+        min_h = max(model.pval, model.qval, model.sval - 1)
+        if X0ptr == NULL and min_h > 0:
             raise ValueError("X0 must be supplied for VARMAX simulation")
+        if nX0 < min_h:
+            raise ValueError("X0 has fewer than max(p, q, s - 1) values")
     elif zptr != NULL:
         raise ValueError("z can only be supplied when C is present")
     X = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")

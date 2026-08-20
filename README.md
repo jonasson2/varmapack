@@ -82,21 +82,29 @@ where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
 has the correct distribution from the first term, so there is no need for
 discarding a burn-in start segment. In case (b), the simulated values have the
 exact conditional distribution given the supplied starting values. A
-nonstationary pure VAR model ($q=0$) can also be simulated from supplied
-starting values, but a model with MA terms must be stationary.
+nonstationary model can also be simulated from supplied starting values. For a
+pure VAR model ($q=0$), the recurrence simply runs forward from those values.
+For a model with MA terms, the startup innovations are drawn conditionally on
+the residual equations implied by the supplied history; in that case,
+$\Sigma$ must be positive definite.
 For a stationary model with supplied starting values, the covariance of the
 startup segment must be positive definite. When that covariance is singular
 positive semidefinite, simulation is supported only without supplied starting
 values.
 
-For VARMAX simulation, drawing initial values of the series randomly is not
-possible. It is necessary to supply the $h$ initial values $x_t$ for
-$t=0,\ldots,h-1$, where $h > \max(p,s-1)$, and in addition the whole sequence
-of exogenous values
-$z_t, t=0,\ldots,n-1$ must be specified, where $n$ is the number of $x_t$ terms
-to be generated. The initial shocks are again drawn from the exact conditional
-distribution of $(\varepsilon|x,z)$, alleviating the need for burn-in discarding. The
-shock covariance $\Sigma$ must be positive definite.
+With VARMAX simulation, initial states must be specified and cannot be drawn
+randomly.
+Supply $h\geq\max(p,q,s-1)$ initial values $x_t$ for
+$t=0,\ldots,h-1$, and specify the whole sequence of exogenous values
+$z_t$, $t=0,\ldots,n-1$, where $n$ is the number of $x_t$ terms to be generated.
+When the minimum is zero, no initial $x_t$ values are needed.
+Although the minimum startup segment is sufficient, users
+should supply a longer joint history of $x_t$ and $z_t$ when available, since it
+provides additional information about the innovations needed to continue the
+process. The startup innovations are drawn from their joint theoretical Gaussian
+distribution, conditional on the linear constraints imposed by the model and the
+supplied values of $x_t$ and $z_t$. The shock covariance $\Sigma$ must be positive
+definite.
 
 ### Autocovariances
 
@@ -251,12 +259,11 @@ command given above.
       int p = 1, q = 0, r = 2, n = 200, M = 10;
       double Avar[] = {0.6, 0, 0.1, 0.4}; // r by r by p
       double Sigvar[] = {2, 0, 0, 1};     // r by r
-      double X[2*200*10];               // r by n by M
+      double X[2*200*10];                 // r by n by M
       randompack_rng *rng = randompack_create(0); // select default Randompack engine
       randompack_seed(123, 0, 0, rng); // optional, but gives reproducible results
       varmapack_sim(Avar, 0, Sigvar, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
-      for (int t=0; t<5; t++)
-        printf("%8.4f %8.4f\n", X[r*t], X[1 + r*t]);
+      for (int t=0; t<5; t++) printf("%8.4f %8.4f\n", X[r*t], X[1 + r*t]);
 ```
 
 ### Testcase construction
@@ -311,6 +318,14 @@ impulse responses, and AR and MA spectral radii.
       varmapack_irf(A, B, Sig, p, q, r, maxlag, Theta);
       printf("AR spectral radius: %.4f\n", rho);
       printf("MA spectral radius: %.4f\n", rhoMA);
+      for (int k=0; k<=maxlag; k++) printf("Gamma[%d]: %.4f %.4f %.4f %.4f\n",
+        k, Gamma[4*k], Gamma[4*k+1], Gamma[4*k+2], Gamma[4*k+3]);
+      for (int k=0; k<=maxlag; k++) printf("GammaHat[%d]: %.4f %.4f %.4f %.4f\n",
+        k, GammaHat[4*k], GammaHat[4*k+1], GammaHat[4*k+2], GammaHat[4*k+3]);
+      for (int k=0; k<=maxlag; k++) printf("Psi[%d]: %.4f %.4f %.4f %.4f\n",
+        k, Psi[4*k], Psi[4*k+1], Psi[4*k+2], Psi[4*k+3]);
+      for (int k=0; k<=maxlag; k++) printf("Theta[%d]: %.4f %.4f %.4f %.4f\n",
+        k, Theta[4*k], Theta[4*k+1], Theta[4*k+2], Theta[4*k+3]);
 ```
 
 `Gamma`, `Psi`, `Theta`, and `GammaHat` each contain `maxlag + 1` contiguous `r`

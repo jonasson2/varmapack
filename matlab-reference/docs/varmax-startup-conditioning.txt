@@ -7,6 +7,10 @@ For the VARMAX model
 where s is the number of Ci matrices, z is known, and epst is N(0,Sigma),
 suppose that x0,...,x{h-1} are observed.
 
+The minimum startup length is h=max(p,q,s-1). If h=t0, there are no residual
+equations and the startup shocks are drawn independently from N(0,Sigma).
+Longer matching histories of x and z provide additional residual equations.
+
 The residual equation can first be written down at
 
   t0 = max(p,s-1),

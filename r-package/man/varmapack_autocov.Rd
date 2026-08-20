@@ -7,7 +7,7 @@
 varmapack_autocov(X, maxlag, norm = "ML")
 }
 \arguments{
-\item{X}{Numeric \code{n} by \code{r} observed time-series matrix.}
+\item{X}{Numeric \code{r} by \code{n} observed time-series matrix.}
 
 \item{maxlag}{Largest lag to compute, between zero and \code{n - 1}.}
 
@@ -20,10 +20,10 @@ An \code{r} by \code{r} by \code{maxlag + 1} array. Its \code{k + 1} plane estim
 }
 \description{
 Compute sample autocovariance matrices up to a specified lag for a numeric
-time-series matrix with observations in rows and variables in columns.
+time-series matrix with variables in rows and observations in columns.
 }
 \examples{
-X <- cbind(1:10, (1:10)^2)
+X <- rbind(1:10, (1:10)^2)
 varmapack_autocov(X, maxlag = 2)
 
 }

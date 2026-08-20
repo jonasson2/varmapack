@@ -1,1 +1,7 @@
+figure > .short-caption + figcaption {
+  text-align: center;
+}
 
+figure > .long-caption + figcaption {
+  text-align: left;
+}

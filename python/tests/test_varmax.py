@@ -50,6 +50,27 @@ assert X4.shape == (nrep, length, 1)
 assert E4.shape == (nrep, length, 1)
 assert np.allclose(X4[:, :2, :], X0multi)
 
+C_lagged = np.array([[[0.4]], [[-0.1]]])
+minimum_model = varmapack.Model(A=A, B=B, C=C_lagged, Sig=Sig)
+X0minimum = np.array([[0.25]])
+rng.seed(43)
+Xminimum, Eminimum = minimum_model.sim(
+    length, nrep=nrep, X0=X0minimum, z=z_shared, rng=rng, return_shocks=True)
+assert np.allclose(Xminimum[:, 0, :], X0minimum)
+for j in range(nrep):
+    for t in range(1, length):
+        expected = (0.4*Xminimum[j, t - 1, 0] + Eminimum[j, t, 0] +
+                    0.2*Eminimum[j, t - 1, 0] + 0.4*z_shared[t] -
+                    0.1*z_shared[t - 1])
+        assert np.allclose(Xminimum[j, t, 0], expected)
+
+zero_model = varmapack.Model(C=np.array([[0.5]]), Sig=Sig)
+rng.seed(44)
+Xzero, Ezero = zero_model.sim(length, nrep=nrep, z=z_shared, rng=rng,
+                              return_shocks=True)
+for j in range(nrep):
+    assert np.allclose(Xzero[j, :, 0], Ezero[j, :, 0] + 0.5*z_shared)
+
 C2 = np.array([[0.5, -0.25]])
 Sig2 = np.eye(2)
 model2 = varmapack.Model(A=np.zeros((1, 2, 2)), B=np.zeros((1, 2, 2)), C=C2,

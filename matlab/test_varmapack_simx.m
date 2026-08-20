@@ -28,5 +28,23 @@ function test_varmapack_simx
       assert(norm(X(:,t,j) - expected, inf) < 1e-12)
     end
   end
+  rng.seed(43)
+  hminimum = 1;
+  X0minimum = zeros(2, hminimum, M);
+  [Xminimum, Eminimum] = varmapack.simx(A, B, C, z, Sig, n, M, X0minimum, ...
+                                         hminimum, rng);
+  for j = 1:M
+    for t = 2:n
+      expected = Eminimum(:,t,j) + A*Xminimum(:,t-1,j) + ...
+        B*Eminimum(:,t-1,j) + C(:,1:2)*z(:,t) + C(:,3:4)*z(:,t-1);
+      assert(norm(Xminimum(:,t,j) - expected, inf) < 1e-12)
+    end
+  end
+  rng.seed(44)
+  Czero = 0.5*eye(2);
+  [Xzero, Ezero] = varmapack.simx([], [], Czero, z, Sig, n, M, [], 0, rng);
+  for j = 1:M
+    assert(norm(Xzero(:,:,j) - Ezero(:,:,j) - Czero*z, inf) < 1e-12)
+  end
   fprintf('test_varmapack_simx passed\n');
 end

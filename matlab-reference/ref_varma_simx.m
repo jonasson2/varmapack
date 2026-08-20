@@ -13,8 +13,8 @@
 %  The formula time axis is zero-based: X0(:,1) is x(0), and z(1,:) is z(0).
 %  MATLAB column h+1 is therefore formula time h.
 %
-%  M defaults to 1 and h defaults to size(X0,2). X0 is required, n must be at
-%  least h, and h must be greater than max(p,s-1).
+%  M defaults to 1 and h defaults to size(X0,2). The minimum startup length is
+%  max(p,q,s-1), and n must be at least h.
 %
 %  rng is a Randompack RNG handle. e0 is for the AgainstMatlab comparison tests
 %  only. It is an r by (h-first_shock_time) fixed startup shock path, where
@@ -29,7 +29,7 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0)
   if isempty(A), A = zeros(r,0); end
   if isempty(B), B = zeros(r,0); end
   if nargin < 7 || isempty(M), M = 1; end
-  if nargin < 8 || isempty(X0), error('X0 must be specified'); end
+  if nargin < 8 || isempty(X0), X0 = zeros(r, 0); end
   if nargin < 9 || isempty(h), h = size(X0, 2); end
   if nargin < 10, rng = []; end
   if nargin < 11, e0 = []; end
@@ -72,7 +72,7 @@ function [X, E] = ref_varma_simx(A, B, C, z, Sig, n, M, X0, h, rng, e0)
   end
   zlag = max(s - 1, 0);
   t0 = max(p, zlag);
-  if h <= t0, error('h must be greater than max(p,s-1)'); end
+  if h < max([p, q, zlag]), error('h must be at least max(p,q,s-1)'); end
   first_active_shock = t0 - q;
   first_shock_time = min(first_active_shock, 0);
   he = h - first_shock_time;
@@ -132,6 +132,12 @@ function E0 = startup_shocks(A, B, C, z, Sig, X0, p, q, s, r, h, t0, ...
                              first_shock_time, first_active_shock, M, rng)
   he = h - first_shock_time;
   E0 = zeros(r*he, M);
+  if h == t0
+    for j = 1:M
+      E0(:,j) = reshape(randnm(he, Sig, "T", rng), r*he, 1);
+    end
+    return
+  end
   nPrefix = max(first_active_shock, 0);
   if nPrefix > 0
     for j = 1:M

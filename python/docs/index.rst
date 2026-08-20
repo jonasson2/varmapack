@@ -17,4 +17,5 @@ support scalar or vector-valued exogenous inputs.
    install
    math
    usage
+   bivariate_varma
    reference

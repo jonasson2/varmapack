@@ -1,9 +1,9 @@
 #' Sample autocovariances of an observed series
 #'
 #' Compute sample autocovariance matrices up to a specified lag for a numeric
-#' time-series matrix with observations in rows and variables in columns.
+#' time-series matrix with variables in rows and observations in columns.
 #'
-#' @param X Numeric `n` by `r` observed time-series matrix.
+#' @param X Numeric `r` by `n` observed time-series matrix.
 #' @param maxlag Largest lag to compute, between zero and `n - 1`.
 #' @param norm Either `"ML"`, which divides every lag by `n`, or `"C"`, which
 #'   divides the lag-`k` covariance by `n - k`.
@@ -12,7 +12,7 @@
 #'   `Cov(x_t, x_{t-k})`.
 #'
 #' @examples
-#' X <- cbind(1:10, (1:10)^2)
+#' X <- rbind(1:10, (1:10)^2)
 #' varmapack_autocov(X, maxlag = 2)
 #'
 #' @export
@@ -21,7 +21,7 @@ varmapack_autocov <- function(X, maxlag, norm = "ML") {
   if (!is.matrix(X) || nrow(X) <= 0L || ncol(X) <= 0L)
     stop("X must be a non-empty numeric matrix", call. = FALSE)
   maxlag <- .vp_count(maxlag, "maxlag", 0L)
-  if (maxlag >= nrow(X))
+  if (maxlag >= ncol(X))
     stop("maxlag must be less than the number of observations", call. = FALSE)
   if (!is.character(norm) || length(norm) != 1L || is.na(norm) ||
       !(toupper(norm) %in% c("ML", "C")))
