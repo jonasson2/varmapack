@@ -3,11 +3,12 @@
 Varmapack is a MATLAB interface to the Varmapack C library for simulation and
 analysis of Gaussian VAR, VMA, VARMA, and VARMAX time-series models. Its primary
 purpose is to generate simulated series from supplied model parameters, but it
-also provides model testcases, theoretical and sample autocovariances, spectral
-radii, and impulse response functions. In contrast to some other packages, the
-simulated series have the correct distribution from the start; they are burn-in
-(or spin-up) free. The numerical work is performed by the Varmapack C library,
-with random number generation provided by the companion library Randompack.
+also provides model testcases, theoretical and sample autocovariances,
+covariance-to-correlation conversion, spectral radii, and impulse response
+functions. In contrast to some other packages, the simulated series have the
+correct distribution from the start; they are burn-in (or spin-up) free. The
+numerical work is performed by the Varmapack C library, with random number
+generation provided by the companion library Randompack.
 
 ## Installation
 
@@ -47,6 +48,7 @@ Check the installation with:
 
 ```matlab
 test_varmapack_rng
+test_varmapack_cov2corr
 test_varmapack_testcasex
 test_varmapack_simx
 ```
@@ -141,11 +143,12 @@ zmulti = cat(3, z, z + 0.01);       % d by n by 2, different paths
 [X4,E4] = varmapack.simx(A1, B1, C, z, Sig, n, M, zeros(2), 2, vrng); %E4=shocks
 X5 = varmapack.simx(A1, B1, C, zmulti, Sig, n, 2, zeros(2), 2, vrng);
 
-% Compute AR and MA spectral radii, and theoretical and data autocovariances
+% Compute AR and MA spectral radii, autocovariances, and correlations
 maxlag = 3;
 rho = varmapack.specrad([A1, A2]);
 rhoMA = varmapack.ma_specrad(B1);
 Gamma = varmapack.acvf([A1, A2], B1, Sig, maxlag);
+Corr = varmapack.cov2corr(Gamma);
 GammaHat = varmapack.autocov(X3(:, :, 1), maxlag, "ML"); % Normalize by 1/n
 GammaHatC = varmapack.autocov(X3(:, :, 1), maxlag, "C"); % Normalize by 1/(n-k)
 
@@ -153,6 +156,13 @@ GammaHatC = varmapack.autocov(X3(:, :, 1), maxlag, "C"); % Normalize by 1/(n-k)
 Theta = varmapack.irf([A1, A2], B1, Sig, maxlag);
 Psi = varmapack.psi([A1, A2], B1, maxlag);
 ```
+
+`varmapack.cov2corr` converts theoretical or sample autocovariances to
+correlations by dividing each entry by the product of the corresponding
+lag-zero marginal standard deviations. The returned array has the same shape
+as the input. Lag-zero diagonal entries are exactly one. Other entries are not
+clipped to `[-1,1]`, so correlations obtained from lag-corrected sample
+autocovariances may lie outside that interval.
 
 ### Functions
 
@@ -169,6 +179,7 @@ function.
 | [`varmapack.ma_specrad`](+varmapack/ma_specrad.m) | Compute the MA spectral radius. |
 | [`varmapack.acvf`](+varmapack/acvf.m) | Compute theoretical autocovariances. |
 | [`varmapack.autocov`](+varmapack/autocov.m) | Compute sample autocovariances. |
+| [`varmapack.cov2corr`](+varmapack/cov2corr.m) | Convert covariances to correlations. |
 | [`varmapack.psi`](+varmapack/psi.m) | Impulse-response matrices. |
 | [`varmapack.irf`](+varmapack/irf.m) | Orthogonalized impulse responses. |
 | [`varmapack.testcase`](+varmapack/testcase.m) | Construct testcase models. |
@@ -198,6 +209,8 @@ lags are concatenated horizontally:
 - `varmapack.autocov` accepts one observed series `X` with shape `r` by `n`.
 - `acvf`, `autocov`, `psi`, and `irf` return an `r` by `r` by `(maxlag+1)`
   array, with the lag-zero matrix in its first page.
+- `cov2corr` accepts a covariance matrix or sequence and returns an array that
+  has the same shape as the input.
 
 ### Errors
 

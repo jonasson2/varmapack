@@ -19,6 +19,7 @@ function build_varmapack_mex(randompack_root)
     "varmapack_irf_gateway"
     "varmapack_acvf_gateway"
     "varmapack_autocov_gateway"
+    "varmapack_cov2corr_gateway"
     "varmapack_testcase_gateway"
     "varmapack_testcasex_gateway"
   ];

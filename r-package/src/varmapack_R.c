@@ -204,6 +204,17 @@ SEXP varmapack_autocov_R(SEXP X, SEXP maxlag_, SEXP norm) {
   return C;
 }
 
+SEXP varmapack_cov2corr_R(SEXP cov) {
+  int ndim = get_ndim(cov);
+  int r = get_dim(cov, 0);
+  int maxlag = ndim == 2 ? 0 : get_dim(cov, 2) - 1;
+  SEXP corr = PROTECT(Rf_duplicate(cov));
+  bool ok = varmapack_cov2corr(REAL(cov), r, maxlag, REAL(corr));
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return corr;
+}
+
 SEXP varmapack_testcase_R(SEXP name_, SEXP index_, SEXP rho_, SEXP p_, SEXP q_, SEXP r_,
                           SEXP rng_) {
   char name[VARMAPACK_TESTCASE_NAME_LEN];

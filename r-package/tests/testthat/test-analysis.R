@@ -18,6 +18,17 @@ test_that("sample autocovariance uses series in rows", {
   expect_error(varmapack_autocov(X, maxlag = 8))
 })
 
+test_that("covariance sequences convert to correlations", {
+  cov <- array(c(4, 3, 3, 9, 2, 6, -3, 1.5), dim = c(2, 2, 2))
+  original <- cov
+  expected <- array(c(1, 0.5, 0.5, 1, 0.5, 1, -0.5, 1/6),
+                    dim = c(2, 2, 2))
+  corr <- varmapack_cov2corr(cov)
+  expect_equal(corr, expected)
+  expect_identical(cov, original)
+  expect_equal(varmapack_cov2corr(cov[, , 1]), expected[, , 1])
+})
+
 test_that("theoretical autocovariance rejects VARMAX models", {
   model <- varmapack_model(C = matrix(0.2, 1, 1), Sig = matrix(1, 1, 1))
   expect_error(model$acvf(1))

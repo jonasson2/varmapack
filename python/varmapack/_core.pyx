@@ -37,6 +37,7 @@ cdef extern from "varmapack.h":
                        int maxlag, double *Theta)
     bint varmapack_autocov(const char *transp, const char *norm, int r, int n,
                            double *X, int maxlag, double *C)
+    bint varmapack_cov2corr(double *cov, int r, int maxlag, double *corr)
     double varmapack_specrad(double *A, int r, int p)
     double varmapack_ma_specrad(double *B, int r, int q)
 
@@ -197,6 +198,28 @@ def autocov(object X, int maxlag, str norm="ML"):
     return _autocov(X, maxlag, norm)
 
 
+def cov2corr(object cov, object out=None):
+    """
+    Convert covariance matrices to correlations.
+
+    Parameters
+    ----------
+    cov : array_like, shape (r, r) or (maxlag + 1, r, r)
+        Covariance matrix or sequence. Lag-zero diagonal entries must be
+        positive.
+    out : ndarray, optional
+        Preallocated output array with the same shape as ``cov``. Use
+        ``out=cov`` for in-place conversion.
+
+    Returns
+    -------
+    corr : ndarray
+        Correlations with the same shape as the input. Lag-zero diagonal
+        entries are exactly one. Other entries are not clipped to ``[-1,1]``.
+    """
+    return _cov2corr(cov, out)
+
+
 cdef object _testcases():
     cdef int p = 0
     cdef int q = 0
@@ -254,6 +277,55 @@ cdef object _autocov(object X0, int maxlag, str norm):
     if not ok:
         raise VarmapackError(_error_message())
     return C.transpose(0, 2, 1)
+
+
+cdef object _cov2corr(object cov0, object out0):
+    cdef np.ndarray cov
+    cdef np.ndarray out
+    cdef int axis
+    cdef int maxlag
+    cdef int r
+    cdef bint ok
+    cov = np.require(cov0, dtype=DTYPE_F64, requirements=["C", "A"])
+    if cov.ndim == 2:
+        if cov.shape[0] <= 0 or cov.shape[1] != cov.shape[0]:
+            raise ValueError("cov must have shape (r, r)")
+        r = cov.shape[0]
+        maxlag = 0
+    elif cov.ndim == 3:
+        if (cov.shape[0] <= 0 or cov.shape[1] <= 0 or
+                cov.shape[2] != cov.shape[1]):
+            raise ValueError("cov must have shape (maxlag + 1, r, r)")
+        maxlag = cov.shape[0] - 1
+        r = cov.shape[1]
+    else:
+        raise ValueError("cov must have shape (r, r) or (maxlag + 1, r, r)")
+    if out0 is None:
+        out = np.empty_like(cov)
+    else:
+        if not isinstance(out0, np.ndarray):
+            raise TypeError("out must be a NumPy array")
+        out = out0
+        if out.dtype != DTYPE_F64:
+            raise TypeError("out must have dtype float64")
+        if out.ndim != cov.ndim:
+            raise ValueError("out must have the same shape as cov")
+        for axis in range(cov.ndim):
+            if out.shape[axis] != cov.shape[axis]:
+                raise ValueError("out must have the same shape as cov")
+        if not out.flags.c_contiguous or not out.flags.aligned:
+            raise ValueError("out must be C-contiguous and aligned")
+        if not out.flags.writeable:
+            raise ValueError("out must be writable")
+        if (np.PyArray_DATA(cov) != np.PyArray_DATA(out) and
+                np.shares_memory(cov, out)):
+            raise ValueError("cov and out must not overlap")
+    ok = varmapack_cov2corr(
+        <double *>np.PyArray_DATA(cov), r, maxlag,
+        <double *>np.PyArray_DATA(out))
+    if not ok:
+        raise VarmapackError(_error_message())
+    return out
 
 
 cdef object _testcase(object which, object p0, object q0, object r0,

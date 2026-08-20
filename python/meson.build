@@ -128,6 +128,7 @@ core_sources = files(
   'src/varmapack_simx.c',
   'src/varmapack_acvf.c',
   'src/varmapack_autocov.c',
+  'src/varmapack_cov2corr.c',
   'src/varmapack_psi.c',
   'src/varmapack_specrad.c',
   'src/varmapack_ma_specrad.c',

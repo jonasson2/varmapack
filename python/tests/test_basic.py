@@ -53,6 +53,23 @@ assert C.shape == (2, 2, 2)
 assert np.allclose(C[0], Xc.T @ Xc / Xsmall.shape[0])
 assert np.allclose(C[1], Xc[1:].T @ Xc[:-1] / Xsmall.shape[0])
 
+cov = np.array([[[4.0, 3.0], [3.0, 9.0]],
+                [[2.0, -3.0], [6.0, 1.5]]])
+original_cov = cov.copy()
+expected_corr = np.array([[[1.0, 0.5], [0.5, 1.0]],
+                          [[0.5, -0.5], [1.0, 1/6]]])
+corr = varmapack.cov2corr(cov)
+assert corr.shape == cov.shape
+assert np.allclose(corr, expected_corr)
+assert np.array_equal(cov, original_cov)
+assert np.allclose(varmapack.cov2corr(cov[0]), expected_corr[0])
+out = np.empty_like(cov)
+assert varmapack.cov2corr(cov, out=out) is out
+assert np.allclose(out, expected_corr)
+inplace = cov.copy()
+assert varmapack.cov2corr(inplace, out=inplace) is inplace
+assert np.allclose(inplace, expected_corr)
+
 A2 = np.array([[[0.1, 0.2], [0.3, 0.4]]])
 B2 = np.array([[[0.5, 0.6], [0.7, 0.8]]])
 model2 = varmapack.Model(A=A2, B=B2, Sig=Sig)

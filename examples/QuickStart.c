@@ -24,11 +24,12 @@ int main(void) {
   varmapack_sim(A, B, Sig, mu, 2, p, q, r, n, M, X0, 2, 1, X, E, rng);
   varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
   enum { maxlag = 3 };
-  double Gamma[2*2*(maxlag+1)], Psi[2*2*(maxlag+1)];
-  double Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
+  double Gamma[2*2*(maxlag+1)], Corr[2*2*(maxlag+1)];
+  double Psi[2*2*(maxlag+1)], Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
   double rho = varmapack_specrad(A, r, p);
   double rhoMA = varmapack_ma_specrad(B, r, q);
   varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
+  varmapack_cov2corr(Gamma, r, maxlag, Corr);
   varmapack_autocov("N", "ML", r, n, X, maxlag, GammaHat);
   varmapack_psi(A, B, p, q, r, maxlag, Psi);
   varmapack_irf(A, B, Sig, p, q, r, maxlag, Theta);
@@ -36,6 +37,8 @@ int main(void) {
   printf("MA spectral radius: %.4f\n", rhoMA);
   for (int k=0; k<=maxlag; k++) printf("Gamma[%d]: %.4f %.4f %.4f %.4f\n",
     k, Gamma[4*k], Gamma[4*k+1], Gamma[4*k+2], Gamma[4*k+3]);
+  for (int k=0; k<=maxlag; k++) printf("Corr[%d]: %.4f %.4f %.4f %.4f\n",
+    k, Corr[4*k], Corr[4*k+1], Corr[4*k+2], Corr[4*k+3]);
   for (int k=0; k<=maxlag; k++) printf("GammaHat[%d]: %.4f %.4f %.4f %.4f\n",
     k, GammaHat[4*k], GammaHat[4*k+1], GammaHat[4*k+2], GammaHat[4*k+3]);
   for (int k=0; k<=maxlag; k++) printf("Psi[%d]: %.4f %.4f %.4f %.4f\n",

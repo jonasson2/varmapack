@@ -23,6 +23,7 @@ Top-level functions
    :nosignatures:
 
    autocov
+   cov2corr
    testcase
    testcases
 

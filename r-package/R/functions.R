@@ -30,6 +30,35 @@ varmapack_autocov <- function(X, maxlag, norm = "ML") {
         toupper(norm), PACKAGE = "varmapack")
 }
 
+#' Convert covariances to correlations
+#'
+#' Convert a covariance matrix or sequence of autocovariance matrices to
+#' correlations using the marginal standard deviations at lag zero.
+#'
+#' @param cov A finite numeric `r` by `r` matrix or `r` by `r` by
+#'   `maxlag + 1` array. The diagonal entries of its lag-zero matrix must be
+#'   positive.
+#'
+#' @return A numeric array with the same dimensions as `cov`. Lag-zero
+#'   diagonal entries are exactly one. Other entries are not clipped to
+#'   `[-1,1]`.
+#'
+#' @examples
+#' cov <- array(c(4, 3, 3, 9, 2, 6, -3, 1.5), dim = c(2, 2, 2))
+#' varmapack_cov2corr(cov)
+#'
+#' @export
+varmapack_cov2corr <- function(cov) {
+  cov <- .vp_numeric_array(cov, "cov")
+  d <- dim(cov)
+  if (is.null(d) || !(length(d) %in% c(2L, 3L)))
+    stop("cov must be a matrix or three-dimensional array", call. = FALSE)
+  if (d[1] <= 0L || d[2] != d[1] || any(d <= 0L))
+    stop("cov must have dimensions r by r by maxlag + 1", call. = FALSE)
+  cov <- array(as.double(cov), dim = d)
+  .Call("varmapack_cov2corr_R", cov, PACKAGE = "varmapack")
+}
+
 #' Create a VARMA testcase model
 #'
 #' Create a built-in named testcase or an unnamed random, deterministic, or

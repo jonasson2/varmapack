@@ -112,6 +112,15 @@ bool varmapack_autocov( // Sample autocovariance of observed data
   // For "N", x(t) is in column t; for "T", x(t) is in row t. Initial letters are
   // case-insensitive, BLAS-style.
 
+bool varmapack_cov2corr( // Convert a covariance sequence to correlations
+  double cov[], // in   r×r×(maxlag+1), with variances on the diagonal of cov(:,:,0)
+  int r,        // in   dimension of each observation
+  int maxlag,   // in   largest lag in cov
+  double corr[]);// out  same shape as cov; may equal cov for in-place conversion
+  // Every lag is scaled using the variances in cov(:,:,0). If corr != cov, the
+  // arrays must not overlap. Positive-lag values are not clipped to [-1,1]; in
+  // particular, corrected sample autocovariances can produce values outside it.
+
 bool varmapack_testcase( // Create testcase for VARMA calculation
   char *name,    // in/out  testcase name, "rho" to use rho, or "max" for max-inquiry
   int *index,    // in/out  named testcase index, or 0/-1 to use p,q,r

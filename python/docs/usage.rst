@@ -52,6 +52,7 @@ series and shocks.
     Psi = VARMA_model.psi(maxlag)
     Theta = VARMA_model.irf(maxlag)
     Gamma = VARMA_model.acvf(maxlag)
+    Corr = varmapack.cov2corr(Gamma)
     C = varmapack.autocov(X3[0], maxlag)
 
 Model objects
@@ -83,11 +84,11 @@ Models also expose ``A``, ``B``, ``C``, ``Sig``, ``mu``, ``p``, ``q``, ``r``,
 
 Top-level functions
 -------------------
-The Python Varmapack has three top-level functions: ``testcase``,
-``testcases``, and ``autocov``. The *testcase* function provides 15 named
-testcases, describing models of various complexity ranging from scalar AR(1)
-and MA(1) models to VARMA(3,3) with :math:`r=3` and VARMA(4,0) with
-:math:`r=5`. The function can also give unnamed testcases with arbitrary
+The Python Varmapack has four top-level functions: ``testcase``,
+``testcases``, ``autocov``, and ``cov2corr``. The *testcase* function provides
+15 named testcases, describing models of various complexity ranging from
+scalar AR(1) and MA(1) models to VARMA(3,3) with :math:`r=3` and VARMA(4,0)
+with :math:`r=5`. The function can also give unnamed testcases with arbitrary
 user-supplied :math:`p`, :math:`q`, and :math:`r`. Use ``testcases()`` to
 return a printable overview of the named testcases. [check testcases with
 specified rho]
@@ -96,6 +97,16 @@ The autocov function computes sample autocovariance matrices, up to a
 specified maximum lag, from an observed time series ``X``. The matrices can be
 normalized by :math:`1/n` (maximum likelihood) or :math:`1/(n-k)`
 (lag-corrected).
+
+The ``cov2corr`` function converts theoretical or sample autocovariances to
+correlations by dividing each entry by the product of the corresponding
+lag-zero marginal standard deviations. The returned array has the same shape
+as the input. With ``out`` omitted, ``cov2corr`` allocates and returns a new
+array, leaving ``cov`` unchanged. Use ``out=`` to specify a preallocated output
+array and ``out=cov`` for in-place conversion. Lag-zero diagonal entries are
+exactly one. Other entries are not clipped to ``[-1,1]``, so correlations
+obtained from lag-corrected sample autocovariances may lie outside that
+interval.
 
 Array shapes
 ------------

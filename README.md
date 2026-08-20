@@ -7,13 +7,13 @@
 Varmapack is a C library for simulation and analysis of Gaussian VAR, VMA,
 VARMA, and VARMAX time-series models. Its primary purpose is to generate
 simulated series from supplied model parameters, but it also provides model
-testcases, theoretical and sample autocovariances, spectral radii, and impulse
-response functions. In contrast to some other packages, the simulated series
-have the correct distribution from the start; they are burn-in (or spin-up)
-free. The package uses Randompack (https://github.com/jonasson2/randompack),
-[xx], to generate random numbers for the simulation. C, Python, and MATLAB
-interfaces are described in the respective README files in the GitHub
-repository.
+testcases, theoretical and sample autocovariances, covariance-to-correlation
+conversion, spectral radii, and impulse response functions. In contrast to some
+other packages, the simulated series have the correct distribution from the
+start; they are burn-in (or spin-up) free. The package uses Randompack
+(https://github.com/jonasson2/randompack), [xx], to generate random numbers for
+the simulation. C, Python, and MATLAB interfaces are described in the
+respective README files in the GitHub repository.
 
 Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
 [xx]. That algorithm is a collection of MATLAB functions to evaluate the
@@ -73,38 +73,32 @@ $p$ are zero and $s > 0$ the models are designated VARX or VMAX.
 ### Simulation start
 
 There are two possibilities to start VARMA simulation with Varmapack: (a) by
-drawing both shocks $\varepsilon_t$ and series values $x_t$ from the exact joint
-distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$ where
-$h=\max(p,q)$, and (b) by specifying $h$ initial values of the series and
-drawing the first $h$ shocks from the conditional distribution of
-$(\varepsilon|x)$,
-where $h\geq\max(p,q)$. In both cases, for a stationary model, the simulation
-has the correct distribution from the first term, so there is no need for
-discarding a burn-in start segment. In case (b), the simulated values have the
-exact conditional distribution given the supplied starting values. A
-nonstationary model can also be simulated from supplied starting values. For a
-pure VAR model ($q=0$), the recurrence simply runs forward from those values.
-For a model with MA terms, the startup innovations are drawn conditionally on
-the residual equations implied by the supplied history; in that case,
-$\Sigma$ must be positive definite.
-For a stationary model with supplied starting values, the covariance of the
-startup segment must be positive definite. When that covariance is singular
-positive semidefinite, simulation is supported only without supplied starting
-values.
+drawing both shocks $\varepsilon_t$ and states $x_t$ from the exact joint
+distribution of $(x,\varepsilon)$ for the initial segment $t=0,\ldots,h-1$,
+where $h=\max(p,q)$, and (b) by specifying $h \geq\max(p,q)$ initial values of
+the series and drawing the first $h$ shocks from the conditional distribution of
+$(\varepsilon|x)$. In case (b), the covariance matrix of the startup states must
+be positive definite.
 
-With VARMAX simulation, initial states must be specified and cannot be drawn
-randomly.
-Supply $h\geq\max(p,q,s-1)$ initial values $x_t$ for
-$t=0,\ldots,h-1$, and specify the whole sequence of exogenous values
-$z_t$, $t=0,\ldots,n-1$, where $n$ is the number of $x_t$ terms to be generated.
-When the minimum is zero, no initial $x_t$ values are needed.
-Although the minimum startup segment is sufficient, users
-should supply a longer joint history of $x_t$ and $z_t$ when available, since it
-provides additional information about the innovations needed to continue the
-process. The startup innovations are drawn from their joint theoretical Gaussian
-distribution, conditional on the linear constraints imposed by the model and the
-supplied values of $x_t$ and $z_t$. The shock covariance $\Sigma$ must be positive
-definite.
+For a stationary model, both (a) and (b) are possible, and the simulated series
+will have the correct distribution from the first generated term, so that no
+burn-in segment needs to be discarded.
+
+For a nonstationary model, starting values must be supplied. For a pure VAR
+model ($q=0$), the recurrence simply runs forward from those values. If MA terms
+are present, startup innovations are drawn from their theoretical distribution,
+conditional on constraints imposed by the model and supplied states. $\Sigma$
+must be positive semidefinite and is allowed to be singular except for
+nonstationary models with MA terms.
+
+With VARMAX simulation, startup states must be provided: $x_t$ for
+$t=0,\ldots,h-1$, where $h\geq\max(p,q,s-1)$, as well as the whole sequence of
+exogenous values $z_t$, $t=0,\ldots,n-1$. As for nonstationary VARMA, $\Sigma$
+must be positive definite, and the startup innovations are then drawn from their
+theoretical distribution, conditional on constraints imposed by the model and
+the supplied states and exogenous sequence. When more than $\max(p,q,s-1)$
+values of $x_t$ and corresponding $z_t$ are available, they should be supplied,
+to improve the information used to draw the innovations.
 
 ### Autocovariances
 
@@ -302,17 +296,18 @@ give each replicate its own path.
 ### Model analysis
 
 Next, `QuickStart.c` simulates a zero-mean realization of `smallARMA1` and
-computes theoretical and sample autocovariances, ordinary and orthogonalized
-impulse responses, and AR and MA spectral radii.
+computes theoretical and sample autocovariances, theoretical correlations,
+ordinary and orthogonalized impulse responses, and AR and MA spectral radii.
 
 ```c
       varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng);
       enum { maxlag = 3 };
-      double Gamma[2*2*(maxlag+1)], Psi[2*2*(maxlag+1)];
-      double Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
+      double Gamma[2*2*(maxlag+1)], Corr[2*2*(maxlag+1)];
+      double Psi[2*2*(maxlag+1)], Theta[2*2*(maxlag+1)], GammaHat[2*2*(maxlag+1)];
       double rho = varmapack_specrad(A, r, p);
       double rhoMA = varmapack_ma_specrad(B, r, q);
       varmapack_acvf(A, B, Sig, p, q, r, Gamma, maxlag);
+      varmapack_cov2corr(Gamma, r, maxlag, Corr);
       varmapack_autocov("N", "ML", r, n, X, maxlag, GammaHat);
       varmapack_psi(A, B, p, q, r, maxlag, Psi);
       varmapack_irf(A, B, Sig, p, q, r, maxlag, Theta);
@@ -320,6 +315,8 @@ impulse responses, and AR and MA spectral radii.
       printf("MA spectral radius: %.4f\n", rhoMA);
       for (int k=0; k<=maxlag; k++) printf("Gamma[%d]: %.4f %.4f %.4f %.4f\n",
         k, Gamma[4*k], Gamma[4*k+1], Gamma[4*k+2], Gamma[4*k+3]);
+      for (int k=0; k<=maxlag; k++) printf("Corr[%d]: %.4f %.4f %.4f %.4f\n",
+        k, Corr[4*k], Corr[4*k+1], Corr[4*k+2], Corr[4*k+3]);
       for (int k=0; k<=maxlag; k++) printf("GammaHat[%d]: %.4f %.4f %.4f %.4f\n",
         k, GammaHat[4*k], GammaHat[4*k+1], GammaHat[4*k+2], GammaHat[4*k+3]);
       for (int k=0; k<=maxlag; k++) printf("Psi[%d]: %.4f %.4f %.4f %.4f\n",
@@ -328,9 +325,32 @@ impulse responses, and AR and MA spectral radii.
         k, Theta[4*k], Theta[4*k+1], Theta[4*k+2], Theta[4*k+3]);
 ```
 
-`Gamma`, `Psi`, `Theta`, and `GammaHat` each contain `maxlag + 1` contiguous `r`
-by `r` matrices. The sample call above analyzes the first replicate in `X`; use
-normalization `"C"` instead of `"ML"` for division by `n - k`.
+`Gamma`, `Corr`, `Psi`, `Theta`, and `GammaHat` each contain `maxlag + 1`
+contiguous `r` by `r` matrices. The sample call above analyzes the first
+replicate in `X`; use normalization `"C"` instead of `"ML"` for division by
+`n - k`.
+
+### Covariance-to-correlation conversion
+
+`varmapack_cov2corr(cov, r, maxlag, corr)` converts a sequence of covariance
+matrices such as `Gamma` or `GammaHat` to correlations. Both arrays have shape
+`r` by `r` by `maxlag + 1` in column-major order. Each entry at lag `k` is
+divided by the product of the corresponding standard deviations obtained from
+the diagonal of the lag-zero covariance matrix.
+
+The call above preserves the covariances in `Gamma` and writes the correlations
+to `Corr`. Pass the same array for both arguments to convert it in place.
+Distinct arrays must not overlap. The diagonal lag-zero correlations are set
+exactly to one.
+
+The function deliberately does not clip other values to `[-1,1]`. In
+particular, the corrected sample autocovariances produced by
+`varmapack_autocov` with normalization `"C"` use lag-dependent divisors and can
+therefore yield values outside that interval after conversion.
+
+Like the other Boolean-valued analysis functions, `varmapack_cov2corr` returns
+`false` and sets `varmapack_last_error()` when an argument is invalid, an input
+entry is not finite, or a lag-zero variance is not positive.
 
 ### VARMAX simulation
 
