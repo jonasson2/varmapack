@@ -26,10 +26,10 @@ static void check_max(void) {
   bool ok;
   ok = varmapack_testcase("max", &icase_max, 0, &pmax, &qmax, &rmax, 0, 0, 0, 0);
   checkVarmapackSuccess(ok);
-  xCheck(icase_max == 15);
-  xCheck(pmax == 4);
+  xCheck(icase_max == 16);
+  xCheck(pmax == 5);
   xCheck(qmax == 3);
-  xCheck(rmax == 5);
+  xCheck(rmax == 7);
 }
 
 static int get_max(void) {

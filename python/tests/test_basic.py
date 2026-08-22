@@ -137,9 +137,10 @@ assert np.isclose(tc.A[0, 0, 0], 0.5)
 assert np.isclose(tc.specrad(), 0.5)
 cases = varmapack.testcases()
 assert isinstance(cases, dict)
-assert len(cases) == 15
+assert len(cases) == 16
 assert cases["tinyAR"] == {"index": 1, "p": 1, "q": 0, "r": 1}
-assert cases["largeAR"] == {"index": 15, "p": 4, "q": 0, "r": 5}
+assert cases["largeAR"] == {"index": 15, "p": 5, "q": 0, "r": 7}
+assert cases["largeARMA"] == {"index": 16, "p": 3, "q": 3, "r": 7}
 assert "tinyAR" in repr(cases)
 
 tc2 = varmapack.testcase(8)

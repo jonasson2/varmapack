@@ -11,11 +11,8 @@
 
 typedef struct {
   char *label;
-  bool rho_case;
-  int p;
-  int q;
-  int r;
-  double rho;
+  bool selected;
+  bool platform;
 } bench_case;
 
 typedef struct {
@@ -23,6 +20,8 @@ typedef struct {
   double w;
   int n;
   int M;
+  bool selected;
+  bool platform;
 } options;
 
 static uint64_t clock_nsec(void) {
@@ -47,7 +46,8 @@ static void die_last_error(char *where) {
 }
 
 static void default_options(options *opts) {
-  *opts = (options) {.t = .1, .w = .1, .n = 100, .M = 1000};
+  *opts = (options) {.t = .1, .w = .1, .n = 100, .M = 1000, .selected = false,
+                     .platform = false};
 }
 
 static void print_help(void) {
@@ -62,6 +62,8 @@ static void print_help(void) {
   printf("  -w seconds  CPU warmup time before timing (default 0.1)\n");
   printf("  -n length   length of each series (default 100)\n");
   printf("  -M count    replicates per call (default 1000)\n");
+  printf("  -5          time the five selected platform models only\n");
+  printf("  -8          time the eight selected paper models only\n");
 }
 
 static bool get_options(int argc, char **argv, options *opts, bool *help) {
@@ -70,8 +72,14 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   *help = false;
   opterr = 0;
   optind = 1;
-  while ((opt = getopt(argc, argv, "ht:w:n:M:")) != -1) {
+  while ((opt = getopt(argc, argv, "58ht:w:n:M:")) != -1) {
     switch (opt) {
+      case '5':
+        opts->platform = true;
+        break;
+      case '8':
+        opts->selected = true;
+        break;
       case 'h':
         *help = true;
         return true;
@@ -95,7 +103,7 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
         return false;
     }
   }
-  return optind == argc;
+  return optind == argc && !(opts->selected && opts->platform);
 }
 
 static void warm_cpu(double seconds) {
@@ -123,16 +131,13 @@ static void allocate_case(int p, int q, int r, double **A, double **B, double **
 static void construct_case(bench_case c, randompack_rng *rng, double **A, double **B,
                            double **Sig, int *p, int *q, int *r) {
   char name[VARMAPACK_TESTCASE_NAME_LEN];
-  int index = c.rho_case ? 0 : 1;
-  *p = c.p;
-  *q = c.q;
-  *r = c.r;
-  snprintf(name, sizeof(name), "%s", c.rho_case ? "rho" : c.label);
-  if (!c.rho_case && !varmapack_testcase(name, &index, 0, p, q, r, 0, 0, 0, rng)) {
+  int index = 1;
+  snprintf(name, sizeof(name), "%s", c.label);
+  if (!varmapack_testcase(name, &index, 0, p, q, r, 0, 0, 0, rng)) {
     die_last_error("varmapack_testcase");
   }
   allocate_case(*p, *q, *r, A, B, Sig);
-  if (!varmapack_testcase(name, &index, c.rho, p, q, r, *A, *B, *Sig, rng)) {
+  if (!varmapack_testcase(name, &index, 0, p, q, r, *A, *B, *Sig, rng)) {
     die_last_error("varmapack_testcase");
   }
 }
@@ -167,7 +172,7 @@ static void time_case(bench_case c, options *opts, randompack_rng *rng) {
   rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
   if (isnan(rho)) die_last_error("varmapack_specrad");
   total = time_simulation(A, B, Sig, p, q, r, opts->n, opts->M, opts->t, rng);
-  printf("%-12s %2d %2d %2d %5.2f %10.1f\n", c.label, p, q, r, rho, total);
+  printf("%-12s %2d %2d %2d %5.3f %10.1f\n", c.label, p, q, r, rho, total);
   free(Sig);
   free(B);
   free(A);
@@ -175,15 +180,13 @@ static void time_case(bench_case c, options *opts, randompack_rng *rng) {
 
 int main(int argc, char **argv) {
   bench_case cases[] = {
-    {"tinyAR", false, 0, 0, 0, 0}, {"tinyMA", false, 0, 0, 0, 0},
-    {"tinyARMA", false, 0, 0, 0, 0}, {"smallAR1", false, 0, 0, 0, 0},
-    {"smallAR2", false, 0, 0, 0, 0}, {"smallMA1", false, 0, 0, 0, 0},
-    {"smallMA2", false, 0, 0, 0, 0}, {"smallARMA1", false, 0, 0, 0, 0},
-    {"smallARMA2", false, 0, 0, 0, 0}, {"mediumAR", false, 0, 0, 0, 0},
-    {"mediumMA1", false, 0, 0, 0, 0}, {"mediumARMA1", false, 0, 0, 0, 0},
-    {"mediumARMA2", false, 0, 0, 0, 0}, {"mediumMA2", false, 0, 0, 0, 0},
-    {"largeAR", false, 0, 0, 0, 0},
-    {"Unnamed", true, 3, 3, 10, .98}
+    {"tinyAR", true, false}, {"tinyMA", false, false}, {"tinyARMA", true, true},
+    {"smallAR1", true, false}, {"smallAR2", false, true}, {"smallMA1", false, false},
+    {"smallMA2", false, false}, {"smallARMA1", false, false},
+    {"smallARMA2", true, false}, {"mediumAR", true, true},
+    {"mediumMA1", false, false}, {"mediumARMA1", false, true},
+    {"mediumARMA2", true, false}, {"mediumMA2", false, false},
+    {"largeAR", true, true}, {"largeARMA", true, false}
   };
   options opts;
   randompack_rng *rng;
@@ -199,11 +202,14 @@ int main(int argc, char **argv) {
   printf("Length per series:       %d\n", opts.n);
   printf("Replicates per call:     %d\n", opts.M);
   printf("Benchmark time per case: %.1f s\n\n", opts.t);
+  if (opts.selected) printf("Models:                  selected paper set\n\n");
+  if (opts.platform) printf("Models:                  selected platform set\n\n");
   warm_cpu(opts.w);
   printf("%-12s %2s %2s %2s %5s %10s\n", "Testcase", "p", "q", "r", "rho",
          "Varmapack");
   for (int i=0; i<(int)(sizeof(cases)/sizeof(*cases)); i++) {
-    time_case(cases[i], &opts, rng);
+    if ((!opts.selected && !opts.platform) || (opts.selected && cases[i].selected) ||
+        (opts.platform && cases[i].platform)) time_case(cases[i], &opts, rng);
   }
   randompack_free(rng);
   return 0;

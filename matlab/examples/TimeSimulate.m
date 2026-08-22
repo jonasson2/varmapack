@@ -4,10 +4,15 @@ function TimeSimulate(varargin)
   addParameter(parser, "w", 0.1);
   addParameter(parser, "n", 100);
   addParameter(parser, "M", 1000);
+  addParameter(parser, "selected", false);
+  addParameter(parser, "platform", false);
   parse(parser, varargin{:});
   opts = parser.Results;
   if opts.t <= 0 || opts.w < 0 || opts.n < 1 || opts.M < 1
     error("TimeSimulate:options", "t and dimensions must be positive");
+  end
+  if opts.selected && opts.platform
+    error("TimeSimulate:options", "selected and platform cannot both be true");
   end
   time_problem_table(opts);
 end
@@ -25,19 +30,30 @@ function time_problem_table(opts)
   fprintf("length per series:       %d\n", opts.n);
   fprintf("replicates per call:     %d\n", opts.M);
   fprintf("benchmark time per case: %.1f s\n", opts.t);
+  if opts.selected
+    fprintf("models:                  selected paper set\n");
+  end
+  if opts.platform
+    fprintf("models:                  selected platform set\n");
+  end
   fprintf("\n");
   fprintf("%-12s %2s %2s %2s %5s %10s %10s %6s\n", ...
           "Testcase", "p", "q", "r", "rho", "Varmapack", "Reference", "Ratio");
   names = { ...
     "tinyAR", "tinyMA", "tinyARMA", "smallAR1", "smallAR2", "smallMA1", ...
     "smallMA2", "smallARMA1", "smallARMA2", "mediumAR", "mediumMA1", ...
-    "mediumARMA1", "mediumARMA2", "mediumMA2", "largeAR"};
+    "mediumARMA1", "mediumARMA2", "mediumMA2", "largeAR", "largeARMA"};
+  if opts.selected
+    names = {"tinyAR", "tinyARMA", "smallAR1", "smallARMA2", ...
+             "mediumAR", "mediumARMA2", "largeAR", "largeARMA"};
+  end
+  if opts.platform
+    names = {"tinyARMA", "smallAR2", "mediumAR", "mediumARMA1", "largeAR"};
+  end
   for i = 1:numel(names)
     [A, B, Sig, p, q, r] = varmapack.testcase(names{i});
     time_case(names{i}, A, B, Sig, p, q, r, opts, rngRef, rngC);
   end
-  [A, B, Sig, p, q, r] = varmapack.testcase(3, 3, 10, .98);
-  time_case("Unnamed", A, B, Sig, p, q, r, opts, rngRef, rngC);
   clear cleanupRef cleanupC
 end
 
@@ -56,7 +72,7 @@ function time_case(name, A, B, Sig, p, q, r, opts, rngRef, rngC)
                    values, opts.t);
   refNs = 1e9*refTime/values;
   cNs = 1e9*cTime/values;
-  fprintf("%-12s %2d %2d %2d %5.2f %10.1f %10.0f %6.1f\n", ...
+  fprintf("%-12s %2d %2d %2d %5.3f %10.1f %10.0f %6.1f\n", ...
           name, p, q, r, rho, cNs, refNs, refNs/cNs);
 end
 

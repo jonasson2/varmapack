@@ -21,7 +21,8 @@ test_that("unnamed testcases support rho and Randompack RNGs", {
 
 test_that("testcase listing has all named cases", {
   cases <- varmapack_testcases()
-  expect_equal(nrow(cases), 15L)
+  expect_equal(nrow(cases), 16L)
   expect_named(cases, c("index", "name", "p", "q", "r"))
   expect_true("tinyAR" %in% cases$name)
+  expect_true("largeARMA" %in% cases$name)
 })

@@ -22,11 +22,15 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
   // The name "rho" is construction-only. Otherwise construct a named/indexed case,
   // an unnamed deterministic case (index -1), an unnamed random case (index 0),
   // or a case with target spectral radius (name "rho").
-#define p15 4
-#define r15 5
+#define p15 5
+#define r15 7
 #define seed15 42
 #define c15 0.05
 #define n15 (r15*r15*p15)
+#define p16 3
+#define q16 3
+#define r16 7
+#define rho16 .98
   const char *namev[] = {// nr   p  q  r
     "tinyAR",      // 1    1  0  1
     "tinyMA",      // 2    0  1  1
@@ -42,11 +46,12 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
     "mediumARMA1", // 12   3  3  3
     "mediumARMA2", // 13   3  3  3
     "mediumMA2",   // 14   0  2  3
-    "largeAR"      // 15   4  0  5
+    "largeAR",     // 15   5  0  7
+    "largeARMA"    // 16   3  3  7
   };
-  int    pv[]      = { 1,  0,  1,  1,  2,  0,  0,  1,  1,  1,  0,  3,  3,  0, p15};
-  int    qv[]      = { 0,  1,  1,  0,  0,  1,  2,  1,  2,  0,  1,  3,  3,  2, 0};
-  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3, r15};
+  int    pv[]      = { 1,  0,  1,  1,  2,  0,  0,  1,  1,  1,  0,  3,  3,  0, p15, p16};
+  int    qv[]      = { 0,  1,  1,  0,  0,  1,  2,  1,  2,  0,  1,  3,  3,  2, 0, q16};
+  int    rv[]      = { 1,  1,  1,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3, r15, r16};
   int *icase = index;
   int p, q, r, Ncase = sizeof(namev)/sizeof(char*);
   clear_error();
@@ -86,6 +91,7 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
       return fail_error("unknown testcase");
     }
   }
+  bool LARGE_ARMA = !RHO && *icase == 16;
   // MAX INQUIRY
   if (MAX) {
     int pmax = 0, qmax = 0, rmax = 0;
@@ -164,19 +170,22 @@ bool varmapack_testcase( char *name, int *index, double rho, int *pp, int *qp, i
     q = qv[*icase-1];
     r = rv[*icase-1];
   }
-  if (RHO || *icase == -1 || *icase == 0) {
+  if (RHO || LARGE_ARMA || *icase == -1 || *icase == 0) {
     if (Sig) {
       hilb(Sig, r);
       for (i = 0; i < r; i++) Sig[i + i*r] += 0.2; // add 0.2 to diagonal
     }
   }
-  if (RHO) {
+  if (RHO || LARGE_ARMA) {
     if (A && p > 0) {
       construct_rho_A(A, p, r);
-      if (!scale_to_rho(A, p, r, rho)) return false;
+      if (!scale_to_rho(A, p, r, RHO ? rho : rho16)) return false;
     }
     if (A && p == 0 && rho != 0) return fail_error("invalid argument");
     if (B && q>0) for (i=0; i<r*r*q; i++) B[i] = 1.0/(q*r);
+    if (LARGE_ARMA && name && !NAMED) {
+      snprintf(name, VARMAPACK_TESTCASE_NAME_LEN, "%s", namev[*icase - 1]);
+    }
   }
   else if (*icase == -1) {
     if (A && p>0) for (i=0; i<r*r*p; i++) A[i] = 0.5/(p*r);

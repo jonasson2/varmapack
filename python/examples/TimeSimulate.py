@@ -58,7 +58,7 @@ def time_model(name, model, length, nrep, bench_time):
   ns_varmax = time_simulation(
       lambda: varmax.simulate(params, nsimulations=length, repetitions=nrep,
                               transformed=True), values, bench_time)
-  print(f"{name:<12} {model.p:>2} {model.q:>2} {model.r:>2} {rho:>5.2f} "
+  print(f"{name:<12} {model.p:>2} {model.q:>2} {model.r:>2} {rho:>5.3f} "
         f"{ns_varmapack:>10.1f} {ns_varmax:>7.0f} "
         f"{ns_varmax/ns_varmapack:>6.0f}")
 
@@ -72,28 +72,40 @@ def main():
                       help="length of each series (default 100)")
   parser.add_argument("-t", type=float, default=0.1, dest="bench_time",
                       help="benchmark time per implementation and testcase (seconds)")
+  parser.add_argument("-8", action="store_true", dest="selected",
+                      help="time the eight selected paper models only")
+  parser.add_argument("-5", action="store_true", dest="platform",
+                      help="time the five selected platform models only")
   args = parser.parse_args()
   if args.nrep < 1 or args.length < 1 or args.bench_time <= 0:
     parser.error("-M, -n, and -t must be positive")
+  if args.selected and args.platform:
+    parser.error("-5 and -8 cannot be combined")
   warnings.filterwarnings("ignore", category=EstimationWarning)
   print("Varmapack Python benchmark and comparison with statsmodel's VARMAX simulate")
   print(f"{'benchmark unit:':<25}ns/value")
   print(f"{'length per series:':<25}{args.length}")
   print(f"{'replicates per call:':<25}{args.nrep}")
   print(f"{'benchmark time per case:':<25}{args.bench_time:.1f} s")
+  if args.selected:
+    print(f"{'models:':<25}selected paper set")
+  if args.platform:
+    print(f"{'models:':<25}selected platform set")
   print()
   print(f"{'Testcase':<12} {'p':>2} {'q':>2} {'r':>2} {'rho':>5} {'Varmapack':>10} "
         f"{'VARMAX':>7} {'Ratio':>6}")
-  for name in [
+  names = [
       "tinyAR", "tinyMA", "tinyARMA", "smallAR1", "smallAR2", "smallMA1",
       "smallMA2", "smallARMA1", "smallARMA2", "mediumAR", "mediumMA1",
-      "mediumARMA1", "mediumARMA2", "mediumMA2", "largeAR"
-  ]:
+      "mediumARMA1", "mediumARMA2", "mediumMA2", "largeAR", "largeARMA"
+  ]
+  if args.selected:
+    names = ["tinyAR", "tinyARMA", "smallAR1", "smallARMA2", "mediumAR",
+             "mediumARMA2", "largeAR", "largeARMA"]
+  if args.platform:
+    names = ["tinyARMA", "smallAR2", "mediumAR", "mediumARMA1", "largeAR"]
+  for name in names:
     time_model(name, varmapack.testcase(name), args.length, args.nrep,
                args.bench_time)
-  model = varmapack.testcase("rho", p=3, q=3, r=10, rho=0.98)
-  time_model("Unnamed", model, args.length, args.nrep, args.bench_time)
-
-
 if __name__ == "__main__":
   main()
