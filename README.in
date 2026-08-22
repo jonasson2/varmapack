@@ -58,6 +58,13 @@ configuring Varmapack, verify that `pkg-config` can find a suitable version:
     pkg-config --atleast-version=0.1.9 randompack
 ```
 
+For source installations, specifying `--libdir=lib` for both Randompack and
+Varmapack is recommended to ensure consistent library paths across platforms.
+The Randompack README and the Varmapack commands below use this setting. With
+`--prefix=/usr/local`, the libraries are installed under `/usr/local/lib`;
+without an explicit `libdir`, Meson may choose a platform-specific multiarch
+directory.
+
 For a user-local installation, this requires the setting described in the
 Randompack README:
 
@@ -83,7 +90,7 @@ before configuring the build:
 For a system-wide installation, configure, build, test, and install with:
 
 ```sh
-    meson setup build --buildtype=release
+    meson setup build --buildtype=release --prefix=/usr/local --libdir=lib
     ninja -C build
     meson test -C build
     sudo meson install -C build
