@@ -1,22 +1,25 @@
 # Varmapack Development
 
 This file describes local development of the C library and its MATLAB, Python,
-and R interfaces. For ordinary installation, API examples, testing, and timing,
-see the repository [README.md](README.md).
+and R interfaces. For ordinary installation, see [README.md](README.md).
 
 ## C library
 
 ### Configure and build
 
-Varmapack uses Meson and Ninja. Its C dependency, Randompack, must already be
-installed where `pkg-config` can find it. Follow the root README installation
-instructions until this succeeds:
+Varmapack development uses an installed Randompack release. Install it
+system-wide or under `~/.local` as described in the root README, including the
+`PKG_CONFIG_PATH` setting for a user-local installation. Before configuring
+Varmapack, verify that `pkg-config` finds it:
 
 ```sh
 pkg-config --modversion randompack
+pkg-config --cflags --libs randompack
 ```
 
-From the repository root, configure and build an optimized development tree:
+Meson obtains the Randompack compiler and linker flags through `pkg-config`; no
+Randompack paths need to be passed to `meson setup`. From the repository root,
+configure and build an optimized development tree:
 
 ```sh
 meson setup build --buildtype=release

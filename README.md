@@ -188,42 +188,61 @@ using `module load` commands.
 
 ### Install Randompack
 
-Download, build, test, and install Randompack with:
+Install the current Randompack release system-wide or under `~/.local` as
+described in its [README](https://github.com/jonasson2/randompack#installation).
+Before configuring Varmapack, verify that `pkg-config` can find it:
 
 ```sh
-    git clone https://github.com/jonasson2/randompack.git
-    cd randompack
-    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
-    ninja -C build
-    meson test -C build
-    ninja -C build install
-    cd ..
+    pkg-config --modversion randompack
 ```
+
+For a user-local installation, this requires the setting described in the
+Randompack README:
+
+```sh
+    export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+```
+
+This export sets `PKG_CONFIG_PATH` if it is undefined, or prepends the new
+directory to it if it exists. Add the export to the appropriate shell startup
+file if the user-local installation should be available in future shells. No
+such setting is normally needed for a system-wide installation.
 
 ### Install Varmapack
 
-Before configuring or using Varmapack, make the user-local installations
-visible to `pkg-config`:
-
-```sh
-    export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH
-```
-
-Then download, build, test, and install Varmapack with:
+Clone Varmapack and choose either a system-wide or user-local installation
+before configuring the build:
 
 ```sh
     git clone https://github.com/jonasson2/varmapack.git
     cd varmapack
-    meson setup build --buildtype=release --prefix=$HOME/.local -Dlibdir=lib
-    ninja -C build
-    meson test -C build
-    ninja -C build install
 ```
 
-Check that the installation can be found with:
+For a system-wide installation, configure, build, test, and install with:
+
+```sh
+    meson setup build --buildtype=release
+    ninja -C build
+    meson test -C build
+    sudo meson install -C build
+```
+
+For a user-local installation that does not require `sudo`, use `~/.local`:
+
+```sh
+    meson setup build --buildtype=release --prefix="$HOME/.local" --libdir=lib
+    ninja -C build
+    meson test -C build
+    meson install -C build
+```
+
+The `PKG_CONFIG_PATH` setting above also makes the user-local Varmapack
+installation visible. In either case, verify the installed version and inspect
+the compiler and linker flags with:
 
 ```sh
     pkg-config --modversion varmapack
+    pkg-config --cflags --libs varmapack
 ```
 
 Programs using Varmapack can then be compiled with:
@@ -231,6 +250,10 @@ Programs using Varmapack can then be compiled with:
 ```sh
     cc -o myprog myprog.c $(pkg-config --cflags --libs varmapack)
 ```
+
+Varmapack's `pkg-config` file declares Randompack as a dependency, so this
+command supplies the flags for both libraries; Randompack need not be added
+separately.
 
 ## C API overview by example
 
