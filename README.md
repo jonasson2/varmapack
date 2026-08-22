@@ -188,12 +188,12 @@ using `module load` commands.
 
 ### Install Randompack
 
-Install the current Randompack release system-wide or under `~/.local` as
-described in its [README](https://github.com/jonasson2/randompack#installation).
-Before configuring Varmapack, verify that `pkg-config` can find it:
+Install Randompack 0.1.9 or later system-wide or under `~/.local` as described
+in its [README](https://github.com/jonasson2/randompack#installation). Before
+configuring Varmapack, verify that `pkg-config` can find a suitable version:
 
 ```sh
-    pkg-config --modversion randompack
+    pkg-config --atleast-version=0.1.9 randompack
 ```
 
 For a user-local installation, this requires the setting described in the

@@ -83,7 +83,7 @@ local_dpstrf_args = using_accelerate ? ['-DLOCAL_DPSTRF'] : []
 # if blas_option == 'none'
 #   blas_dep = declare_dependency()  # no BLAS, for symbol inspection
 
-randompack_dep = dependency('randompack', required : true)
+randompack_dep = dependency('randompack', version : '>=0.1.9', required : true)
 
 # Your own headers live in src/ for now
 inc = include_directories('src')
