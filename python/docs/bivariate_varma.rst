@@ -21,7 +21,7 @@ Program
 Cross-correlation
 -----------------
 
-.. figure:: ../examples/bivariate_varma_cross_correlation.png
+.. figure:: figures/bivariate_varma_cross_correlation.*
    :alt: Theoretical cross-correlation of the two components
    :align: center
    :class: short-caption
@@ -34,7 +34,7 @@ Cross-correlation
 Simulated paths
 ---------------
 
-.. figure:: ../examples/bivariate_varma_paths.png
+.. figure:: figures/bivariate_varma_paths.*
    :alt: Five simulated paths from a bivariate VARMA model
    :class: long-caption
 

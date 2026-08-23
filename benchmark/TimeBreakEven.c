@@ -1,14 +1,14 @@
 // TimeBreakEven.c: time VYW vs Lyapunov covariance solvers only.
 
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "getopt.h"
 #include "Lyapunov.h"
+#include "TimeUtil.h"
 #include "varmapack.h"
+#include "varmapack_config.h"
 #include "VYW.h"
 
 typedef struct {
@@ -26,17 +26,6 @@ typedef struct {
   double vyw_ns;
   double lyap_ns;
 } timing;
-
-static uint64_t clock_nsec(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return 1000000000ull*(uint64_t)ts.tv_sec + (uint64_t)ts.tv_nsec;
-}
-
-static void consume_double(double x) {
-  static volatile double sink;
-  sink += x;
-}
 
 static void die(char *msg) {
   fprintf(stderr, "%s\n", msg);
@@ -84,37 +73,23 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   return optind == argc;
 }
 
-static void warm_cpu(double seconds) {
-  double x = 1.000001;
-  if (seconds <= 0) return;
-  uint64_t deadline = clock_nsec() + (uint64_t)(seconds*1e9);
-  while (clock_nsec() < deadline) {
-    for (int i=0; i<1000; i++) {
-      x += log(x);
-      if (x > 2) x = 1.000001;
-    }
-  }
-  consume_double(x);
-}
-
 static void make_problem(int p, int q, int r, double **A, double **B,
                          double **Sig, randompack_rng *rng) {
   int icase = 0;
   char name[12] = "rho";
   double rho = p > 0 ? 0.95 : 0;
   bool ok;
-  *A = malloc(sizeof(double)*r*r*(p > 0 ? p : 1));
-  *B = malloc(sizeof(double)*r*r*(q > 0 ? q : 1));
-  *Sig = malloc(sizeof(double)*r*r);
-  if (!*A || !*B || !*Sig) die("allocation failed");
+  if (!ALLOC(*A, r*r*(p > 0 ? p : 1)) ||
+      !ALLOC(*B, r*r*(q > 0 ? q : 1)) || !ALLOC(*Sig, r*r)) {
+    die("allocation failed");
+  }
   ok = varmapack_testcase(name, &icase, rho, &p, &q, &r, *A, *B, *Sig, rng);
   if (!ok) die("varmapack_testcase failed");
 }
 
 static timing time_case(int p, int q, int r, double target, randompack_rng *rng) {
   int rr = r*r;
-  int reps = 0;
-  uint64_t start, now, t0, t1, t2;
+  uint64_t t0, t1, t2;
   uint64_t vyw_ns = 0;
   uint64_t lyap_ns = 0;
   double *A = 0;
@@ -123,14 +98,13 @@ static timing time_case(int p, int q, int r, double target, randompack_rng *rng)
   double *S = 0;
   double *C = 0;
   double *G = 0;
+  time_loop timer;
   make_problem(p, q, r, &A, &B, &Sig, rng);
-  S = malloc(sizeof(double)*rr*(p+1));
-  C = malloc(sizeof(double)*rr*(q+1));
-  G = malloc(sizeof(double)*rr*(q+1));
-  if (!S || !C || !G) die("allocation failed");
-  start = clock_nsec();
-  now = start;
-  while ((now - start)*1e-9 < target) {
+  if (!ALLOC(S, rr*(p+1)) || !ALLOC(C, rr*(q+1)) || !ALLOC(G, rr*(q+1))) {
+    die("allocation failed");
+  }
+  time_loop_start(&timer, target);
+  while (time_loop_next(&timer)) {
     t0 = clock_nsec();
     if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) die("VYW failed");
     t1 = clock_nsec();
@@ -141,16 +115,15 @@ static timing time_case(int p, int q, int r, double target, randompack_rng *rng)
     vyw_ns += t1 - t0;
     lyap_ns += t2 - t1;
     consume_double(S[0]);
-    reps++;
-    now = clock_nsec();
   }
-  free(G);
-  free(C);
-  free(S);
-  free(Sig);
-  free(B);
-  free(A);
-  return (timing){(double)vyw_ns/(double)reps, (double)lyap_ns/(double)reps};
+  FREE(G);
+  FREE(C);
+  FREE(S);
+  FREE(Sig);
+  FREE(B);
+  FREE(A);
+  return (timing){time_loop_average(&timer, vyw_ns),
+                  time_loop_average(&timer, lyap_ns)};
 }
 
 int main(int argc, char **argv) {
@@ -165,7 +138,7 @@ int main(int argc, char **argv) {
   if (!rng) die("randompack_create failed");
   printf("Warmup time: %.2f s\n", opts.w);
   printf("Bench time:  %.3g s per case\n\n", opts.t);
-  warm_cpu(opts.w);
+  warmup_cpu(opts.w);
   printf(" r  p  q  nVYW  nLyap     VYW_us    Lyap_us  Lyap/VYW\n");
   for (int p=opts.p0; p<=opts.p1; p++) {
     int r1p = 32 - 2*p;

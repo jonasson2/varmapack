@@ -6,11 +6,11 @@
 #include "getopt.h"
 #include "printX.h"
 #include "Tests.h"
-#include "xCheck.h"
+#include "TestUtil.h"
 
 static int NTOTAL = 0, NFAIL = 0;
-static const char *headr_fmt = "%-20s %8s %8s\n";
-static const char *table_fmt = "%-20s %8d %8d\n";
+static char headr_fmt[] = "%-20s %8s %8s\n";
+static char table_fmt[] = "%-20s %8d %8d\n";
 int TESTVERBOSITY = 0; // External
 
 static void print_help(void) {
@@ -19,8 +19,7 @@ static void print_help(void) {
        "  -h    Show this help message\n"
        "  -v    Verbose tests\n"
        "  -vv   More verbosity\n"
-       "  -vvv  Even moren verbosity\n"
-       );
+       "  -vvv  Even more verbosity\n");
 }
 
 // -v    Summary
@@ -57,7 +56,8 @@ static void run_test(const char *name, void (*fn)(void)) {
 }
 
 int main(int argc, char **argv) {
-  char optstring[10] = ":vh", c;
+  char optstring[] = ":vh";
+  int c;
   while ((c = getopt(argc, argv, optstring)) != -1) {
     switch (c) {
       case 'h': print_help(); return 0;
@@ -71,7 +71,6 @@ int main(int argc, char **argv) {
   vprint(headr_fmt, "TEST OF", "PASSED", "FAILED");
   run_test("FromMatlab helpers", TestFromMatlab);
   run_test("FindC/FindG",        TestFindCFindG);
-  run_test("ExtraUtil",          TestExtraUtil);
   run_test("varmapack_testcase", TestTestcase);
   run_test("varmapack_testcasex", TestTestcasex);
   run_test("varmapack_specrad",  Testvarmapack_specrad);
@@ -83,6 +82,7 @@ int main(int argc, char **argv) {
   run_test("simx edge cases",    TestSimxEdgeCases);
   run_test("PSD cond covariance", TestPsdCondCov);
   run_test("Psi functions",      TestPsi);
+  run_test("Lyapunov solver",    TestLyapunov);
   vprint(table_fmt, "TOTAL", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
 }

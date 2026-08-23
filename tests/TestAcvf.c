@@ -1,9 +1,8 @@
 #include <math.h>
 #include <stdio.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_acvf_scalar_ar1(void) {
   double A[] = {0.5};

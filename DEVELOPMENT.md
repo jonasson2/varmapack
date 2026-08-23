@@ -40,9 +40,9 @@ Run all C tests with:
 meson test -C build --print-errorlogs
 ```
 
-This runs `RunTests`, `AgainstMatlab`, and `TestLyapunov`. `AgainstMatlab`
-normally uses the checked-in MATLAB reference fixtures, so MATLAB is not needed
-for the ordinary C test run.
+This runs `RunTests`, including the Lyapunov-solver checks, and `AgainstMatlab`.
+`AgainstMatlab` normally uses the checked-in MATLAB reference fixtures, so
+MATLAB is not needed for the ordinary C test run.
 
 ## MATLAB reference implementation
 
@@ -89,7 +89,7 @@ the current Randompack checkout; replace its path as needed.
 ```sh
 uv venv
 source .venv/bin/activate
-uv pip install meson-python meson ninja cython numpy
+uv pip install meson-python meson ninja cython numpy pytest
 uv pip install -r python/docs/requirements.txt
 uv pip install -e /path/to/randompack/python --no-build-isolation
 scripts/syncpy.sh
@@ -126,10 +126,10 @@ Restart an active Python or Jupyter session after rebuilding the extension.
 
 ### Test and document
 
-The current Python tests are executable scripts:
+Run the Python tests with:
 
 ```sh
-for t in python/tests/test_*.py; do python "$t" || exit 1; done
+python -m pytest -q python/tests
 ```
 
 Build and open the Python documentation with:

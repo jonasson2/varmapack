@@ -20,11 +20,6 @@ function test_varmapack_rng
   X3 = varmapack.sim(A, B, Sig, [], 12, 2, [], rng1);
   X4 = varmapack.sim(A, B, Sig, [], 12, 2, [], rng1);
   assert(~isequal(X3, X4))
-  rng1.seed(789);
-  rng2.seed(789);
-  [A1, B1, Sig1] = varmapack.testcase(2, 3, 2, rng1);
-  [A2, B2, Sig2] = varmapack.testcase(2, 3, 2, rng2);
-  assert(isequal(A1, A2) && isequal(B1, B2) && isequal(Sig1, Sig2))
   z = cos((0:11)'/5);
   X = varmapack.simx(A, B, C, z, Sig, 12, 2, zeros(2), 2, rng1);
   assert(isequal(size(X), [2, 12, 2]))

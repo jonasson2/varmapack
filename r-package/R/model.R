@@ -189,9 +189,9 @@ VarmapackModel <- R6::R6Class(
                    return_shocks = FALSE) {
       length <- .vp_count(length, "length", 1L)
       nrep <- .vp_count(nrep, "nrep", 1L)
-      if (length(return_shocks) != 1L || is.na(return_shocks))
+      if (!is.logical(return_shocks) || length(return_shocks) != 1L ||
+          is.na(return_shocks))
         stop("return_shocks must be TRUE or FALSE", call. = FALSE)
-      return_shocks <- as.logical(return_shocks)
       if (!is.null(rng) && (!inherits(rng, "RandompackRNG") || is.null(rng$ptr)))
         stop("rng must be a randompack_rng() object", call. = FALSE)
       if (is.null(self$C)) {

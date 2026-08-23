@@ -1,13 +1,13 @@
-// TimeSimulate.c: time varmapack_sim on named and representative unnamed models.
+// TimeSimulate.c: time varmapack_sim on named models.
 
 #include <math.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "getopt.h"
+#include "TimeUtil.h"
 #include "varmapack.h"
+#include "varmapack_config.h"
 
 typedef struct {
   char *label;
@@ -23,17 +23,6 @@ typedef struct {
   bool selected;
   bool platform;
 } options;
-
-static uint64_t clock_nsec(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return 1000000000ull*(uint64_t)ts.tv_sec + (uint64_t)ts.tv_nsec;
-}
-
-static void consume_double(double x) {
-  static volatile double sink;
-  sink += x;
-}
 
 static void die(char *msg) {
   fprintf(stderr, "%s\n", msg);
@@ -55,7 +44,7 @@ static void print_help(void) {
   printf("Usage: TimeSimulate [options]\n\n");
   printf("This permits comparison with the corresponding MATLAB and Python interface\n");
   printf("benchmarks.\n");
-  printf("Times all named testcases and an unnamed p=q=3, r=10, rho=.98 model.\n\n");
+  printf("Times all named testcases by default.\n\n");
   printf("Options:\n");
   printf("  -h          show this help\n");
   printf("  -t seconds  timing target per testcase (default 0.1)\n");
@@ -106,26 +95,11 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   return optind == argc && !(opts->selected && opts->platform);
 }
 
-static void warm_cpu(double seconds) {
-  double x = 1.000001;
-  uint64_t start, deadline;
-  if (seconds <= 0) return;
-  start = clock_nsec();
-  deadline = start + (uint64_t)(seconds*1e9);
-  while (clock_nsec() < deadline) {
-    for (int i=0; i<1000; i++) {
-      x += log(x);
-      if (x > 2) x = 1.000001;
-    }
-  }
-  consume_double(x);
-}
-
 static void allocate_case(int p, int q, int r, double **A, double **B, double **Sig) {
-  *A = malloc(sizeof(**A)*r*r*(p > 0 ? p : 1));
-  *B = malloc(sizeof(**B)*r*r*(q > 0 ? q : 1));
-  *Sig = malloc(sizeof(**Sig)*r*r);
-  if (!*A || !*B || !*Sig) die("allocation failed");
+  if (!ALLOC(*A, r*r*(p > 0 ? p : 1)) ||
+      !ALLOC(*B, r*r*(q > 0 ? q : 1)) || !ALLOC(*Sig, r*r)) {
+    die("allocation failed");
+  }
 }
 
 static void construct_case(bench_case c, randompack_rng *rng, double **A, double **B,
@@ -145,23 +119,18 @@ static void construct_case(bench_case c, randompack_rng *rng, double **A, double
 static double time_simulation(double A[], double B[], double Sig[], int p, int q, int r,
                               int n, int M, double target, randompack_rng *rng) {
   double *X;
-  uint64_t start, t;
-  int reps = 0;
-  X = malloc(sizeof(*X)*r*n*M);
-  if (X == 0) die("allocation failed");
+  time_loop timer;
+  if (!ALLOC(X, r*n*M)) die("allocation failed");
   if (!randompack_seed(12345, 0, 0, rng)) die("randompack_seed failed");
-  start = clock_nsec();
-  t = start;
-  while ((t - start)*1e-9 < target) {
+  time_loop_start(&timer, target);
+  while (time_loop_next(&timer)) {
     if (!varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, 0, rng)) {
       die_last_error("varmapack_sim");
     }
     consume_double(X[r*n*M - 1]);
-    reps++;
-    t = clock_nsec();
   }
-  free(X);
-  return (double)(t - start)/((double)reps*r*n*M);
+  FREE(X);
+  return time_loop_nsec_per(&timer, r*n*M);
 }
 
 static void time_case(bench_case c, options *opts, randompack_rng *rng) {
@@ -173,9 +142,9 @@ static void time_case(bench_case c, options *opts, randompack_rng *rng) {
   if (isnan(rho)) die_last_error("varmapack_specrad");
   total = time_simulation(A, B, Sig, p, q, r, opts->n, opts->M, opts->t, rng);
   printf("%-12s %2d %2d %2d %5.3f %10.1f\n", c.label, p, q, r, rho, total);
-  free(Sig);
-  free(B);
-  free(A);
+  FREE(Sig);
+  FREE(B);
+  FREE(A);
 }
 
 int main(int argc, char **argv) {
@@ -204,7 +173,7 @@ int main(int argc, char **argv) {
   printf("Benchmark time per case: %.1f s\n\n", opts.t);
   if (opts.selected) printf("Models:                  selected paper set\n\n");
   if (opts.platform) printf("Models:                  selected platform set\n\n");
-  warm_cpu(opts.w);
+  warmup_cpu(opts.w);
   printf("%-12s %2s %2s %2s %5s %10s\n", "Testcase", "p", "q", "r", "rho",
          "Varmapack");
   for (int i=0; i<(int)(sizeof(cases)/sizeof(*cases)); i++) {

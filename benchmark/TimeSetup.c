@@ -1,17 +1,17 @@
 // TimeSetup.c: time the current VYW plus SBuild setup.
 
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "getopt.h"
 #include "BlasGateway.h"
 #include "Lyapunov.h"
+#include "TimeUtil.h"
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
 #include "varmapack.h"
+#include "varmapack_config.h"
 #include "VYW.h"
 
 enum { MAX_VALUES = 32, MAX_CASES = 128 };
@@ -30,7 +30,6 @@ typedef struct {
 typedef struct {
   double t;
   double w;
-  int d;
   int_list p;
   int_list r;
 } options;
@@ -41,17 +40,6 @@ typedef struct {
   double other_vyw_ns;
   double other_lyap_ns;
 } time_result;
-
-static uint64_t clock_nsec(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return 1000000000ull*(uint64_t)ts.tv_sec + (uint64_t)ts.tv_nsec;
-}
-
-static void consume_double(double x) {
-  static volatile double sink;
-  sink += x;
-}
 
 static void die(char *msg) {
   fprintf(stderr, "%s\n", msg);
@@ -76,7 +64,7 @@ static bool parse_int_list(char *s, int_list *xs) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.2, .w = 0.1, .d = 2, .p = {3, {1, 3, 5}}, .r = {4, {2, 5, 12, 32}}
+    .t = 0.2, .w = 0.1, .p = {3, {1, 3, 5}}, .r = {4, {2, 5, 12, 32}}
   };
 }
 
@@ -87,7 +75,6 @@ static void print_help(void) {
   printf("  -h          show this help\n");
   printf("  -t seconds  timing target per case (default 0.2)\n");
   printf("  -w seconds  CPU warmup time before timing (default 0.1)\n");
-  printf("  -d digits   printed digits (default 2)\n");
   printf("  -p list     p values (default 1,3,5)\n");
 }
 
@@ -97,7 +84,7 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   *help = false;
   opterr = 0;
   optind = 1;
-  while ((opt = getopt(argc, argv, "ht:w:d:p:")) != -1) {
+  while ((opt = getopt(argc, argv, "ht:w:p:")) != -1) {
     switch (opt) {
       case 'h':
         *help = true;
@@ -109,10 +96,6 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
       case 'w':
         opts->w = atof(optarg);
         if (opts->w < 0) return false;
-        break;
-      case 'd':
-        opts->d = atoi(optarg);
-        if (opts->d < 0) return false;
         break;
       case 'p':
         if (!parse_int_list(optarg, &opts->p)) return false;
@@ -173,19 +156,6 @@ static int make_cases(options *opts, setup_case cases[]) {
   return ncases;
 }
 
-static void warm_cpu(double seconds) {
-  double x = 1.000001;
-  if (seconds <= 0) return;
-  uint64_t deadline = clock_nsec() + (uint64_t)(seconds*1e9);
-  while (clock_nsec() < deadline) {
-    for (int i = 0; i < 1000; i++) {
-      x += log(x);
-      if (x > 2) x = 1.000001;
-    }
-  }
-  consume_double(x);
-}
-
 static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
                          double **A, double **B, double **Sig, randompack_rng *rng) {
   int icase = 0;
@@ -196,10 +166,11 @@ static void make_problem(setup_case c, int *p, int *q, int *r, int *h,
   *q = c.q;
   *r = c.r;
   *h = *p > *q ? *p : *q;
-  *A = malloc(sizeof(double)*(*r)*(*r)*(*p > 0 ? *p : 1));
-  *B = malloc(sizeof(double)*(*r)*(*r)*(*q > 0 ? *q : 1));
-  *Sig = malloc(sizeof(double)*(*r)*(*r));
-  if (!*A || !*B || !*Sig) die("allocation failed");
+  if (!ALLOC(*A, (*r)*(*r)*(*p > 0 ? *p : 1)) ||
+      !ALLOC(*B, (*r)*(*r)*(*q > 0 ? *q : 1)) ||
+      !ALLOC(*Sig, (*r)*(*r))) {
+    die("allocation failed");
+  }
   ok = varmapack_testcase(name, &icase, rho, p, q, r, *A, *B, *Sig, rng);
   if (!ok) {
     fprintf(stderr, "varmapack_testcase failed: %s\n", varmapack_last_error());
@@ -250,22 +221,20 @@ static time_result time_case(setup_case c, double target, randompack_rng *rng) {
   int r = c.r;
   int h;
   double *A, *B, *Sig, *S, *C, *G, *X;
-  int reps = 0;
-  uint64_t start, t, t0, t1, t2, t3, t4;
+  uint64_t t0, t1, t2, t3, t4;
   uint64_t vyw_ns = 0;
   uint64_t lyap_ns = 0;
   uint64_t other_vyw_ns = 0;
   uint64_t other_lyap_ns = 0;
+  time_loop timer;
   make_problem(c, &p, &q, &r, &h, &A, &B, &Sig, rng);
-  S = malloc(sizeof(double)*r*r*(p+1));
-  C = malloc(sizeof(double)*r*r*(q+1));
-  G = malloc(sizeof(double)*r*r*(q+1));
-  X = malloc(sizeof(double)*r*h);
-  if (!S || !C || !G || !X) die("allocation failed");
+  if (!ALLOC(S, r*r*(p+1)) || !ALLOC(C, r*r*(q+1)) ||
+      !ALLOC(G, r*r*(q+1)) || !ALLOC(X, r*h)) {
+    die("allocation failed");
+  }
   if (!randompack_seed(12345, 0, 0, rng)) die("randompack_seed failed");
-  start = clock_nsec();
-  t = start;
-  while ((t - start)*1e-9 < target) {
+  time_loop_start(&timer, target);
+  while (time_loop_next(&timer)) {
     t0 = clock_nsec();
     if (!VYWFactorizeSolve(A, B, Sig, p, q, r, S, C, G)) {
       die("VYWFactorizeSolve failed");
@@ -288,21 +257,20 @@ static time_result time_case(setup_case c, double target, randompack_rng *rng) {
     lyap_ns += t3 - t2;
     other_lyap_ns += t4 - t3;
     consume_double(X[r*h - 1]);
-    reps++;
-    t = clock_nsec();
   }
   time_result result = {
-    .vyw_ns = (double)vyw_ns/(double)reps, .lyap_ns = (double)lyap_ns/(double)reps,
-    .other_vyw_ns = (double)other_vyw_ns/(double)reps,
-    .other_lyap_ns = (double)other_lyap_ns/(double)reps
+    .vyw_ns = time_loop_average(&timer, vyw_ns),
+    .lyap_ns = time_loop_average(&timer, lyap_ns),
+    .other_vyw_ns = time_loop_average(&timer, other_vyw_ns),
+    .other_lyap_ns = time_loop_average(&timer, other_lyap_ns)
   };
-  free(X);
-  free(G);
-  free(C);
-  free(S);
-  free(Sig);
-  free(B);
-  free(A);
+  FREE(X);
+  FREE(G);
+  FREE(C);
+  FREE(S);
+  FREE(Sig);
+  FREE(B);
+  FREE(A);
   return result;
 }
 
@@ -323,7 +291,7 @@ int main(int argc, char **argv) {
   printf("There are r·h values set up for each case\n");
   printf("The table shows setup time in µs except r = 32 which shows ms\n");
   printf("\n");
-  warm_cpu(opts.w);
+  warmup_cpu(opts.w);
   ncases = make_cases(&opts, cases);
   printf("–– Dimensions ––    ––––––– Time per case "
          "––––––––    ––– Time per value –––\n");

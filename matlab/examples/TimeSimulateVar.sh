@@ -23,7 +23,7 @@ Options:
   -M count    replicates per call (default: $M)
   -b count    discarded burn-in values per path (default: $burnin)
   -5          time the five selected platform models only
-  -8          time the selected compatible paper models only
+  -8          time the eight selected paper models only
 EOF
 }
 

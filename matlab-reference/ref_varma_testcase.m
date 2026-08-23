@@ -23,7 +23,7 @@
 %   using the supplied Randompack RNG.
 
 function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
-  p12 = 4; r12 = 5; seed12 = 42; c12 = 0.05;
+  p15 = 5; r15 = 7; seed15 = 42; c15 = 0.05;
   name = '';
   if nargin == 1
     type = varargin{1};
@@ -51,6 +51,7 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
     'mediumARMA2'
     'mediumMA2'
     'largeAR'
+    'largeARMA'
     %'pivotfailure'
   };
   N = length(testcases);
@@ -179,13 +180,21 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
            0.5  2.0 0.5;
            0.0  0.5 1.0];
     case {15,'largeAR'}
-      r=r12; p=p12;
+      r = r15;
+      p = p15;
       rng = randompack_create();
       cleanup = onCleanup(@() randompack_free(rng));
-      randompack_seed(rng, seed12);
-      A = reshape(randompack_u01(rng, r*r*p), r, r*p)*c12;
-      Sig=hilb(r) + eye(r);
+      randompack_seed(rng, seed15);
+      A = reshape(randompack_u01(rng, r*r*p), r, r*p)*c15;
+      Sig = hilb(r) + eye(r);
       B = [];
+    case {16,'largeARMA'}
+      p = 3;
+      q = 3;
+      r = 7;
+      A = rho_coefficients(p, r, 0.98);
+      B = ones(r, r*q)/(q*r);
+      Sig = hilb(r) + 0.2*eye(r);
     case {'pivotfailure'} % create almost singular vyw equations
       A = [
         -0.6250  0.2400    0.2500    0.1250    0.6250    0.3750
@@ -214,4 +223,33 @@ function [A,B,Sig,varargout] = ref_varma_testcase(varargin)
   end
   ascertain(isequal(Sig,Sig'));
   ascertain(min(eig(Sig))>0);
+end
+
+function A = rho_coefficients(p, r, target)
+  scale = 2/(r*p^(1/3));
+  A = zeros(r, p*r);
+  for j = 1:p*r
+    for i = 1:r
+      A(i,j) = scale*min(i,j)/max(i,j);
+    end
+  end
+  lo = 0;
+  hi = 1;
+  while ref_varma_specrad(hi*A) <= target
+    hi = 2*hi;
+  end
+  for iter = 1:100
+    mid = (lo + hi)/2;
+    rho = ref_varma_specrad(mid*A);
+    if abs(rho - target) < 1e-6
+      A = mid*A;
+      return
+    end
+    if rho < target
+      lo = mid;
+    else
+      hi = mid;
+    end
+  end
+  A = ((lo + hi)/2)*A;
 end

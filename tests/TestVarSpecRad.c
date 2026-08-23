@@ -1,5 +1,4 @@
-#include "ExtraUtil.h"
-#include "xCheck.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
 #include <math.h>
@@ -116,40 +115,30 @@ static void checkZero(void) {
 }
 
 static void checkAllNamedStationary(void) {
-  const double strict_tol = 1e-12;
+  double strict_tol = 1e-12;
   int pmax = 0, qmax = 0, rmax = 0, maxcase = 0;
   bool ok = varmapack_testcase("max", &maxcase, 0, &pmax, &qmax,
-                                             &rmax, 0, 0, 0, 0);
+                               &rmax, 0, 0, 0, 0);
   checkVarmapackSuccess(ok);
-  for (int icase = 1; icase <= maxcase; ++icase) {
-    int p = 0, q = 0, r = 0;
-    char name[VARMAPACK_TESTCASE_NAME_LEN] = {0};
-    ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-    checkVarmapackSuccess(ok);
-    xCheck(r > 0);
-    xCheck(p >= 0);
-    xCheck(q >= 0);
-    size_t nA = (size_t)r * (size_t)r * (size_t)(p > 0 ? p : 1);
-    size_t nB = (size_t)r * (size_t)r * (size_t)(q > 0 ? q : 1);
-    size_t nS = (size_t)r * (size_t)r;
-    double *A = 0, *B = 0, *Sig = 0;
-    xCheck(ALLOC(A, nA));
-    xCheck(ALLOC(B, nB));
-    xCheck(ALLOC(Sig, nS));
-    ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-    checkVarmapackSuccess(ok);
-    double rho = p == 0 ? 0 : varmapack_specrad(A, r, p);
-    double maRho = q == 0 ? 0 : varmapack_ma_specrad(B, r, q);
+  for (int icase=1; icase<=maxcase; icase++) {
+    test_model model;
+    loadIndexedTestModel(&model, icase);
+    xCheck(model.r > 0);
+    xCheck(model.p >= 0);
+    xCheck(model.q >= 0);
+    double rho = model.p == 0 ? 0 :
+      varmapack_specrad(model.A, model.r, model.p);
+    double maRho = model.q == 0 ? 0 :
+      varmapack_ma_specrad(model.B, model.r, model.q);
     checkVarmapackClean();
     if (!(rho < 1 - strict_tol)) {
-      fprintf(stderr, "[Testvarmapack_specrad] Nonstationary/borderline: case %d (%s), "
-              "rho=%.15g (p=%d, q=%d, r=%d)\n", icase, name, rho, p, q, r);
+      fprintf(stderr, "[Testvarmapack_specrad] Nonstationary/borderline: "
+              "case %d (%s), rho=%.15g (p=%d, q=%d, r=%d)\n", icase,
+              model.name, rho, model.p, model.q, model.r);
     }
     xCheck(rho < 1 - strict_tol);
     xCheck(isfinite(maRho) && maRho >= 0);
-    FREE(A);
-    FREE(B);
-    FREE(Sig);
+    freeTestModel(&model);
   }
 }
 

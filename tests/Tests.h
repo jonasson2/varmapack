@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-void TestExtraUtil(void);
 void TestTestcase(void);
 void Testvarmapack_specrad(void);
 bool TestAgainstMatlab(void);
@@ -18,4 +17,5 @@ void TestSimxEdgeCases(void);
 void TestFromMatlab(void);
 void TestPsdCondCov(void);
 void TestTestcasex(void);
+void TestLyapunov(void);
 #endif /* TESTS_H */

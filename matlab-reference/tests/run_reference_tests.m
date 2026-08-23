@@ -6,7 +6,7 @@
 % find_CG, S_build, CC_build, and the vector-Yule-Walker solver.
 % 
 % RUN_REFERENCE_TESTS(CASES) runs statistical tests of ref_varma_sim for the specified
-% test cases. Default is 1:15 to test all the named test cases.
+% test cases. By default all named test cases are used.
 %
 % RUN_REFERENCE_TESTS(CASES, M) computes M replicates for the statistical tests (default
 % is M=10000)
@@ -18,6 +18,10 @@
 % statistical tests.
 
 function run_reference_tests(varargin)
+  here = fileparts(mfilename('fullpath'));
+  addpath(here);
+  addpath(fileparts(here));
+  addpath(fullfile(fileparts(fileparts(here)), 'tests', 'matlab'));
   showTable = false;
   if nargin >= 1 && (ischar(varargin{1}) || isstring(varargin{1})) && ...
       strcmpi(varargin{1}, 'table')
@@ -27,13 +31,9 @@ function run_reference_tests(varargin)
   if length(varargin) >= 1, cases = varargin{1}; else, cases = []; end
   if length(varargin) >= 2, M = varargin{2}; else, M = []; end
   if length(varargin) >= 3, n = varargin{3}; else, n = []; end
-  if nargin < 1 || isempty(cases), cases = 1:15; end
+  if nargin < 1 || isempty(cases), cases = 1:ref_varma_testcase('count'); end
   if isempty(M), M = 10000; end
   if isempty(n), n = 20; end
-  here = fileparts(mfilename('fullpath'));
-  addpath(here);
-  addpath(fileparts(here));
-  addpath(fullfile(fileparts(fileparts(here)), 'tests', 'matlab'));
   test_ref_varma_sim_first;
   test_ref_varma_testcase;
   test_ref_varma_testcasex;

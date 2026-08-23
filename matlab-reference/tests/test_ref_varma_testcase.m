@@ -1,6 +1,6 @@
 function test_ref_varma_testcase
   n = ref_varma_testcase('count');
-  assert(n == 15);
+  assert(n == 16);
   [A, B, Sig, p, q, r, name] = ref_varma_testcase(8);
   assert(strcmp(name, 'smallARMA1'));
   assert(isequal([p q r], [1 1 2]));

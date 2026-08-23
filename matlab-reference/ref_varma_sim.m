@@ -85,10 +85,10 @@ function [X, E] = ref_varma_sim(A, B, Sig, mu, n, M, X0, rng, e0)
       X0bar = X0 - repmat(Mu0, [1, 1, M]);
     end
     if returnE
-      [X, E] = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M,
+      [X, E] = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M, ...
                                X0bar, h, rng);
     else
-      X = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M,
+      X = ref_varma_simx(A, B, zeros(r, 0), zeros(0, n), Sig, n, M, ...
                           X0bar, h, rng);
       E = [];
     end

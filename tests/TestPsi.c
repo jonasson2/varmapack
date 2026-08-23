@@ -1,36 +1,20 @@
 #include <stdio.h>
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
 #include "BlasGateway.h"
 
 static void TestFindPsi(void) {
-  int p, q, r, n, icase, h;
-  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
-  bool ok;
-  double *A, *B, *Sig, *Psi;
-
-  // Query dimensions for mediumARMA1
-  icase = 12;
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  checkVarmapackSuccess(ok);
-  xCheck(r == 3 && p == 3 && q == 3);
-  h = imax(p, q);
-
-  // Allocate and load testcase data
-  xCheck(ALLOC(A, r*r*p));
-  xCheck(ALLOC(B, r*r*q));
-  xCheck(ALLOC(Sig, r*r));
-  xCheck(ALLOC(Psi, r*h*r*h));
-
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  checkVarmapackSuccess(ok);
-
-  FindPsi(A, B, Psi, p, q, r);
-
+  test_model model;
+  double *Psi;
+  loadIndexedTestModel(&model, 12);
+  xCheck(model.r == 3 && model.p == 3 && model.q == 3);
+  int h = imax(model.p, model.q);
+  int n = model.r*h*model.r*h;
+  xCheck(ALLOC(Psi, n));
+  FindPsi(model.A, model.B, Psi, model.p, model.q, model.r);
   // Expected Psi from Matlab find_Psi(A,B) for mediumARMA1 (3x9x3 flattened)
   double Psi_exp[] = {
     1.0000, 0.0000, 0.0000, 0.2100, 0.2400, 0.2600, 0.3485, 0.3756, 0.4027,
@@ -44,37 +28,24 @@ static void TestFindPsi(void) {
     0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000
   };
 
-  n = r*r*h;
   xCheck(almostEqual(Psi, Psi_exp, n));
-
-  FREE(A); FREE(B); FREE(Sig); FREE(Psi);
+  FREE(Psi);
+  freeTestModel(&model);
 }
 
 static void TestFindPsiHat(void) {
-  int p, q, r, h, icase;
-  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
-  double *A, *B, *Sig, *Psi, *Psi_hat;
-  bool ok;
-  
-  icase = 12;
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  checkVarmapackSuccess(ok);
-  h = imax(p, q);
-  
-  xCheck(ALLOC(A, r*r*p));
-  xCheck(ALLOC(B, r*r*q));
-  xCheck(ALLOC(Sig, r*r));
-  xCheck(ALLOC(Psi, r*h*r*h));
-  xCheck(ALLOC(Psi_hat, r*h*r*h));
-
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  checkVarmapackSuccess(ok);
-  FindPsi(A, B, Psi, p, q, r);
+  test_model model;
+  double *Psi, *Psi_hat;
+  loadIndexedTestModel(&model, 12);
+  int h = imax(model.p, model.q);
+  int n = model.r*h*model.r*h;
+  xCheck(ALLOC(Psi, n));
+  xCheck(ALLOC(Psi_hat, n));
+  FindPsi(model.A, model.B, Psi, model.p, model.q, model.r);
   double Sig_mod[] = {
     1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 2.0
   };
-  xCheck(FindPsiHat(Psi, Psi_hat, Sig_mod, r, h));
-
+  xCheck(FindPsiHat(Psi, Psi_hat, Sig_mod, model.r, h));
   // Expected Psi_hat from Matlab find_Psi_hat for mediumARMA1 with modified Sig:
   double Psi_hat_exp[] = {
     1.0000, 1.0000, 1.0000, 0.4100, 0.4800, 0.5400, 0.9765, 1.0508, 1.1251,
@@ -87,63 +58,54 @@ static void TestFindPsiHat(void) {
     0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000,
     0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000
   };
-  xCheck(almostEqual(Psi_hat, Psi_hat_exp, r*h*r*h));
-
-  FREE(A); FREE(B); FREE(Sig); FREE(Psi); FREE(Psi_hat);
+  xCheck(almostEqual(Psi_hat, Psi_hat_exp, n));
+  FREE(Psi_hat);
+  FREE(Psi);
+  freeTestModel(&model);
 }
 
 static void TestPsiTinyAR(void) {
   // Matlab comparison
-  double A[1], B[1], Sig[1], Psi[1], PsiHat[1];
-  int p=1, q=0, r=1, icase, h=imax(p, q);
-  bool ok;
-  ok = varmapack_testcase("tinyAR", &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  checkVarmapackSuccess(ok);
-  FindPsi(A, B, Psi, p, q, r);
-  xCheck(FindPsiHat(Psi, PsiHat, Sig, r, h));
+  test_model model;
+  double Psi[1], PsiHat[1];
+  loadNamedTestModel(&model, "tinyAR");
+  int h = imax(model.p, model.q);
+  FindPsi(model.A, model.B, Psi, model.p, model.q, model.r);
+  xCheck(FindPsiHat(Psi, PsiHat, model.Sig, model.r, h));
   xCheck(Psi[0] == 1);
   xCheck(almostSame(PsiHat[0], 0.894427190999916));
+  freeTestModel(&model);
 }
 
 static void TestPsiSimple(void) {
   // Another Matlab comparison
-  int p, q, r, icase, h;
-  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
-  bool ok;
-  double *A, *B, *Sig, *Psi, *Psi_hat;
+  test_model model;
+  double *A, *Psi, *Psi_hat;
   double A2[] = {0.1, 0.3, 0.2, 0.4};
-
-  icase = 9;
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  checkVarmapackSuccess(ok);
-  xCheck(r == 2);
-  h = imax(p, q);
-
-  xCheck(ALLOC(A, r*r*(p+1)));
-  xCheck(ALLOC(B, r*r*q));
-  xCheck(ALLOC(Sig, r*r));
-  xCheck(ALLOC(Psi, r*h*r*h));
-  xCheck(ALLOC(Psi_hat, r*h*r*h));
-
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  checkVarmapackSuccess(ok);
-  xCheck(r == 2);
-
-  copy(4, A2, 1, A + 4, 1);  // A := [A A2]
-  p = 2;
-  Sig[0] = 1.0;              // So LSig is simple
-
-  FindPsi(A, B, Psi, p, q, r);
-  xCheck(FindPsiHat(Psi, Psi_hat, Sig, r, h));
-  
+  loadIndexedTestModel(&model, 9);
+  xCheck(model.r == 2 && model.p == 1);
+  int p = 2;
+  int h = imax(p, model.q);
+  int n = model.r*h*model.r*h;
+  xCheck(ALLOC(A, model.r*model.r*p));
+  xCheck(ALLOC(Psi, n));
+  xCheck(ALLOC(Psi_hat, n));
+  copy(4, model.A, 1, A, 1);
+  copy(4, A2, 1, A+4, 1);  // A := [A A2]
+  model.Sig[0] = 1;        // So LSig is simple
+  FindPsi(A, model.B, Psi, p, model.q, model.r);
+  xCheck(FindPsiHat(Psi, Psi_hat, model.Sig, model.r, h));
   double Psi_exp[] = {
     1,  0, .6, .4, 0,  1, .4, .4, 0,  0, 1,  0, 0,  0, 0,  1};
   double Psi_hat_exp[] = {
     1, 1, 1,  .8, 0, 1, .4, .4, 0, 0, 1,  1, 0, 0, 0,  1};
 
-  xCheck(almostEqual(Psi, Psi_exp, r*h*r*h));
-  xCheck(almostEqual(Psi_hat, Psi_hat_exp, r*h*r*h));
-  FREE(B); FREE(Sig); FREE(A); FREE(Psi); FREE(Psi_hat);
+  xCheck(almostEqual(Psi, Psi_exp, n));
+  xCheck(almostEqual(Psi_hat, Psi_hat_exp, n));
+  FREE(Psi_hat);
+  FREE(Psi);
+  FREE(A);
+  freeTestModel(&model);
 }
 
 static void TestPublicPsiScalar(void) {

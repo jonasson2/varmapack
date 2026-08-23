@@ -1,7 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include "xCheck.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "FromMatlab.h"
 

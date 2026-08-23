@@ -1,18 +1,28 @@
 test_that("VARMAX simulation accepts vector and replicate-specific exogenous inputs", {
-  A <- array(c(0.2, 0, 0, 0.3), c(2L, 2L, 1L))
-  B <- array(c(0.1, 0, 0, 0.2), c(2L, 2L, 1L))
+  A <- array(c(0.2, -0.1, 0.1, 0.3), c(2L, 2L, 1L))
+  B <- array(c(0.1, 0.05, -0.2, 0.2), c(2L, 2L, 1L))
   C <- array(c(0.3, 0.1, -0.2, 0.4), c(2L, 2L, 1L))
   model <- varmapack_model(A = A, B = B, C = C, Sig = diag(2))
-  X0 <- array(0, c(2L, 2L, 2L))
+  X0 <- array(seq_len(8)/10, c(2L, 2L, 2L))
   z <- array(seq_len(40)/10, c(2L, 10L, 2L))
   rng1 <- randompack::randompack_rng()
   rng2 <- randompack::randompack_rng()
   rng1$seed(99)
   rng2$seed(99)
-  X1 <- model$sim(10, nrep = 2, X0 = X0, z = z, rng = rng1)
-  X2 <- model$sim(10, nrep = 2, X0 = X0, z = z, rng = rng2)
-  expect_identical(X1, X2)
-  expect_equal(dim(X1), c(2L, 10L, 2L))
+  out1 <- model$sim(10, nrep = 2, X0 = X0, z = z, rng = rng1,
+                    return_shocks = TRUE)
+  out2 <- model$sim(10, nrep = 2, X0 = X0, z = z, rng = rng2,
+                    return_shocks = TRUE)
+  expect_identical(out1, out2)
+  expect_equal(dim(out1$X), c(2L, 10L, 2L))
+  expect_equal(out1$X[, 1:2, , drop = FALSE], X0)
+  for (j in 1:2) {
+    for (t in 3:10) {
+      expected <- out1$E[, t, j] + A[, , 1] %*% out1$X[, t - 1, j] +
+        B[, , 1] %*% out1$E[, t - 1, j] + C[, , 1] %*% z[, t, j]
+      expect_equal(out1$X[, t, j], drop(expected), tolerance = 1e-12)
+    }
+  }
 })
 
 test_that("VARMAX simulation requires its minimum inputs", {

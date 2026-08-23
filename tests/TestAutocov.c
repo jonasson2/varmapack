@@ -1,8 +1,7 @@
 #include <math.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_autocov_example(void) {
   int r = 2, n = 5, maxlag = 2;

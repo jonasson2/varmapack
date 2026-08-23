@@ -10,7 +10,6 @@
 #include "printX.h"
 #include "varmapack.h"
 #include "getopt.h"
-//#include "ExtraUtil.h"
 #include "VarmaUtilities.h"
 
 #define TCN 20  // Max chars in testcase argument (not counting \0) 

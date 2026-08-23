@@ -1,8 +1,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-#include "ExtraUtil.h"
-#include "xCheck.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
 #define DEBUG
@@ -171,17 +170,16 @@ static void check_deterministic_unnamed(void) {
 static void check_random_unnamed(void) {
   int p = 2, q = 1, r = 2, icase = 0;
   double A1[8], B1[4], Sig1[4], A2[8], B2[4], Sig2[4];
-  randompack_rng *rng = randompack_create(0);
+  randompack_rng *rng = 0;
   bool ok = varmapack_testcase("", &icase, 0, &p, &q, &r, A1, B1, Sig1, 0);
   checkVarmapackFailure(ok);
-  xCheck(rng != 0);
-  xCheck(randompack_seed(123, 0, 0, rng));
+  rng = seededRng(123);
   ok = varmapack_testcase("", &icase, 0, &p, &q, &r, A1, B1, Sig1, rng);
   checkVarmapackSuccess(ok);
   double rho = varmapack_specrad(A1, r, p);
   checkVarmapackClean();
   xCheck(rho < 1);
-  xCheck(randompack_seed(123, 0, 0, rng));
+  reseedRng(rng, 123);
   p = 2;
   q = 1;
   r = 2;

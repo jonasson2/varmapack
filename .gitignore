@@ -29,6 +29,7 @@ compile_commands.json
 *.log
 *.out
 *.pdf
+!python/docs/figures/*.pdf
 *.synctex.gz
 
 # R generated files

@@ -4,7 +4,7 @@ import numpy as np
 import randompack
 import varmapack
 
-OUTPUT_DIR = Path(__file__).parent
+OUTPUT_DIR = Path(__file__).parents[1] / "docs" / "figures"
 FONT_SIZE = 10
 CROSS_FONT_SIZE = 15
 
@@ -47,7 +47,7 @@ def plot_cross_correlation(lags, rho_xy):
     fig.tight_layout()
     output = OUTPUT_DIR / "bivariate_varma_cross_correlation"
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight")
-    fig.savefig(output.with_suffix(".png"), dpi=180, bbox_inches="tight")
+    fig.savefig(output.with_suffix(".svg"), bbox_inches="tight")
 
 def plot_paths(paths, h):
     nrep, n, _ = paths.shape
@@ -73,9 +73,10 @@ def plot_paths(paths, h):
     fig.tight_layout()
     output = OUTPUT_DIR / "bivariate_varma_paths"
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight")
-    fig.savefig(output.with_suffix(".png"), dpi=180, bbox_inches="tight")
+    fig.savefig(output.with_suffix(".svg"), bbox_inches="tight")
 
 if __name__ == "__main__":
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     paths, h, lags, rho_xy = compute_results()
     plot_cross_correlation(lags, rho_xy)
     plot_paths(paths, h)

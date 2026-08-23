@@ -1,11 +1,10 @@
 #include <math.h>
 #include <stdbool.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "VarmaUtilities.h"
 #include "randompack.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_white_noise(void) {
   int p = 0, q = 0, r = 2, n = 4, M = 1;
@@ -83,7 +82,7 @@ static void check_null_E_reproducible_with_ma(void) {
   randompack_rng *rng = seededRng(41);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, 0, rng);
   checkVarmapackSuccess(ok);
-  xCheck(randompack_seed(41, 0, 0, rng));
+  reseedRng(rng, 41);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, 0, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X1, X2, r*n*M);
@@ -106,7 +105,7 @@ static void check_null_E_multiple_replicates(void) {
   randompack_rng *rng = seededRng(43);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, E, rng);
   checkVarmapackSuccess(ok);
-  xCheck(randompack_seed(43, 0, 0, rng));
+  reseedRng(rng, 43);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, 0, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X1, X2, r*n*M);
@@ -244,9 +243,8 @@ static void check_invalid_input(void) {
   double Sig[] = {1};
   double X0[] = {0};
   double X[2], E[2];
-  randompack_rng *rng = randompack_create(0);
+  randompack_rng *rng = seededRng(44);
   bool ok;
-  xCheck(rng != 0);
   ok = varmapack_sim(0, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   checkVarmapackFailure(ok);
   ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
@@ -318,8 +316,7 @@ static void check_multipath_X0(void) {
   double Sig[] = {1};
   double X0[] = {2, 4};
   double X[6], E[6];
-  randompack_rng *rng = randompack_create(0);
-  xCheck(rng != 0);
+  randompack_rng *rng = seededRng(45);
   bool ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1,
                                         M, X, E, rng);
   checkVarmapackSuccess(ok);
@@ -376,7 +373,7 @@ static void check_reproducibility(void) {
   randompack_rng *rng = seededRng(23);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X1, E1, rng);
   checkVarmapackSuccess(ok);
-  xCheck(randompack_seed(23, 0, 0, rng));
+  reseedRng(rng, 23);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X2, E2, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X1, X2, n*M);

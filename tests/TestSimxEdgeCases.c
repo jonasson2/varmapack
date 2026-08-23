@@ -1,10 +1,9 @@
 #include <math.h>
 #include <limits.h>
 #include <string.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_white_noise_with_exog(void) {
   int p = 0, q = 0, s = 1, r = 1, n = 5, M = 2, h = 1;
@@ -103,6 +102,36 @@ static void check_varma_without_exog(void) {
   randompack_free(rng);
 }
 
+static void check_vector_exog_result(double C[], double z[], int zPaths, int s,
+                                     int d, int r, int n, int M, int h,
+                                     double X[], double E[]) {
+  for (int j=0; j<M; j++) {
+    int zOffset = zPaths == 1 ? 0 : j*d*n;
+    for (int row=0; row<r; row++) {
+      double expected = 0;
+      for (int lag=0; lag<s; lag++) {
+        for (int col=0; col<d; col++) {
+          expected -= C[row+col*r+lag*r*d]*
+            z[zOffset+col+(h-1-lag)*d];
+        }
+      }
+      xCheck(fabs(E[j*r*n+(h-1)*r+row] - expected) < 1e-12);
+    }
+    for (int t=h; t<n; t++) {
+      for (int row=0; row<r; row++) {
+        double expected = E[j*r*n+t*r+row];
+        for (int lag=0; lag<s; lag++) {
+          for (int col=0; col<d; col++) {
+            expected += C[row+col*r+lag*r*d]*
+              z[zOffset+col+(t-lag)*d];
+          }
+        }
+        xCheck(fabs(X[j*r*n+t*r+row] - expected) < 1e-12);
+      }
+    }
+  }
+}
+
 static void check_vector_exog(void) {
   int p = 0, q = 0, s = 2, d = 2, r = 2, n = 5, M = 2, h = 2;
   double C[] = {0.5, -0.2, 0.1, 0.3, -0.4, 0.2, 0.2, 0.1};
@@ -115,55 +144,13 @@ static void check_vector_exog(void) {
   bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, d, r, n, M,
                             X0, h, 1, Xcommon, Ecommon, rng);
   checkVarmapackSuccess(ok);
-  for (int j=0; j<M; j++) {
-    for (int row=0; row<r; row++) {
-      double expected = 0;
-      for (int lag=0; lag<s; lag++) {
-        for (int col=0; col<d; col++) {
-          expected -= C[row + col*r + lag*r*d]*z[col + (1-lag)*d];
-        }
-      }
-      xCheck(fabs(Ecommon[j*r*n + r + row] - expected) < 1e-12);
-    }
-    for (int t=h; t<n; t++) {
-      for (int row=0; row<r; row++) {
-        double expected = Ecommon[j*r*n + t*r + row];
-        for (int lag=0; lag<s; lag++) {
-          for (int col=0; col<d; col++) {
-            expected += C[row + col*r + lag*r*d]*z[col + (t-lag)*d];
-          }
-        }
-        xCheck(fabs(Xcommon[j*r*n + t*r + row] - expected) < 1e-12);
-      }
-    }
-  }
+  check_vector_exog_result(C, z, 1, s, d, r, n, M, h, Xcommon, Ecommon);
   randompack_free(rng);
   rng = seededRng(108);
   ok = varmapack_simx(0, 0, C, Sig, z, M, p, q, s, d, r, n, M,
                        X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
-  for (int j=0; j<M; j++) {
-    for (int row=0; row<r; row++) {
-      double expected = 0;
-      for (int lag=0; lag<s; lag++) {
-        for (int col=0; col<d; col++) {
-          expected -= C[row + col*r + lag*r*d]*z[j*d*n + col + (1-lag)*d];
-        }
-      }
-      xCheck(fabs(E[j*r*n + r + row] - expected) < 1e-12);
-    }
-    for (int t=h; t<n; t++) {
-      for (int row=0; row<r; row++) {
-        double expected = E[j*r*n + t*r + row];
-        for (int lag=0; lag<s; lag++) {
-          for (int col=0; col<d; col++) {
-            expected += C[row + col*r + lag*r*d]*z[j*d*n + col + (t-lag)*d];
-          }
-        }
-        xCheck(fabs(X[j*r*n + t*r + row] - expected) < 1e-12);
-      }
-    }
-  }
+  check_vector_exog_result(C, z, M, s, d, r, n, M, h, X, E);
   randompack_free(rng);
 }
 

@@ -1,9 +1,8 @@
 #include <stdbool.h>
 #include <limits.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_values(void) {
   double C[6], z[20];

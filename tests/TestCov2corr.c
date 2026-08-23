@@ -1,8 +1,7 @@
 #include <math.h>
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void check_copy(void) {
   double cov[] = {

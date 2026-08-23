@@ -143,11 +143,14 @@ py.install_sources('varmapack/__init__.py', subdir: 'varmapack')
 
 foreach t : [
   'test_basic.py',
+  'test_data.py',
   'test_errors.py',
   'test_interop.py',
   'test_moments.py',
+  'test_testcases.py',
   'test_varmax.py',
 ]
-  test('python-' + t.split('.')[0], py, args: [files('tests' / t)],
+  test('python-' + t.split('.')[0], py,
+    args: ['-m', 'pytest', '-q', files('tests' / t)],
     env: {'PYTHONPATH': meson.current_build_dir()}, )
 endforeach

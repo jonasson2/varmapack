@@ -1,18 +1,17 @@
 #include <math.h>
 #include <stdbool.h>
 #include "BlasGateway.h"
-#include "ExtraUtil.h"
+#include "TestUtil.h"
 #include "Tests.h"
 #include "VarmaPackUtil.h"
 #include "VarmaUtilities.h"
 #include "randompack.h"
 #include "varmapack.h"
-#include "xCheck.h"
 
 static void conditional_moments(double A[], double B[], double Sig[], double X0[], int p,
                                 int q, int r, int h, double R[], double e[]) {
   int rh = r*h, r2 = r*r, info;
-  double *C = 0, *G = 0, *S = 0, *SS = 0, *CC = 0, *wrk = 0, *work = 0;
+  double *C = 0, *G = 0, *S = 0, *SS = 0, *CC = 0, *wrk = 0;
   xCheck(ALLOC(C, r2*(q+1)));
   xCheck(ALLOC(G, r2*(q+1)));
   xCheck(ALLOC(S, r2*(p+1)));
@@ -37,7 +36,6 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
   }
   syrk("Low", "T", rh, rh, -1, CC, rh, 1, R, rh);
   copylowertoupper(rh, R, rh);
-  FREE(work);
   FREE(wrk);
   FREE(CC);
   FREE(SS);
@@ -47,29 +45,24 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
 }
 
 static void check_case_support(int icase, double support_tol) {
-  int p = 0, q = 0, r = 0, h, rh, n = 5, M = 1, info, nulls = 0;
-  char name[VARMAPACK_TESTCASE_NAME_LEN] = "";
-  double *A = 0, *B = 0, *Sig = 0, *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
+  test_model model;
+  int h, rh, n = 5, M = 1, info, nulls = 0;
+  double *X0 = 0, *R = 0, *e = 0, *Eig = 0, *lam = 0;
   double *work = 0, *X = 0, *E = 0;
-  bool ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, 0, 0, 0, 0);
-  checkVarmapackSuccess(ok);
-  h = imax(p, q);
-  rh = r*h;
-  xCheck(ALLOC(A, r*r*(p > 0 ? p : 1)));
-  xCheck(ALLOC(B, r*r*q));
-  xCheck(ALLOC(Sig, r*r));
+  loadIndexedTestModel(&model, icase);
+  h = imax(model.p, model.q);
+  rh = model.r*h;
   xCheck(ALLOC(X0, rh));
   xCheck(ALLOC(R, rh*rh));
   xCheck(ALLOC(e, rh));
   xCheck(ALLOC(Eig, rh*rh));
   xCheck(ALLOC(lam, rh));
   xCheck(ALLOC(work, 3*rh));
-  xCheck(ALLOC(X, r*n*M));
-  xCheck(ALLOC(E, r*n*M));
-  ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
-  checkVarmapackSuccess(ok);
-  for (int i=0; i<rh; i++) X0[i] = (i + 1)/10.0;
-  conditional_moments(A, B, Sig, X0, p, q, r, h, R, e);
+  xCheck(ALLOC(X, model.r*n*M));
+  xCheck(ALLOC(E, model.r*n*M));
+  for (int i=0; i<rh; i++) X0[i] = (i+1)/10.0;
+  conditional_moments(model.A, model.B, model.Sig, X0, model.p, model.q,
+                      model.r, h, R, e);
   lacpy("All", rh, rh, R, rh, Eig, rh);
   syev("V", "Low", rh, Eig, rh, lam, work, 3*rh, &info);
   xCheck(info == 0);
@@ -78,9 +71,9 @@ static void check_case_support(int icase, double support_tol) {
     xCheck(lam[i] > -1e-12);
   }
   xCheck(nulls > 0 && nulls < rh);
-  randompack_rng *rng = randompack_create(0);
-  xCheck(randompack_seed(42, 0, 0, rng));
-  ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, h, 1, X, E, rng);
+  randompack_rng *rng = seededRng(42);
+  bool ok = varmapack_sim(model.A, model.B, model.Sig, 0, 0, model.p,
+                          model.q, model.r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   for (int k=0; k<nulls; k++) {
     double nr = 0;
@@ -90,7 +83,7 @@ static void check_case_support(int icase, double support_tol) {
     xCheck(nr < support_tol);
   }
   for (int j=0; j<M; j++) {
-    double *Ej = E + j*r*n;
+    double *Ej = E + j*model.r*n;
     for (int k=0; k<nulls; k++) {
       double d = dot(rh, Eig + k*rh, 1, Ej, 1);
       d -= dot(rh, Eig + k*rh, 1, e, 1);
@@ -106,9 +99,7 @@ static void check_case_support(int icase, double support_tol) {
   FREE(e);
   FREE(R);
   FREE(X0);
-  FREE(Sig);
-  FREE(B);
-  FREE(A);
+  freeTestModel(&model);
 }
 
 void TestPsdCondCov(void) {

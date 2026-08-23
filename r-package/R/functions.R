@@ -103,7 +103,8 @@ varmapack_testcase <- function(which = "random", p = NULL, q = NULL, r = NULL,
     }
   }
   else if (is.numeric(which) && length(which) == 1L && !is.na(which) &&
-           is.finite(which) && which == floor(which) && which >= 1L) {
+           is.finite(which) && which == floor(which) && which >= 1L &&
+           which <= .Machine$integer.max) {
     index <- as.integer(which)
   }
   else {

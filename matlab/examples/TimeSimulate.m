@@ -19,101 +19,55 @@ end
 
 function time_problem_table(opts)
   rngRef = randompack_create();
-  rngC = varmapack.Rng();
+  rngVarmapack = varmapack.Rng();
   cleanupRef = onCleanup(@() randompack_free(rngRef));
-  cleanupC = onCleanup(@() delete(rngC));
-  warm_cpu(opts.w);
-  warm_simulations(rngRef, rngC);
-  fprintf("Varmapack benchmark and comparison with MATLAB reference " + ...
+  cleanupVarmapack = onCleanup(@() delete(rngVarmapack));
+  benchmark_warm_cpu(opts.w);
+  fprintf("Varmapack MATLAB benchmark and comparison with reference " + ...
           "simulation\n");
   fprintf("Benchmark unit:          ns/value\n");
-  fprintf("length per series:       %d\n", opts.n);
-  fprintf("replicates per call:     %d\n", opts.M);
-  fprintf("benchmark time per case: %.1f s\n", opts.t);
+  fprintf("Length per series:       %d\n", opts.n);
+  fprintf("Replicates per call:     %d\n", opts.M);
+  fprintf("Target time per method:  %.1f s per testcase\n", opts.t);
   if opts.selected
-    fprintf("models:                  selected paper set\n");
+    fprintf("Models:                  selected paper set\n");
   end
   if opts.platform
-    fprintf("models:                  selected platform set\n");
+    fprintf("Models:                  selected platform set\n");
   end
   fprintf("\n");
   fprintf("%-12s %2s %2s %2s %5s %10s %10s %6s\n", ...
           "Testcase", "p", "q", "r", "rho", "Varmapack", "Reference", "Ratio");
-  names = { ...
-    "tinyAR", "tinyMA", "tinyARMA", "smallAR1", "smallAR2", "smallMA1", ...
-    "smallMA2", "smallARMA1", "smallARMA2", "mediumAR", "mediumMA1", ...
-    "mediumARMA1", "mediumARMA2", "mediumMA2", "largeAR", "largeARMA"};
-  if opts.selected
-    names = {"tinyAR", "tinyARMA", "smallAR1", "smallARMA2", ...
-             "mediumAR", "mediumARMA2", "largeAR", "largeARMA"};
-  end
-  if opts.platform
-    names = {"tinyARMA", "smallAR2", "mediumAR", "mediumARMA1", "largeAR"};
-  end
+  names = benchmark_testcases(opts.selected, opts.platform, "all");
   for i = 1:numel(names)
     [A, B, Sig, p, q, r] = varmapack.testcase(names{i});
-    time_case(names{i}, A, B, Sig, p, q, r, opts, rngRef, rngC);
+    time_case(names{i}, A, B, Sig, p, q, r, opts, rngRef, rngVarmapack);
   end
-  clear cleanupRef cleanupC
 end
 
-function time_case(name, A, B, Sig, p, q, r, opts, rngRef, rngC)
+function time_case(name, A, B, Sig, p, q, r, opts, rngRef, rngVarmapack)
   if p == 0
     rho = 0;
   else
     rho = varmapack.specrad(A);
   end
   values = r*opts.n*opts.M;
+  rngVarmapack.seed(12345);
+  varmapackNs = benchmark_time( ...
+      @() call_varmapack_sim(A, B, Sig, opts.n, opts.M, rngVarmapack), ...
+      values, opts.t);
   randompack_seed(rngRef, 12345);
-  refTime = time_one(@() call_ref_sim(A, B, Sig, opts.n, opts.M, rngRef), ...
-                     values, opts.t);
-  rngC.seed(12345);
-  cTime = time_one(@() call_c_sim(A, B, Sig, opts.n, opts.M, rngC), ...
-                   values, opts.t);
-  refNs = 1e9*refTime/values;
-  cNs = 1e9*cTime/values;
+  referenceNs = benchmark_time( ...
+      @() call_ref_sim(A, B, Sig, opts.n, opts.M, rngRef), values, opts.t);
   fprintf("%-12s %2d %2d %2d %5.3f %10.1f %10.0f %6.1f\n", ...
-          name, p, q, r, rho, cNs, refNs, refNs/cNs);
-end
-
-function seconds = time_one(fun, values, timingTarget)
-  repsPerCheck = max(1, floor(1e6/values));
-  reps = 0;
-  elapsed = 0;
-  tic;
-  while elapsed < timingTarget
-    for i = 1:repsPerCheck
-      fun();
-    end
-    reps = reps + repsPerCheck;
-    elapsed = toc;
-  end
-  seconds = elapsed/reps;
-end
-
-function warm_simulations(rngRef, rngC)
-  [A, B, Sig] = varmapack.testcase("mediumARMA1");
-  randompack_seed(rngRef, 12345);
-  call_ref_sim(A, B, Sig, 100, 100, rngRef);
-  rngC.seed(12345);
-  call_c_sim(A, B, Sig, 100, 100, rngC);
+          name, p, q, r, rho, varmapackNs, referenceNs, ...
+          referenceNs/varmapackNs);
 end
 
 function call_ref_sim(A, B, Sig, n, M, rng)
-  X = ref_varma_sim(A, B, Sig, [], n, M, [], rng);
+  ref_varma_sim(A, B, Sig, [], n, M, [], rng);
 end
 
-function call_c_sim(A, B, Sig, n, M, rng)
-  X = varmapack.sim(A, B, Sig, [], n, M, [], rng);
-end
-
-function warm_cpu(seconds)
-  A = rand(96);
-  elapsed = 0;
-  while elapsed < seconds
-    tic;
-    A = A*A;
-    A = A/norm(A, "fro");
-    elapsed = elapsed + toc;
-  end
+function call_varmapack_sim(A, B, Sig, n, M, rng)
+  varmapack.sim(A, B, Sig, [], n, M, [], rng);
 end

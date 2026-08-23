@@ -4,9 +4,10 @@ function [shortDiff, longDiff, startupZ] = test_ref_varma_simx()
   % Tiny scalar ARMAX: checks closed-form moments and a scalar simx/sim match.
   test_tinyARMAX;
   % Short deterministic comparison: catches indexing errors near startup.
-  shortDiff = test_ref_varma_simx_forward(1:15, 10, 7, 5*eps);
+  cases = 1:ref_varma_testcase('count');
+  shortDiff = test_ref_varma_simx_forward(cases, 10, 7, 5*eps);
   % Long deterministic comparison: catches accumulated recursion/indexing drift.
-  longDiff = test_ref_varma_simx_forward(1:15, 1000, 7, 100*eps);
+  longDiff = test_ref_varma_simx_forward(cases, 1000, 7, 100*eps);
   % Startup shocks: checks the conditional Gaussian distribution of eps0...eps{h-1}.
   startupZ = test_ref_varma_simx_startup;
   % Multipath startup: checks r by h by M startup paths and scalar z paths.

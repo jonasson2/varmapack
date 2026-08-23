@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include "printX.h"
 #include "Tests.h"
-#include "xCheck.h"
+#include "TestUtil.h"
 
 int main(void) {
   bool ok;

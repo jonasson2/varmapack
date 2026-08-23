@@ -47,10 +47,7 @@ a gateway loads.
 Check the installation with:
 
 ```matlab
-test_varmapack_rng
-test_varmapack_cov2corr
-test_varmapack_testcasex
-test_varmapack_simx
+test_varmapack
 ```
 
 ## More information
