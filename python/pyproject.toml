@@ -7,7 +7,7 @@ requires = [
   "numpy>=2,<2.3; python_version == '3.10' and platform_machine != 'aarch64'",
   "numpy>=2,<2.5; python_version >= '3.11' and python_version < '3.14' and platform_machine != 'aarch64'",
   "numpy>=2.5; python_version >= '3.14'",
-  "randompack>=0.1.9",
+  "randompack>=0.1.10",
   "cython",
 ]
 build-backend = "mesonpy"
@@ -21,7 +21,7 @@ requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.22,<2.3; python_version < '3.14' and platform_machine == 'aarch64'",
   "numpy>=1.22; python_version >= '3.14' or platform_machine != 'aarch64'",
-  "randompack>=0.1.9",
+  "randompack>=0.1.10",
 ]
 readme = { file = "README.md", content-type = "text/markdown" }
 description = "VARMA time-series simulation library"
