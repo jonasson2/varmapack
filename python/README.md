@@ -19,13 +19,18 @@ X = model.sim(200)
 print(X.shape)
 ```
 
+For repeated simulations, `Model.sim` accepts a writable, C-contiguous
+`float64` NumPy array through `out=`. Reusing an output array avoids an
+allocation on each call; its required shape is `(nrep, length, r)`.
+
 ## Timing
 
-`examples/TimeSimulate.py` measures Varmapack simulation for all named
-testcases and an unnamed `(p,q,r,rho)=(3,3,10,.98)` model. It uses length 100,
-1000 replicates, and a 0.1-second timing target per testcase by default. Its
-output can be compared with the C and MATLAB `TimeSimulate` benchmarks. It is
-a source-tree benchmark and requires the optional `statsmodels` package:
+`examples/TimeSimulate.py` compares Varmapack with Statsmodels `VARMAX` on all
+named testcases and with Statsmodels `VAR` on pure-VAR testcases. The latter
+uses a 200-observation burn-in by default. The program uses length 100, 1000
+replicates, and a 0.1-second timing target per method and testcase. Its output
+can be compared with the C and MATLAB simulation benchmarks. It is a
+source-tree benchmark and requires the optional `statsmodels` package:
 
 ```sh
     python -m pip install statsmodels

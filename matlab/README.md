@@ -63,17 +63,21 @@ TODO: add reference to paper.
 
 ## Timing
 
-On macOS and Linux, `matlab/examples/TimeSimulate.sh` measures Varmapack
-simulation for all named testcases and an unnamed `(p,q,r,rho)=(3,3,10,.98)`
-model. It uses length 100, 1000 replicates, and a 0.1-second timing target per
-testcase by default. Its output can be compared with the C and Python
+On macOS and Linux, `matlab/examples/TimeSimulate.sh` compares Varmapack with
+the independent reference simulation for all named testcases. When the
+Econometrics Toolbox is available, it also compares Varmapack with `varm` for
+pure VAR models; VARMA rows contain a dash in the `varm` column. Without the
+toolbox, the benchmark continues with dashes for all `varm` timings. It uses
+length 100, 1000 replicates, and a 0.1-second timing target per method and
+testcase by default. Its output can be compared with the C, Python, and R
 `TimeSimulate` benchmarks:
 
 ```sh
     matlab/examples/TimeSimulate.sh
 ```
 
-Use `-h` to list its timing and workload options.
+Use `-h` to list its timing and workload options, including the `varm` burn-in
+length.
 
 On Windows, run the same benchmark directly from MATLAB:
 

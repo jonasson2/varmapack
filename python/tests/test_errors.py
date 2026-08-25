@@ -43,6 +43,18 @@ def test_simulation_argument_errors():
         model.sim(0, rng=rng)
     with pytest.raises((ValueError, varmapack.VarmapackError)):
         model.sim(4, nrep=0, rng=rng)
+    with pytest.raises(TypeError):
+        model.sim(4, nrep=2, rng=rng, out=np.empty((2, 4, 2), dtype=np.float32))
+    with pytest.raises(TypeError):
+        model.sim(4, nrep=2, rng=rng, out=[[[0.0, 0.0]]*4]*2)
+    with pytest.raises(ValueError):
+        model.sim(4, nrep=2, rng=rng, out=np.empty((1, 4, 2)))
+    with pytest.raises(ValueError):
+        model.sim(4, nrep=2, rng=rng, out=np.empty((2, 4, 4))[:, :, ::2])
+    readonly = np.empty((2, 4, 2))
+    readonly.flags.writeable = False
+    with pytest.raises(ValueError):
+        model.sim(4, nrep=2, rng=rng, out=readonly)
 
 
 def test_derived_quantity_errors():
