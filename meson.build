@@ -1,5 +1,5 @@
 project('varmapack', 'c', 'fortran', version : '0.1.0', default_options : [
-    'c_std=c11', 'warning_level=3', 'buildtype=debug', ]
+    'c_std=c11', 'warning_level=3', 'buildtype=debug', 'werror=true', ]
 )
 
 buildtype = get_option('buildtype')
@@ -32,6 +32,17 @@ debug_print_args = buildtype.startswith('debug') ? ['-DDEBUG_PRINT'] : []
 
 # Common detection function for all platforms
 cc = meson.get_compiler('c')
+fc = meson.get_compiler('fortran')
+if get_option('enable_c_sanitizers')
+  c_sanitizer_args = cc.get_supported_arguments(['-fsanitize=address,undefined'])
+  if c_sanitizer_args.length() == 0
+    error('The selected C compiler does not support AddressSanitizer and UndefinedBehaviorSanitizer')
+  endif
+  add_project_arguments(c_sanitizer_args, language: 'c')
+  add_project_link_arguments(c_sanitizer_args, language: 'c')
+endif
+# The bundled SLICOT source predates current Fortran warning conventions.
+add_project_arguments(fc.get_supported_arguments(['-w', '/w']), language: 'fortran')
 pkg = import('pkgconfig')
 blas_dep = disabler()
 blas_found = 'none'
