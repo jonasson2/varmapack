@@ -581,7 +581,7 @@ cdef class Model:
         return self.muarr.copy()
 
     def sim(self, int length, *, int nrep=1, object X0=None, object z=None,
-            object rng=None, bint return_shocks=False):
+            object rng=None, bint return_shocks=False, object out=None):
         """
         Simulate time series from the model.
 
@@ -606,6 +606,9 @@ cdef class Model:
             created for the call.
         return_shocks : bool, optional
             If true, return both simulated series and innovations.
+        out : ndarray, optional
+            Writable, C-contiguous float64 array with shape
+            ``(nrep, length, r)`` in which to store the simulated series.
 
         Returns
         -------
@@ -614,7 +617,7 @@ cdef class Model:
         E : ndarray, shape (nrep, length, r)
             Simulated innovations. Returned only when ``return_shocks=True``.
         """
-        return _sim_model(self, length, nrep, X0, z, rng, return_shocks)
+        return _sim_model(self, length, nrep, X0, z, rng, return_shocks, out)
 
     def acvf(self, int maxlag):
         """
@@ -779,7 +782,7 @@ cdef double _ma_specrad_model(Model model):
 
 
 cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
-                       object rng, bint return_shocks):
+                       object rng, bint return_shocks, object out0):
     cdef np.ndarray X0arr
     cdef np.ndarray zarr
     cdef np.ndarray X
@@ -861,7 +864,21 @@ cdef object _sim_model(Model model, int length, int nrep, object X0, object z,
             raise ValueError("X0 has fewer than max(p, q, s - 1) values")
     elif zptr != NULL:
         raise ValueError("z can only be supplied when C is present")
-    X = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")
+    if out0 is None:
+        X = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")
+    else:
+        if not isinstance(out0, np.ndarray):
+            raise TypeError("out must be a NumPy array")
+        X = out0
+        if X.dtype != DTYPE_F64:
+            raise TypeError("out must have dtype float64")
+        if (X.ndim != 3 or X.shape[0] != nrep or X.shape[1] != length or
+                X.shape[2] != model.rval):
+            raise ValueError("out must have shape (nrep, length, r)")
+        if not X.flags.c_contiguous or not X.flags.aligned:
+            raise ValueError("out must be C-contiguous and aligned")
+        if not X.flags.writeable:
+            raise ValueError("out must be writable")
     if return_shocks:
         E = np.empty((nrep, length, model.rval), dtype=DTYPE_F64, order="C")
         Eptr = <double *>np.PyArray_DATA(E)
