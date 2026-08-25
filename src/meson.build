@@ -8,7 +8,7 @@ src_files = files( 'FindW.c', 'VarmaPackUtil.c', 'error.c', 'exog.c', 'sb03mdGat
 sb03md_fortran_files = files( 'sb03md-complete.F', )
 
 lib_kwargs = {
-  'include_directories' : inc, 'dependencies' : [blas_dep, randompack_dep],
+  'include_directories' : inc, 'dependencies' : [math_dep, blas_dep, randompack_dep],
   'c_args' : local_dpstrf_args, 'install' : true, }
 if host_system == 'windows'
   lib_kwargs += {'vs_module_defs' : 'varmapack.def'}
@@ -25,4 +25,4 @@ pkg.generate(libvarmapack,
   requires : ['randompack'])
 
 varmapack_dep = declare_dependency( link_with : libvarmapack,
-  include_directories : inc, dependencies : [blas_dep, randompack_dep], )
+  include_directories : inc, dependencies : [math_dep, blas_dep, randompack_dep], )
