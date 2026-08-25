@@ -21,7 +21,8 @@ def compute_results():
     rng.seed(123)
     startup = np.linspace(0, 5, 11)
     initial_values = np.column_stack((startup, startup))
-    paths = model.sim(n, nrep=nrep, X0=initial_values, rng=rng)
+    paths = np.empty((nrep, n, model.r))
+    model.sim(n, nrep=nrep, X0=initial_values, rng=rng, out=paths)
 
     Gamma = model.acvf(16)
     scale = np.sqrt(Gamma[0, 0, 0]*Gamma[0, 1, 1])

@@ -48,6 +48,11 @@ parse_options <- function(args) {
       i <- i + 1L
       next
     }
+    if (startsWith(arg, "-t") && nchar(arg) > 2L) {
+      opts$t <- as.numeric(substr(arg, 3L, nchar(arg)))
+      i <- i + 1L
+      next
+    }
     if (!(arg %in% c("-t", "-n", "-M")) || i == length(args))
       stop("invalid options; use -h for help", call. = FALSE)
     value <- args[[i + 1L]]

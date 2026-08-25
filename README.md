@@ -488,11 +488,11 @@ The `benchmark` directory contains four C timing programs. Build them with:
         benchmark/TimeSetup benchmark/TimeBreakEven
 ```
 
-`TimeSimulate` measures direct C-library simulation for all named testcases and
-an unnamed `(p,q,r,rho)=(3,3,10,.98)` model. It uses length 100, 1000
-replicates, and a 0.1-second timing target per testcase by default. Its output
-is directly comparable with `matlab/examples/TimeSimulate.sh` and
-`python/examples/TimeSimulate.py`:
+`TimeSimulate` measures direct C-library simulation for all named testcases. It
+uses length 100, 1000 replicates, and a 0.1-second timing target per testcase by
+default. Its output is directly comparable with
+`matlab/examples/TimeSimulate.sh`, `python/examples/TimeSimulate.py`, and
+`r-package/examples/TimeSimulate.R`:
 
 ```sh
     build/benchmark/TimeSimulate
