@@ -19,6 +19,14 @@ the replicate, the second is time, and the third is the series dimension.
 With ``return_shocks=True``, ``sim`` returns a pair ``(X, E)`` containing the
 series and shocks.
 
+Repeated simulations can reuse a preallocated array with ``out``. It must be a
+writable, C-contiguous ``float64`` array with shape ``(nrep, length, r)``.
+
+.. code-block:: python
+
+    X = np.empty((100, 200, VAR_model.r))
+    VAR_model.sim(200, nrep=100, out=X)
+
 .. code-block:: python
 
     print(varmapack.testcases())

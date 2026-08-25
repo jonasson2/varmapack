@@ -49,6 +49,21 @@ def test_var_model_properties_and_simulation():
     assert X3.shape == (3, 5, 1)
 
 
+def test_simulation_out():
+    model = varmapack.testcase("smallARMA1")
+    expected = model.sim(5, nrep=3, rng=_rng(124))
+    out = np.empty((3, 5, 2))
+    returned = model.sim(5, nrep=3, rng=_rng(124), out=out)
+    assert returned is out
+    assert np.array_equal(out, expected)
+    returned, E = model.sim(
+        5, nrep=3, rng=_rng(125), return_shocks=True, out=out)
+    assert returned is out
+    assert E.shape == out.shape
+    assert np.isfinite(out).all()
+    assert np.isfinite(E).all()
+
+
 def test_shared_and_replicate_starting_values():
     A = np.array([[[0.1, 0.2], [0.3, 0.4]]])
     B = np.array([[[0.5, 0.6], [0.7, 0.8]]])

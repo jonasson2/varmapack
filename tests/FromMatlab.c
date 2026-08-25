@@ -12,7 +12,10 @@ static bool FindVar(FILE *f, char *varname, int *m, int *n, int *line) {
   rewind(f);
   while (fscanf(f, " %127s", tag) == 1) {
     if (tag[0] == '#') {
-      fscanf(f, "%*[^\n]");
+      int c;
+      do {
+        c = fgetc(f);
+      } while (c != '\n' && c != EOF);
       continue;
     }
     ASSERT(!strcmp(tag, "var"), "expected var in compare file");

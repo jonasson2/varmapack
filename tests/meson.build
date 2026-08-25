@@ -27,7 +27,7 @@ run_tests = executable( 'RunTests',
   test_sources + test_util + files( '../examples/getopt.c',
     '../src/printX.c', ) + src_files + sb03md_fortran_files,
   include_directories : [inc, include_directories('../examples')],
-  dependencies : [blas_dep, randompack_dep],
+  dependencies : [math_dep, blas_dep, randompack_dep],
   c_args : debug_print_args + local_dpstrf_args + ['-DVARMAPACK_BUILD'], )
 
 test('RunTests', run_tests, args : ['-v'], workdir : meson.current_build_dir())
@@ -36,7 +36,7 @@ against_matlab = executable( 'AgainstMatlab',
   files('RunAgainstMatlab.c', 'TestAgainstMatlab.c', 'FromMatlab.c') + test_util +
   files('../src/printX.c') + src_files + sb03md_fortran_files,
   include_directories : [inc, include_directories('../examples')],
-  dependencies : [blas_dep, randompack_dep],
+  dependencies : [math_dep, blas_dep, randompack_dep],
   c_args : debug_print_args + local_dpstrf_args + ['-DVARMAPACK_BUILD'], )
 
 test('AgainstMatlab', against_matlab, workdir : meson.current_build_dir())
