@@ -42,7 +42,7 @@ static void check_norm_relative(const char *what, int icase, double diff,
 static bool pathwise_conditional_check(int icase) {
   // Rank-deficient conditional covariances can consume a platform-dependent
   // number of normals, so their seeded paths are not portable.
-  return icase != 4 && icase != 7;
+  return icase != 4 && icase != 7 && icase != 14;
 }
 
 static bool pathwise_varmax_check(int icase) {

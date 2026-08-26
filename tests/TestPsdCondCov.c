@@ -106,4 +106,6 @@ void TestPsdCondCov(void) {
   // Case 4 has a numerical null direction that varies modestly by platform.
   check_case_support(4, 1e-6);
   check_case_support(7, 1e-10);
+  // Case 14 has a structural null direction from its second MA block.
+  check_case_support(14, 1e-6);
 }
