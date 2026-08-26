@@ -141,6 +141,7 @@ int main(int argc, char **argv) {
   bool ok;
   int n = 0, p, q, r, icase, seed;
   char testcase[TCN + 1];
+  char name[16] = "";
   double *A = 0, *B = 0, *Sig = 0, *X = 0, *mu = 0, *Gamma = 0;
   randompack_rng *rng = 0;
   bool print, help;
@@ -160,7 +161,6 @@ int main(int argc, char **argv) {
     randompack_randomize(rng);
   else
     randompack_seed(seed, 0, 0, rng);
-  char name[16] = "";
   ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, rng);
   if (!ok) goto fail;
   //

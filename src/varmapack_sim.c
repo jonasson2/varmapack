@@ -128,6 +128,7 @@ bool varmapack_sim(double A[], double B[], double Sig[], double mu[], int nmu,
   size_t nM, eCount, cCount, ssCount, aCount, bCount;
   bool returnE = E != 0;
   bool X0Given = X0 != 0;
+  bool rollingE = false;
   clear_error();
   if ((p > 0 && A == 0) || (q > 0 && B == 0) || Sig == 0 || X == 0 || rng == 0) {
     return fail_error("invalid argument");
@@ -180,7 +181,7 @@ bool varmapack_sim(double A[], double B[], double Sig[], double mu[], int nmu,
   if (q > 0 && !ALLOC(Bflp, bCount)) goto alloc_fail;
   flipmat(A, Aflp, r, p);
   flipmat(B, Bflp, r, q);
-  bool rollingE = !returnE;
+  rollingE = !returnE;
   if (!tailSimulate(Aflp, Bflp, Sig, E, rollingE, ldE, X, p, q, r, n, M, h, rng))
     goto fail;
   addMean(X, mu, nmu, r, n, M);

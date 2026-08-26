@@ -32,7 +32,6 @@ debug_print_args = buildtype.startswith('debug') ? ['-DDEBUG_PRINT'] : []
 
 # Common detection function for all platforms
 cc = meson.get_compiler('c')
-fc = meson.get_compiler('fortran')
 if get_option('enable_c_sanitizers')
   c_sanitizer_args = cc.get_supported_arguments(['-fsanitize=address,undefined'])
   if c_sanitizer_args.length() == 0
@@ -42,7 +41,7 @@ if get_option('enable_c_sanitizers')
   add_project_link_arguments(c_sanitizer_args, language: 'c')
 endif
 # The bundled SLICOT source predates current Fortran warning conventions.
-add_project_arguments(fc.get_supported_arguments(['-w', '/w']), language: 'fortran')
+add_project_arguments('-w', language: 'fortran')
 pkg = import('pkgconfig')
 blas_dep = disabler()
 blas_found = 'none'

@@ -12,7 +12,8 @@ static bool FindVar(FILE *f, char *varname, int *m, int *n, int *line) {
   rewind(f);
   while (fscanf(f, " %127s", tag) == 1) {
     if (tag[0] == '#') {
-      fscanf(f, "%*[^\n]");
+      int skipped = fscanf(f, "%*[^\n]");
+      ASSERT(skipped != EOF, "unfinished comment in compare file");
       continue;
     }
     ASSERT(!strcmp(tag, "var"), "expected var in compare file");

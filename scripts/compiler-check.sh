@@ -83,12 +83,17 @@ cc_name=$(basename "$cc")
 fc_name=$(basename "$fc")
 builddir="$repo_root/build-$cc_name-$fc_name-$blas"
 buildtype=release
-set -- "-Dbuildtype=$buildtype" -Dc_std=c11 -Dwarning_level=3 -Dwerror=true \
+c_std=c11
+if [ "$cc_name" = nvc ]; then
+  # Meson 1.3 does not advertise NVC's supported C standard selections.
+  c_std=none
+fi
+set -- "-Dbuildtype=$buildtype" "-Dc_std=$c_std" -Dwarning_level=3 -Dwerror=true \
   "-Dblas_order=$blas"
 if [ "$sanitizers" -eq 1 ]; then
   builddir="${builddir}-san"
   buildtype=debug
-  set -- "-Dbuildtype=$buildtype" -Dc_std=c11 -Dwarning_level=3 -Dwerror=true \
+  set -- "-Dbuildtype=$buildtype" "-Dc_std=$c_std" -Dwarning_level=3 -Dwerror=true \
     -Denable_c_sanitizers=true "-Dblas_order=$blas" -Db_sanitize=none \
     -Db_lundef=false
 fi
