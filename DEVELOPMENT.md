@@ -44,6 +44,21 @@ This runs `RunTests`, including the Lyapunov-solver checks, and `AgainstMatlab`.
 `AgainstMatlab` normally uses the checked-in MATLAB reference fixtures, so
 MATLAB is not needed for the ordinary C test run.
 
+### Compiler checks
+
+Use `scripts/compiler-check.sh` to recreate a release build for an explicit C
+compiler, Fortran compiler, and BLAS provider, then run the C test suite:
+
+```sh
+scripts/compiler-check.sh -c clang -f gfortran -b openblas
+```
+
+The build directory is named from that compiler combination. `-s` instead
+creates a debug build with C address and undefined-behavior sanitizers. On Elja
+and Spark1, source the ignored machine-local preparation helper first; use
+`scripts/elja/prepare.sh -h` or `scripts/spark1/prepare.sh -h` for its compiler
+and library options.
+
 ## MATLAB reference implementation
 
 The independent MATLAB reference functions are in `matlab-reference/`. They use
