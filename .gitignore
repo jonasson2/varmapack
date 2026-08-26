@@ -51,6 +51,7 @@ dist/
 *.egg-info/
 .mesonpy-*/
 .pytest_cache/
+.venv/
 __pycache__/
 *.pyc
 _build/

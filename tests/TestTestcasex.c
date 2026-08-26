@@ -21,7 +21,7 @@ static void check_zero_terms(void) {
   checkVarmapackSuccess(ok);
   ok = varmapack_testcasex(1, 1, 1, 0, &C, 0);
   checkVarmapackSuccess(ok);
-  xCheck(C == 0.3);
+  xCheck(almostSame(C, 0.3));
 }
 
 static void check_vector_inputs(void) {

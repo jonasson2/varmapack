@@ -32,6 +32,7 @@ debug_print_args = buildtype.startswith('debug') ? ['-DDEBUG_PRINT'] : []
 
 # Common detection function for all platforms
 cc = meson.get_compiler('c')
+math_dep = cc.find_library('m', required: false)
 if get_option('enable_c_sanitizers')
   c_sanitizer_args = cc.get_supported_arguments(['-fsanitize=address,undefined'])
   if c_sanitizer_args.length() == 0
