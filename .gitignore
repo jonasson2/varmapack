@@ -65,6 +65,7 @@ _build/
 .\#*
 scripts/elja/
 scripts/spark1/
+scripts/windows/
 
 # Local reference material
 article/

@@ -6,6 +6,10 @@
 
 typedef long int sb03md_fstrlen;
 
+#ifdef VARMAPACK_FORTRAN_UPPERCASE
+#define sb03md_ SB03MD
+#endif
+
 void sb03md_( char *dico, char *job, char *fact,
   char *trana, int *n, double a[], int *lda, double u[], int *ldu, double c[], int *ldc,
   double *scale, double *sep, double *ferr, double wr[],

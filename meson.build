@@ -10,6 +10,8 @@ if host_system != 'windows'  # Ensure <time.h> exposes clock_gettime/CLOCK_*
   if host_system == 'darwin'
     add_project_arguments('-D_DARWIN_C_SOURCE', language: 'c')
   endif
+else
+  add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'c')
 endif
 
 # Get user-specified BLAS order or use platform defaults
@@ -41,6 +43,11 @@ if get_option('enable_c_sanitizers')
   endif
   add_project_arguments(c_sanitizer_args, language: 'c')
   add_project_link_arguments(c_sanitizer_args, language: 'c')
+endif
+# Intel Fortran on Windows does not preprocess .F files automatically.
+if fc.get_id() == 'intel-llvm-cl'
+  add_project_arguments('/fpp', language: 'fortran')
+  add_project_arguments('-DVARMAPACK_FORTRAN_UPPERCASE', language: 'c')
 endif
 # The bundled SLICOT source predates current Fortran warning conventions.
 add_project_arguments('-w', language: 'fortran')

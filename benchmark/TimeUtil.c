@@ -13,18 +13,21 @@ uint64_t clock_nsec(void) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&counter);
   return (uint64_t)(1000000000*(double)counter.QuadPart/(double)freq.QuadPart);
-#elif defined(CLOCK_MONOTONIC)
+#else
+#ifdef CLOCK_MONOTONIC
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
     return (uint64_t)ts.tv_sec*1000000000ull + (uint64_t)ts.tv_nsec;
   }
 #endif
   return (uint64_t)(1000000000*(double)clock()/(double)CLOCKS_PER_SEC);
+#endif
 }
 
 void consume_double(double x) {
   static volatile double sink;
   sink += x;
+  (void)sink;
 }
 
 void warmup_cpu(double seconds) {
@@ -42,6 +45,7 @@ void warmup_cpu(double seconds) {
     }
     t = clock_nsec();
   }
+  (void)sink;
 }
 
 void time_loop_start(time_loop *timer, double seconds) {

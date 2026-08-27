@@ -26,8 +26,8 @@ HIDDEN double CompanionSpecrad(double P[], int r, int nblocks, double sign) {
     fail_error("invalid dimension(s)");
     return NAN;
   }
-  for (size_t i=0; i<pCount; i++) {
-    if (!isfinite(P[i])) {
+  for (size_t k=0; k<pCount; k++) {
+    if (!isfinite(P[k])) {
       fail_error("invalid argument");
       return NAN;
     }

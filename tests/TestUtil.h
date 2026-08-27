@@ -4,7 +4,6 @@
 #define TESTUTIL_H
 
 #include <stdbool.h>
-#include <stdint.h>
 #include "randompack.h"
 #include "varmapack.h"
 
@@ -77,9 +76,9 @@ void checkVarmapackFailureFunc(bool ok, const char *file, int line,
                                const char *func);
 void checkVarmapackNaNFunc(double value, const char *file, int line,
                            const char *func);
-randompack_rng *seededRngFunc(uint64_t seed, const char *file, int line,
+randompack_rng *seededRngFunc(int seed, const char *file, int line,
                               const char *func);
-void reseedRngFunc(randompack_rng *rng, uint64_t seed, const char *file,
+void reseedRngFunc(randompack_rng *rng, int seed, const char *file,
                    int line, const char *func);
 void loadNamedTestModel(test_model *model, const char *name);
 void loadIndexedTestModel(test_model *model, int index);

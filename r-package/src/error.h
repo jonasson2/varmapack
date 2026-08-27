@@ -38,16 +38,19 @@ static inline void xPrintAssertion(char *assertion, char *file, int line) {
   char m1[] = "Assertion failed:";
   char m2[] = ", at line";
   char m3[] = "of file";
-  int nmax = 200 - (strlen(file) + strlen(m1) + strlen(m2) + 25 + strlen(m3));
-  int n = (int)strlen(assertion);
-  if (n <= nmax) {
-    snprintf(msg, sizeof(msg), "%s %s%s %d %s %s", m1, assertion, m2, line, m3,
-             file);
+  char *ellipsis = "";
+  int fileLength = 75;
+  int assertionLength;
+  if (strlen(file) < (size_t)fileLength) fileLength = (int)strlen(file);
+  assertionLength = 148 - fileLength;
+  if (strlen(assertion) < (size_t)assertionLength) {
+    assertionLength = (int)strlen(assertion);
   }
   else {
-    snprintf(msg, sizeof(msg), "%s %.*s...%s %d %s %s", m1, nmax, assertion, m2,
-             line, m3, file);
+    ellipsis = "...";
   }
+  snprintf(msg, sizeof(msg), "%s %.*s%s%s %d %s %.*s", m1, assertionLength,
+           assertion, ellipsis, m2, line, m3, fileLength, file);
   xErrorExit(msg);
 }
 

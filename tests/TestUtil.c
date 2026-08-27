@@ -132,7 +132,7 @@ void checkVarmapackNaNFunc(double value, const char *file, int line,
               line, func, 0);
 }
 
-randompack_rng *seededRngFunc(uint64_t seed, const char *file, int line,
+randompack_rng *seededRngFunc(int seed, const char *file, int line,
                               const char *func) {
   randompack_rng *rng = randompack_create(0);
   recordCheck(rng != 0, "Randompack generator creation failed", file, line, func, 0);
@@ -140,7 +140,7 @@ randompack_rng *seededRngFunc(uint64_t seed, const char *file, int line,
   return rng;
 }
 
-void reseedRngFunc(randompack_rng *rng, uint64_t seed, const char *file,
+void reseedRngFunc(randompack_rng *rng, int seed, const char *file,
                    int line, const char *func) {
   bool ok = randompack_seed(seed, 0, 0, rng);
   recordCheck(ok, "Randompack seeding failed", file, line, func,
