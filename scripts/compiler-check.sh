@@ -90,6 +90,9 @@ if [ "$cc_name" = nvc ]; then
 fi
 set -- "-Dbuildtype=$buildtype" "-Dc_std=$c_std" -Dwarning_level=3 -Dwerror=true \
   "-Dblas_order=$blas"
+if [ "$cc_name" = clang ] && [ "$(uname -s)" = Linux ]; then
+  set -- "$@" -Dc_link_args=-no-pie
+fi
 if [ "$sanitizers" -eq 1 ]; then
   builddir="${builddir}-san"
   buildtype=debug
