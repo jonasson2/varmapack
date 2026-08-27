@@ -113,6 +113,27 @@ static void check_null_E_multiple_replicates(void) {
   randompack_free(rng);
 }
 
+static void check_example_2(void) {
+  int n = 5;
+  double expected[] = {
+    1.3923, 2.0876, -1.1619, -1.9181, -1.7641,
+    1.2999, 0.1571, -3.5218, 0.6110, -2.7306
+  };
+  double X[10];
+  bool ok;
+  test_model model;
+  randompack_rng *rng = seededRng(123);
+  loadNamedTestModel(&model, "smallAR1");
+  ok = varmapack_sim(model.A, model.B, model.Sig, 0, 0, model.p, model.q,
+                     model.r, n, 1, 0, 0, 1, X, 0, rng);
+  checkVarmapackSuccess(ok);
+  checkArrayTol(X, expected, 10, 5e-5);
+  xCheck(fabs(varmapack_specrad(model.A, model.r, model.p) - 0.2) < 5e-4);
+  xCheck(varmapack_ma_specrad(model.B, model.r, model.q) == 0);
+  freeTestModel(&model);
+  randompack_free(rng);
+}
+
 static void check_conditional_ma_recursion(void) {
   int p = 1, q = 3, r = 1, n = 8, M = 1;
   double A[] = {0.4};
@@ -443,6 +464,7 @@ void TestSimEdgeCases(void) {
   check_null_E();
   check_null_E_reproducible_with_ma();
   check_null_E_multiple_replicates();
+  check_example_2();
   check_conditional_ma_recursion();
   check_singular_sigma();
   check_singular_startup_covariance();
