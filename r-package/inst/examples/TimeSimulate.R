@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 # Compare Varmapack with MTS and ts.extend simulation on the shared testcases.
-# Run from r-package/ with: Rscript examples/TimeSimulate.R
+# Run from r-package/ with: Rscript inst/examples/TimeSimulate.R
 
 ALL_MODELS <- c(
   "tinyAR", "tinyMA", "tinyARMA", "smallAR1", "smallAR2", "smallMA1",

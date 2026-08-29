@@ -1,7 +1,7 @@
 # Mathematical Description
 
-For more details of the mathematics, see the report [1]. (TODO: put in the
-right reference).
+For more details of the mathematics, see Kristján Jónasson (2026),
+"Burn-in-Free Simulation of VARMA Time Series," arXiv preprint, submitted.
 
 ## VARMA and VARMAX models
 

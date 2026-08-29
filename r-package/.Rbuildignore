@@ -5,6 +5,8 @@
 ^\.DS_Store$
 ^\.Rhistory
 ^\.clang-format
+^cran-comments\.md$
+^README\.html$
 ^README\.Rmd$
 ^.*\.RData$
 ^\.#.*$

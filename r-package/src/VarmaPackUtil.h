@@ -54,14 +54,14 @@ HIDDEN bool drawConditionalStartupShocks(
 
 HIDDEN bool requirePositiveDefinite(double Sig[], int r);
 
+// Build the lower block-triangular map from startup shocks to startup states.
 HIDDEN void FindPsi(double *A, double *B, double *Psi, int p, int q, int r);
-// TODO: doc
 
+// Multiply each shock block of Psi by a positive-semidefinite factor of Sig.
 HIDDEN bool FindPsiHat(double *Psi, double *Psi_hat, double *Sig, int r, int h);
-// TODO: doc
 
+// Factor positive-semidefinite Sig as L*L^T and report whether L is triangular.
 HIDDEN bool psdFactor(double Sig[], int r, double L[], bool *triangular);
-// TODO: doc
 
+// Return the spectral radius of a companion matrix with first block row sign*P.
 HIDDEN double CompanionSpecrad(double P[], int r, int k, double sign);
-// TODO: doc

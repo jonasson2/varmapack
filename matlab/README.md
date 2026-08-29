@@ -59,7 +59,8 @@ library builds, MATLAB reference tests, and the current MEX build helper, see
 [``DEVELOPMENT.md``](https://github.com/jonasson2/varmapack/blob/main/DEVELOPMENT.md),
 also in the repository root.
 
-TODO: add reference to paper.
+For more details of the mathematics, see Kristján Jónasson (2026),
+"Burn-in-Free Simulation of VARMA Time Series," arXiv preprint, submitted.
 
 ## Timing
 

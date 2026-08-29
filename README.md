@@ -31,13 +31,14 @@ point factorization can select a different numerical rank and therefore consume
 a different number of normal variates. The resulting paths remain draws from
 the same conditional distribution.
 
-A manuscript about Varmapack is being prepared and expected to be submitted to
-the journal SoftwareX. [TODO: fill in details]
+A preprint describing Varmapack has been submitted to arXiv: Kristján Jónasson
+(2026), "Burn-in-Free Simulation of VARMA Time Series," arXiv preprint,
+submitted.
 
 ## Mathematical Description
 
-For more details of the mathematics, see the report [1]. (TODO: put in the
-right reference).
+For more details of the mathematics, see Kristján Jónasson (2026),
+"Burn-in-Free Simulation of VARMA Time Series," arXiv preprint, submitted.
 
 ### VARMA and VARMAX models
 
@@ -492,7 +493,7 @@ The `benchmark` directory contains four C timing programs. Build them with:
 uses length 100, 1000 replicates, and a 0.1-second timing target per testcase by
 default. Its output is directly comparable with
 `matlab/examples/TimeSimulate.sh`, `python/examples/TimeSimulate.py`, and
-`r-package/examples/TimeSimulate.R`:
+`r-package/inst/examples/TimeSimulate.R`:
 
 ```sh
     build/benchmark/TimeSimulate

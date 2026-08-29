@@ -51,28 +51,33 @@ def plot_cross_correlation(lags, rho_xy):
     fig.savefig(output.with_suffix(".svg"), bbox_inches="tight")
 
 def plot_paths(paths, h):
+    labels = (r"$x_t$ (asymptotic decay rate 0.90)",
+              r"$y_t$ (asymptotic decay rate 0.59)")
+    plot_paths_to_file(paths, h, FONT_SIZE, "bivariate_varma_paths", labels)
+
+def plot_paths_to_file(paths, h, font_size, name, labels, left=None):
     nrep, n, _ = paths.shape
     t = np.arange(n)
     colors = plt.get_cmap("tab10").colors[:nrep]
     fig, axes = plt.subplots(2, 1, figsize=(7.2, 5.2), sharex=True)
-    labels = (r"$x_t$ (asymptotic decay rate 0.90)",
-              r"$y_t$ (asymptotic decay rate 0.59)")
     for component, ax in enumerate(axes):
         ax.axvspan(0, h - 1, color="0.92")
         ax.axvline(h - 1, color="0.35", linestyle="--", linewidth=1)
         for replicate, color in enumerate(colors):
             ax.plot(t, paths[replicate, :, component], color=color,
                     alpha=0.8, linewidth=1.5)
-        ax.set_ylabel(labels[component], fontsize=FONT_SIZE)
+        ax.set_ylabel(labels[component], fontsize=font_size)
         ax.set_ylim(-8, 8)
         ax.set_yticks(np.arange(-8, 9, 2))
-        ax.tick_params(axis="both", labelsize=FONT_SIZE)
+        ax.tick_params(axis="both", labelsize=font_size)
         ax.grid(axis="both", color="0.88", linewidth=0.6)
-    axes[-1].set_xlabel("Time $t$", fontsize=FONT_SIZE)
+    axes[-1].set_xlabel("Time $t$", fontsize=font_size)
     axes[-1].set_xlim(0, n)
     axes[-1].set_xticks(np.arange(0, n + 1, 10))
-    fig.tight_layout()
-    output = OUTPUT_DIR / "bivariate_varma_paths"
+    fig.tight_layout(h_pad=3.06)
+    if left is not None:
+        fig.subplots_adjust(left=left)
+    output = OUTPUT_DIR / name
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight")
     fig.savefig(output.with_suffix(".svg"), bbox_inches="tight")
 
@@ -81,3 +86,7 @@ if __name__ == "__main__":
     paths, h, lags, rho_xy = compute_results()
     plot_cross_correlation(lags, rho_xy)
     plot_paths(paths, h)
+    labels = (r"$x_t$ (asymptotic decay rate 0.90)",
+              r"$y_t$ (asymptotic decay rate 0.59)")
+    plot_paths_to_file(paths, h, FONT_SIZE*1.08,
+                       "bivariate_varma_paths_twocolumn", labels, left=0.15)
