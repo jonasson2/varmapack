@@ -11,12 +11,14 @@ testcases, theoretical and sample autocovariances, covariance-to-correlation
 conversion, spectral radii, and impulse response functions. In contrast to some
 other packages, the simulated series have the correct distribution from the
 start; they are burn-in (or spin-up) free. The package uses Randompack
-(https://github.com/jonasson2/randompack), [xx], to generate random numbers for
-the simulation. C, Python, and MATLAB interfaces are described in the
+(https://github.com/jonasson2/randompack), [Jónasson (2026)]
+(https://arxiv.org/abs/2605.05099), to generate random numbers for the
+simulation. C, Python, and MATLAB interfaces are described in the
 respective README files in the GitHub repository.
 
 Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
-[xx]. That algorithm is a collection of MATLAB functions to evaluate the
+[Jónasson (2008)](https://doi.org/10.1145/1377603.1377609). That algorithm is
+a collection of MATLAB functions to evaluate the
 likelihood of a VARMA model, which also includes functions to simulate such
 models and provide testcase data.
 
