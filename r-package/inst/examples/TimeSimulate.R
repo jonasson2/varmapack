@@ -18,7 +18,7 @@ PLATFORM_MODELS <- c(
 
 print_help <- function() {
   cat("TimeSimulate.R -- compare Varmapack, MTS::VARMAsim, and ts.extend\n\n")
-  cat("Usage: Rscript examples/TimeSimulate.R [options]\n\n")
+  cat("Usage: Rscript inst/examples/TimeSimulate.R [options]\n\n")
   cat("MTS uses its default skip = 200 for every simulated path.\n\n")
   cat("Options:\n")
   cat("  -h          show this help\n")

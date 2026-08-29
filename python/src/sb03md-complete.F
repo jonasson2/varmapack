@@ -1562,3 +1562,11 @@
       SELECT = .TRUE.
       RETURN
       END
+      SUBROUTINE XERBLA( SRNAME, INFO )
+      CHARACTER*(*)     SRNAME
+      INTEGER           INFO
+      WRITE( *, FMT = 9999 ) SRNAME, INFO
+      RETURN
+ 9999 FORMAT( ' ** On entry to ', A, ' parameter number ', I2,
+     $        ' had an illegal value' )
+      END

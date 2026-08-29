@@ -60,6 +60,8 @@ _build/
 
 # Local/editor files
 .DS_Store
+.obsidian/
+.jupyter/
 *~
 \#*\#
 .\#*
