@@ -205,7 +205,7 @@
       INTEGER           INFO, LDA, LDR, LDWORK, LDX, M, N
       DOUBLE PRECISION  ALPHA, BETA
       DOUBLE PRECISION  A(LDA,*), DWORK(*), R(LDR,*), X(LDX,*)
-      CHARACTER(LEN=12) NTRAN
+      CHARACTER*12      NTRAN
       LOGICAL           LTRANS, LUPLO
       INTEGER           J, JWORK, LDW, NROWA
       LOGICAL           LSAME
@@ -1338,9 +1338,7 @@
       SMLNUM = DLAMCH( 'S' ) / EPS
       SGN = ISGN
       K = N1 + N1 + N2 - 2
-      IF( K.EQ.2 ) GO TO 20
-      IF( K.EQ.3 ) GO TO 30
-      IF( K.EQ.4 ) GO TO 50
+      GO TO ( 10, 20, 30, 50 )K
    10 CONTINUE
       TAU1 = TL( 1, 1 )*TR( 1, 1 ) + SGN
       BET  = ABS( TAU1 )
