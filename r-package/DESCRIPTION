@@ -1,6 +1,6 @@
 Package: varmapack
 Type: Package
-Title: Burn-in-Free Simulation and Analysis of Gaussian VARMA Models
+Title: Burn-in-Free Simulation and Analysis of Gaussian Vector ARMA Models
 Version: 0.1.1
 Authors@R: 
     person("Kristján", "Jónasson", , "jonasson@hi.is", role = c("aut", "cre"))
