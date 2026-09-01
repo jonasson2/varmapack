@@ -4,7 +4,7 @@
 \name{varmapack-package}
 \alias{varmapack}
 \alias{varmapack-package}
-\title{Varmapack: Exact-Start Simulation of Gaussian Vector ARMA Models}
+\title{Varmapack: Exact-Start Simulation of Gaussian VARMA Models}
 \description{
 An R interface to the Varmapack C library for simulation and analysis of
 Gaussian VAR, VMA, VARMA, and VARMAX models.

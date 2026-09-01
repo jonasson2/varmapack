@@ -1566,7 +1566,7 @@
       RETURN
       END
       SUBROUTINE XERBLA( SRNAME, INFO )
-      CHARACTER*(*)     SRNAME
+      CHARACTER(LEN=*)  SRNAME
       INTEGER           INFO
       RETURN
       END
