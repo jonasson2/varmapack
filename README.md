@@ -33,14 +33,15 @@ point factorization can select a different numerical rank and therefore consume
 a different number of normal variates. The resulting paths remain draws from
 the same conditional distribution.
 
-A preprint describing Varmapack has been submitted to arXiv: Kristján Jónasson
-(2026), "Burn-in-Free Simulation of VARMA Time Series," arXiv preprint,
-submitted.
+A preprint describing Varmapack is available on arXiv: Kristján Jónasson
+(2026), ["Burn-in-Free Simulation of VARMA Time Series"]
+(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
 
 ## Mathematical Description
 
 For more details of the mathematics, see Kristján Jónasson (2026),
-"Burn-in-Free Simulation of VARMA Time Series," arXiv preprint, submitted.
+["Burn-in-Free Simulation of VARMA Time Series"]
+(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
 
 ### VARMA and VARMAX models
 
