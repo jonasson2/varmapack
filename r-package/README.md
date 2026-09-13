@@ -54,3 +54,8 @@ lag-zero marginal standard deviations. The returned array has the same
 shape as the input. Lag-zero diagonal entries are exactly one. Other
 entries are not clipped to `[-1,1]`, so correlations obtained from
 lag-corrected sample autocovariances may lie outside that interval.
+
+An additional [European stock-index
+example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md)
+fits a VAR(1) to the built-in `EuStockMarkets` log returns and generates exact
+stationary simulations from the fitted model.

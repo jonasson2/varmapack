@@ -10,7 +10,7 @@ On Mac with Accelerate:
   p=6      10   12   12   13   13   14   14   15
   p=7      10   12   12   12   13   13   14   15
 
-On Mac with OpenBAS:
+On Mac with OpenBLAS:
         q=0   q=1   q=2   q=3   q=4   q=5   q=6   q=7
   p=1    17    17    20     -     -     -     -     -
   p=2    10    10    10    10    11     -     -     -

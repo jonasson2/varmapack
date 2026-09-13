@@ -7,6 +7,9 @@ run_varmasim = executable( 'RunVarmaSim',
 quick_start = executable( 'QuickStart', 'QuickStart.c', dependencies : [varmapack_dep],
   c_args : debug_print_args, )
 
+eu_stock_markets = executable( 'EuStockMarkets', 'EuStockMarkets.c',
+  dependencies : [varmapack_dep], c_args : debug_print_args, )
+
 error_check = executable( 'ErrorCheck', 'ErrorCheck.c', dependencies : [varmapack_dep],
   c_args : debug_print_args, )
 

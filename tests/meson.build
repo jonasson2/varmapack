@@ -19,7 +19,7 @@ test_sources = files( 'RunTests.c', 'FromMatlab.c',
   'TestAcvf.c', 'TestAutocov.c', 'TestAutocovEdgeCases.c', 'TestSimEdgeCases.c',
   'TestCov2corr.c', 'TestSimxEdgeCases.c', 'TestTestcase.c', 'TestVarSpecRad.c',
   'TestFromMatlab.c', 'TestFindCFindG.c', 'TestPsdCondCov.c', 'TestPsi.c',
-  'TestTestcasex.c', 'TestLyapunov.c', )
+  'TestTestcasex.c', 'TestLyapunov.c', 'TestDistribution.c', )
 
 test_util = files('TestUtil.c')
 

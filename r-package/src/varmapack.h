@@ -11,7 +11,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 
-#define VARMAPACK_VERSION "0.1.0"
+#define VARMAPACK_VERSION "0.1.2"
 #define VARMAPACK_TESTCASE_NAME_LEN 32
 
 char *varmapack_last_error(void); // Get last error string for this thread, or 0

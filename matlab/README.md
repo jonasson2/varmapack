@@ -101,6 +101,10 @@ Pass options as name-value pairs, for example `TimeSimulate("M", 5000)`.
 A runnable version of this sequence is available as `QuickStart.m` in the
 `matlab/examples` directory.
 
+The repository also provides a Matlab version of the
+[European stock-index example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md),
+which simulates from a VAR(1) fitted to empirical multivariate returns.
+
 ```matlab
 % Create a reproducible generator using Randompack's default engine.
 vrng = varmapack.Rng(123);

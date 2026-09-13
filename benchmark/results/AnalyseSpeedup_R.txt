@@ -1,0 +1,14 @@
+Runs: 11; target: 0.1 s; length: 100; batch: 1000.
+
+Speed-up factor due to:
+
+| Model       | Overall | Burn-in | Setup amort. | Bulk generation | Implementation |
+| ----------- | ------: | ------: | -----------: | --------------: | -------------: |
+| tinyAR      |    1048 |     3.4 |          2.6 |             6.4 |           18.9 |
+| tinyARMA    |    1443 |     2.8 |          2.1 |             8.1 |           30.3 |
+| smallAR1    |     820 |     3.0 |          2.6 |             5.4 |           20.0 |
+| smallARMA2  |    1569 |     2.5 |          2.0 |             7.4 |           41.3 |
+| mediumAR    |     608 |     2.8 |          2.5 |             4.7 |           18.5 |
+| mediumARMA2 |    1818 |     2.9 |          2.3 |             7.5 |           35.8 |
+| largeAR     |     729 |     3.0 |         20.1 |             4.7 |            2.6 |
+| largeARMA   |     865 |     2.9 |          4.8 |             5.7 |           11.0 |

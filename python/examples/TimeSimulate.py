@@ -2,6 +2,7 @@
 # TimeSimulate.py: compare Varmapack and Statsmodels simulation (ns/value).
 
 import argparse
+import sys
 import time
 import warnings
 from collections.abc import Callable
@@ -52,8 +53,10 @@ def make_var(model: varmapack.Model) -> VARProcess:
 
 
 def time_simulation(fn: Callable[[], np.ndarray], values: int,
-                    bench_time: float) -> float:
-  fn()
+                    bench_time: float) -> float | None:
+  result = fn()
+  if not np.all(np.isfinite(result)):
+    return None
   calls = 0
   t0 = time.perf_counter()
   elapsed = 0
@@ -65,7 +68,7 @@ def time_simulation(fn: Callable[[], np.ndarray], values: int,
 
 
 def time_model(name: str, model: varmapack.Model, length: int, nrep: int,
-               bench_time: float, burnin: int) -> None:
+               bench_time: float, burnin: int, in_place: bool) -> None:
   varmax = make_varmax(model)
   params = varmax_params(model)
   rho = 0 if model.p == 0 else model.specrad()
@@ -73,13 +76,18 @@ def time_model(name: str, model: varmapack.Model, length: int, nrep: int,
   rng = randompack.Rng()
   rng.seed(123)
   statsmodels_rng = np.random.default_rng(123)
-  out = np.empty((nrep, length, model.r), dtype=np.float64)
-  ns_varmapack = time_simulation(
-      lambda: model.sim(length, nrep=nrep, rng=rng, out=out), values, bench_time)
+  if in_place:
+    out = np.empty((nrep, length, model.r), dtype=np.float64)
+    varmapack_fn = lambda: model.sim(length, nrep=nrep, rng=rng, out=out)
+  else:
+    varmapack_fn = lambda: model.sim(length, nrep=nrep, rng=rng)
+  ns_varmapack = time_simulation(varmapack_fn, values, bench_time)
   ns_varmax = time_simulation(
       lambda: varmax.simulate(params, nsimulations=length, repetitions=nrep,
                               transformed=True, random_state=statsmodels_rng),
       values, bench_time)
+  if ns_varmax is None:
+    print(f"{name}: VARMAX returned non-finite values; omitted", file=sys.stderr)
   ns_var = None
   if model.q == 0:
     var = make_var(model)
@@ -89,9 +97,11 @@ def time_model(name: str, model: varmapack.Model, length: int, nrep: int,
         values, bench_time)
   var_text = "-" if ns_var is None else f"{ns_var:.0f}"
   var_ratio = "-" if ns_var is None else f"{ns_var/ns_varmapack:.0f}"
+  varmax_text = "-" if ns_varmax is None else f"{ns_varmax:.0f}"
+  varmax_ratio = "-" if ns_varmax is None else f"{ns_varmax/ns_varmapack:.0f}"
   print(f"{name:<12} {model.p:>2} {model.q:>2} {model.r:>2} {rho:>5.3f} "
-        f"{ns_varmapack:>10.1f} {ns_varmax:>7.0f} {var_text:>7} "
-        f"{ns_varmax/ns_varmapack:>7.0f} {var_ratio:>6}")
+        f"{ns_varmapack:>10.1f} {varmax_text:>7} {var_text:>7} "
+        f"{varmax_ratio:>7} {var_ratio:>6}")
 
 
 def main() -> None:
@@ -105,6 +115,8 @@ def main() -> None:
                       help="benchmark time per implementation and testcase (seconds)")
   parser.add_argument("-b", type=int, default=200, dest="burnin",
                       help="burn-in used by Statsmodels VAR (default 200)")
+  parser.add_argument("-i", "--in-place", action="store_true",
+                      help="use a preallocated Varmapack output array")
   selection = parser.add_mutually_exclusive_group()
   selection.add_argument("-8", action="store_true", dest="selected",
                          help="time the eight selected paper models only")
@@ -120,6 +132,8 @@ def main() -> None:
   print(f"{'replicates per call:':<25}{args.nrep}")
   print(f"{'benchmark time per case:':<25}{args.bench_time:.1f} s")
   print(f"{'VAR discarded burn-in:':<25}{args.burnin} per path")
+  output_mode = "preallocated" if args.in_place else "allocated and returned"
+  print(f"{'Varmapack output:':<25}{output_mode}")
   if args.selected:
     print(f"{'models:':<25}selected paper set")
   if args.platform:
@@ -134,7 +148,7 @@ def main() -> None:
     names = [name for name in ALL_MODELS if name in PLATFORM_MODELS]
   for name in names:
     time_model(name, varmapack.testcase(name), args.length, args.nrep,
-               args.bench_time, args.burnin)
+               args.bench_time, args.burnin, args.in_place)
 
 
 if __name__ == "__main__":

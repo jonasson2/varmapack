@@ -24,6 +24,7 @@ typedef struct {
   double t;
   double w;
   bool returnE;
+  bool single;
   bench_case ref;
 } options;
 
@@ -34,7 +35,8 @@ static void die(char *msg) {
 
 static void default_options(options *opts) {
   *opts = (options) {
-    .t = 0.2, .w = 0.1, .returnE = false, .ref = {3, 3, 5, 100, 100, .9}
+    .t = 0.2, .w = 0.1, .returnE = false, .single = false,
+    .ref = {3, 3, 5, 100, 100, .9}
   };
 }
 
@@ -49,6 +51,7 @@ static void print_help(void) {
   printf("in the output.\n\n");
   printf("Options:\n");
   printf("  -h          show this help\n");
+  printf("  -1          time only the reference case\n");
   printf("  -t seconds  timing target per case (default 0.2)\n");
   printf("  -w seconds  CPU warmup time before timing (default 0.1)\n");
   printf("  -E          return the shock series\n");
@@ -66,8 +69,11 @@ static bool get_options(int argc, char **argv, options *opts, bool *help) {
   *help = false;
   opterr = 0;
   optind = 1;
-  while ((opt = getopt(argc, argv, "hEt:w:p:q:r:n:M:R:")) != -1) {
+  while ((opt = getopt(argc, argv, "1hEt:w:p:q:r:n:M:R:")) != -1) {
     switch (opt) {
+      case '1':
+        opts->single = true;
+        break;
       case 'h':
         *help = true;
         return true;
@@ -158,6 +164,7 @@ static int make_cases(options *opts, bench_case cases[]) {
   bench_case base = opts->ref;
   int ncases = 0;
   add_case(cases, &ncases, base);
+  if (opts->single) return ncases;
   for (int i = 0; i < 3; i++) {
     bench_case row = base;
     row.p = p_axis[i];
@@ -192,12 +199,23 @@ static int make_cases(options *opts, bench_case cases[]) {
   return ncases;
 }
 
-static void alloc_problem(int p, int q, int r, int n, int M, double **A,
+static int output_values(int r, int n, int M) {
+  int rn = 0, values = 0;
+  if (!intProduct(r, n, &rn) || !intProduct(rn, M, &values)) {
+    die("r*n*M exceeds INT_MAX");
+  }
+  return values;
+}
+
+static void alloc_problem(int p, int q, int r, int values, double **A,
                           double **B, double **Sig, double **X) {
-  int nA = r*r*(p > 0 ? p : 1);
-  int nB = r*r*(q > 0 ? q : 1);
-  if (!ALLOC(*A, nA) || !ALLOC(*B, nB) || !ALLOC(*Sig, r*r) ||
-      !ALLOC(*X, r*n*M)) {
+  int rr = 0, nA = 0, nB = 0;
+  if (!intProduct(r, r, &rr) || !intProduct(rr, p > 0 ? p : 1, &nA) ||
+      !intProduct(rr, q > 0 ? q : 1, &nB)) {
+    die("model dimensions exceed INT_MAX");
+  }
+  if (!ALLOC(*A, nA) || !ALLOC(*B, nB) || !ALLOC(*Sig, rr) ||
+      !ALLOC(*X, values)) {
     die("allocation failed");
   }
 }
@@ -208,14 +226,15 @@ static double time_case(bench_case c, double target, bool returnE, randompack_rn
   int r = c.r;
   int n = c.n == 0 ? (p > q ? p : q) : c.n;
   int M = c.M;
+  int values = output_values(r, n, M);
   int icase = 0;
   char name[12] = "rho";
   double *A, *B, *Sig, *X, *E = 0;
   bool ok;
   time_loop timer;
-  alloc_problem(p, q, r, n, M, &A, &B, &Sig, &X);
+  alloc_problem(p, q, r, values, &A, &B, &Sig, &X);
   if (returnE) {
-    if (!ALLOC(E, r*n*M)) die("allocation failed");
+    if (!ALLOC(E, values)) die("allocation failed");
   }
   ok = varmapack_testcase(name, &icase, c.rho, &p, &q, &r, A, B, Sig, rng);
   if (!ok) {
@@ -231,14 +250,14 @@ static double time_case(bench_case c, double target, bool returnE, randompack_rn
       fprintf(stderr, "varmapack_sim failed: %s\n", varmapack_last_error());
       exit(1);
     }
-    consume_double(X[r*n*M - 1] + (E ? E[r*n*M - 1] : 0));
+    consume_double(X[values-1] + (E ? E[values-1] : 0));
   }
   FREE(E);
   FREE(X);
   FREE(Sig);
   FREE(B);
   FREE(A);
-  return time_loop_nsec_per(&timer, r*n*M);
+  return time_loop_nsec_per(&timer, values);
 }
 
 static double time_setup_case(bench_case c, double target, bool returnE,
@@ -274,7 +293,8 @@ int main(int argc, char **argv) {
     bench_case c = cases[i];
     int n = c.n == 0 ? (c.p > c.q ? c.p : c.q) : c.n;
     int h = c.p > c.q ? c.p : c.q;
-    double setup = time_setup_case(c, opts.t, opts.returnE, rng)*h/(n*c.M);
+    (void)output_values(c.r, n, c.M);
+    double setup = time_setup_case(c, opts.t, opts.returnE, rng)*h/n/c.M;
     double total = time_case(c, opts.t, opts.returnE, rng);
     double generate = total > setup ? total - setup : 0;
     printf("%3d %5d %3d %3d %5d %5.2f %8.1f %9.1f %7.1f%s\n", c.r, n, c.p, c.q, c.M,

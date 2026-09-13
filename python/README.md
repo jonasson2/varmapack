@@ -23,6 +23,10 @@ For repeated simulations, `Model.sim` accepts a writable, C-contiguous
 `float64` NumPy array through `out=`. Reusing an output array avoids an
 allocation on each call; its required shape is `(nrep, length, r)`.
 
+The repository also provides a Python version of the
+[European stock-index example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md),
+which simulates from a VAR(1) fitted to empirical multivariate returns.
+
 ## Timing
 
 `examples/TimeSimulate.py` compares Varmapack with Statsmodels `VARMAX` on all

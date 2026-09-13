@@ -453,6 +453,12 @@ both libraries:
     }
 ```
 
+## Empirical example
+
+The [European stock-index example](examples/EuStockMarkets.md) applies a VAR(1)
+model fitted to the `EuStockMarkets` log returns. Matching C, R, Python, and
+Matlab programs generate exact stationary simulations from the fitted model.
+
 ## Testing
 
 Varmapack includes three Meson test programs:
@@ -467,6 +473,9 @@ Run the C test suite with:
 ```sh
     meson test -C build --print-errorlogs
 ```
+
+See `tests/README.md` for the test groups, statistical validation, and
+numerical-robustness cases.
 
 `AgainstMatlab` compares the public numerical functions and simulated series,
 using identical Randompack streams where applicable. The standard suite uses
@@ -515,3 +524,14 @@ time:
 
 `TimeSetup` and `TimeBreakEven` are development benchmarks for analyzing the
 two startup solvers. See `DEVELOPMENT.md` for their use.
+
+The `AnalyseSpeedup` scripts separate the main contributions to the timing
+comparisons with R's MTS, Python's Statsmodels VARMAX, and Matlab's `varm`:
+
+```sh
+    Rscript benchmark/AnalyseSpeedup.R
+    python benchmark/AnalyseSpeedup.py
+    benchmark/AnalyseSpeedup.sh
+```
+
+Each script accepts `-h` for its timing and workload options.
