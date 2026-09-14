@@ -4,7 +4,11 @@
 #include "BlasGateway.h"
 #include "VarmaUtilities.h"
 
+#if defined(USING_R)
+typedef fstrlen sb03md_fstrlen;
+#else
 typedef long int sb03md_fstrlen;
+#endif
 
 #ifdef VARMAPACK_FORTRAN_UPPERCASE
 #define sb03md_ SB03MD
