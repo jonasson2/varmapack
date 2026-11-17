@@ -15,6 +15,7 @@ void TestAcvf(void);
 void TestAutocov(void);
 void TestAutocovEdgeCases(void);
 void TestCov2corr(void);
+void TestCov2sig(void);
 void TestSimEdgeCases(void);
 void TestSimxEdgeCases(void);
 void TestFromMatlab(void);
@@ -22,4 +23,6 @@ void TestPsdCondCov(void);
 void TestTestcasex(void);
 void TestLyapunov(void);
 void TestDistribution(void);
+void TestOU(void);
+void TestGammaTimes(void);
 #endif /* TESTS_H */

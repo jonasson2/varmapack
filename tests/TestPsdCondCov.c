@@ -12,12 +12,12 @@ static void conditional_moments(double A[], double B[], double Sig[], double X0[
                                 int q, int r, int h, double R[], double e[]) {
   int rh = r*h, r2 = r*r, info;
   double *C = 0, *G = 0, *S = 0, *SS = 0, *CC = 0, *wrk = 0;
-  xCheck(ALLOC(C, r2*(q+1)));
-  xCheck(ALLOC(G, r2*(q+1)));
-  xCheck(ALLOC(S, r2*(p+1)));
-  xCheck(ALLOC(SS, rh*rh));
-  xCheck(ALLOC(CC, rh*rh));
-  xCheck(ALLOC(wrk, rh));
+  ASSERT(ALLOC(C, r2*(q+1)), "allocation failed");
+  ASSERT(ALLOC(G, r2*(q+1)), "allocation failed");
+  ASSERT(ALLOC(S, r2*(p+1)), "allocation failed");
+  ASSERT(ALLOC(SS, rh*rh), "allocation failed");
+  ASSERT(ALLOC(CC, rh*rh), "allocation failed");
+  ASSERT(ALLOC(wrk, rh), "allocation failed");
   FindC(A, B, Sig, p, q, r, C);
   FindG(B, C, q, r, G);
   bool ok = varmapack_acvf(A, B, Sig, p, q, r, S, p);
@@ -52,44 +52,49 @@ static void check_case_support(int icase, double support_tol) {
   loadIndexedTestModel(&model, icase);
   h = imax(model.p, model.q);
   rh = model.r*h;
-  xCheck(ALLOC(X0, rh));
-  xCheck(ALLOC(R, rh*rh));
-  xCheck(ALLOC(e, rh));
-  xCheck(ALLOC(Eig, rh*rh));
-  xCheck(ALLOC(lam, rh));
-  xCheck(ALLOC(work, 3*rh));
-  xCheck(ALLOC(X, model.r*n*M));
-  xCheck(ALLOC(E, model.r*n*M));
+  ASSERT(ALLOC(X0, rh), "allocation failed");
+  ASSERT(ALLOC(R, rh*rh), "allocation failed");
+  ASSERT(ALLOC(e, rh), "allocation failed");
+  ASSERT(ALLOC(Eig, rh*rh), "allocation failed");
+  ASSERT(ALLOC(lam, rh), "allocation failed");
+  ASSERT(ALLOC(work, 3*rh), "allocation failed");
+  ASSERT(ALLOC(X, model.r*n*M), "allocation failed");
+  ASSERT(ALLOC(E, model.r*n*M), "allocation failed");
   for (int i=0; i<rh; i++) X0[i] = (i+1)/10.0;
   conditional_moments(model.A, model.B, model.Sig, X0, model.p, model.q,
                       model.r, h, R, e);
   lacpy("All", rh, rh, R, rh, Eig, rh);
   syev("V", "Low", rh, Eig, rh, lam, work, 3*rh, &info);
   xCheck(info == 0);
+  test_check_group psd = {0};
   for (int i=0; i<rh; i++) {
     if (lam[i] < 1e-10) nulls++;
-    xCheck(lam[i] > -1e-12);
+    groupCheck(&psd, lam[i] > -1e-12);
   }
+  checkGroup(&psd, "conditional covariance is positive semidefinite");
   xCheck(nulls > 0 && nulls < rh);
   randompack_rng *rng = seededRng(42);
   bool ok = varmapack_sim(model.A, model.B, model.Sig, 0, 0, model.p,
                           model.q, model.r, n, M, X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group nullspace = {0}, support = {0};
   for (int k=0; k<nulls; k++) {
     double nr = 0;
     for (int i=0; i<rh; i++) {
       nr += fabs(dot(rh, R + i, rh, Eig + k*rh, 1));
     }
-    xCheck(nr < support_tol);
+    groupCheck(&nullspace, nr < support_tol);
   }
+  checkGroup(&nullspace, "null eigenvectors annihilate the covariance matrix");
   for (int j=0; j<M; j++) {
     double *Ej = E + j*model.r*n;
     for (int k=0; k<nulls; k++) {
       double d = dot(rh, Eig + k*rh, 1, Ej, 1);
       d -= dot(rh, Eig + k*rh, 1, e, 1);
-      xCheck(fabs(d) < support_tol);
+      groupCheck(&support, fabs(d) < support_tol);
     }
   }
+  checkGroup(&support, "draws lie in the conditional covariance support");
   randompack_free(rng);
   FREE(E);
   FREE(X);

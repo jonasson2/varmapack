@@ -2,6 +2,7 @@
 #include "TestUtil.h"
 #include "varmapack.h"
 #include "VarmaPackUtil.h"
+#include "error.h"
 
 void TestFindCFindG(void) {
   // Just a rudimentary test. Tested thoroughly by Testvarmapack_sim.
@@ -12,9 +13,9 @@ void TestFindCFindG(void) {
   xCheck(model.q == 1);
   xCheck(model.r == 2);
   int n = model.r*model.r*(model.q+1);
-  xCheck(ALLOC(C, n));
-  xCheck(ALLOC(G, n));
-  xCheck(ALLOC(W, n));
+  ASSERT(ALLOC(C, n), "allocation failed");
+  ASSERT(ALLOC(G, n), "allocation failed");
+  ASSERT(ALLOC(W, n), "allocation failed");
   FindC(model.A, model.B, model.Sig, model.p, model.q, model.r, C);
   FindG(model.B, C, model.q, model.r, G);
   // Expected values from MATLAB for smallARMA1.

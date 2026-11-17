@@ -13,6 +13,7 @@ Classes
    :nosignatures:
 
    Model
+   OUModel
    VarmapackError
 
 Top-level functions
@@ -24,6 +25,8 @@ Top-level functions
 
    autocov
    cov2corr
+   cov2sig
+   gamma_times
    testcase
    testcases
 
@@ -58,3 +61,16 @@ Model attributes
    Model.C
    Model.Sig
    Model.mu
+
+OU model methods and attributes
+-------------------------------
+
+.. autosummary::
+   :toctree: reference/generated
+   :nosignatures:
+
+   OUModel.sim
+   OUModel.tau
+   OUModel.cov
+   OUModel.mu
+   OUModel.r

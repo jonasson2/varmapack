@@ -11,6 +11,20 @@ test groups, or with `-C` for the longer statistical tests (200,000 rather than
 10,000 independent replicates per model). `AgainstMatlab` compares results with
 checked-in MATLAB reference fixtures; MATLAB is not needed to run it.
 
+The reported counts are logical checks, not individual array elements or model
+cases. Each array comparison counts once while still examining every element;
+a failure reports the number of mismatches and the first failing index.
+An expected API outcome also counts once, checking both the return value and
+the error state. Related elementwise checks are grouped by property: one mean
+vector, covariance matrix, simulation recurrence, or support condition. Every
+element is still checked with the original tolerance. Distinct models, times,
+lags, goodness-of-fit tests, and invalid-input cases remain separate checks.
+
+Allocations, RNG setup, and fixture-file creation are prerequisites rather than
+counted checks; failure still stops the test. Empty arrays or property groups
+pass as one check. `TestAssertions` verifies these counting rules, including
+deliberately failing checks and preservation of the first failure's context.
+
 ## Statistical validation
 
 `TestDistribution.c` provides distribution-level tests for 23 VARMA models. It
@@ -64,8 +78,25 @@ autocovariance tests, and tests of the VYW and Lyapunov covariance solvers.
 
 ## Other coverage
 
+`TestCov2sig.c` checks innovation-covariance recovery against scalar formulas,
+the explicit VAR(1) formula, independently summed impulse responses, the
+Lyapunov solver, and all named VARMA testcases. It also covers lower-triangle
+input, in-place conversion, singular positive-semidefinite covariances,
+very small and large covariance scales, near-unit persistence, incompatible
+targets, singular and ill-conditioned inverse systems, and invalid inputs.
+Failed calls must leave the output unchanged.
+
 The remaining `RunTests` groups exercise named testcase construction, spectral
 radii, theoretical and sample autocovariances, covariance-to-correlation
 conversion, impulse responses, VARMAX simulation, error handling,
 reproducibility with seeded random-number generators, and the internal
 Lyapunov solver.
+
+## OU and Gamma Times
+
+`TestOU.c` checks stationary means, covariance at startup and later times, and
+lagged cross-covariance on irregular times, using 100000 independent paths.
+It also checks singular/zero covariance, incompatible persistence/covariance,
+and input validation. Gamma-time tests check gap means and variances for shapes
+below, at, and above one, plus constant spacing and invalid inputs. Language
+tests exercise the same model, shape, and RNG conventions through each wrapper.

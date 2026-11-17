@@ -2,7 +2,10 @@
 
 export(varmapack_autocov)
 export(varmapack_cov2corr)
+export(varmapack_cov2sig)
+export(varmapack_gamma_times)
 export(varmapack_model)
+export(varmapack_ou_model)
 export(varmapack_testcase)
 export(varmapack_testcases)
 import(randompack)

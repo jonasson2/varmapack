@@ -16,4 +16,8 @@ HIDDEN bool VYWFactorizeSolve(
   double C[],   // out  r×r×(q+1) buffer for Ci
   double G[]);  // out  r×r×(q+1) buffer for Gi
 
+// Inverse VYW solve for validated, symmetric cov; caller checks dimensions and PSD.
+HIDDEN bool VYWInverse(double A[], double B[], double cov[], int p, int q, int r,
+                        double Sig[]);
+
 #endif

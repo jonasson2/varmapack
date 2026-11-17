@@ -61,6 +61,7 @@ writable, C-contiguous ``float64`` array with shape ``(nrep, length, r)``.
     Theta = VARMA_model.irf(maxlag)
     Gamma = VARMA_model.acvf(maxlag)
     Corr = varmapack.cov2corr(Gamma)
+    SigRecovered = varmapack.cov2sig(Gamma[0], A=VARMA_model.A, B=VARMA_model.B)
     C = varmapack.autocov(X3[0], maxlag)
 
 Model objects
@@ -92,8 +93,9 @@ Models also expose ``A``, ``B``, ``C``, ``Sig``, ``mu``, ``p``, ``q``, ``r``,
 
 Top-level functions
 -------------------
-The Python Varmapack has four top-level functions: ``testcase``,
-``testcases``, ``autocov``, and ``cov2corr``. The *testcase* function provides
+The Python Varmapack has six top-level functions: ``testcase``, ``testcases``,
+``autocov``, ``cov2corr``, ``cov2sig``, and ``gamma_times``. The *testcase*
+function provides
 15 named testcases, describing models of various complexity ranging from
 scalar AR(1) and MA(1) models to VARMA(3,3) with :math:`r=3` and VARMA(4,0)
 with :math:`r=5`. The function can also give unnamed testcases with arbitrary
@@ -115,6 +117,48 @@ array and ``out=cov`` for in-place conversion. Lag-zero diagonal entries are
 exactly one. Other entries are not clipped to ``[-1,1]``, so correlations
 obtained from lag-corrected sample autocovariances may lie outside that
 interval.
+
+The ``cov2sig(cov, *, A=None, B=None, out=None)`` function recovers the
+innovation covariance from a specified lag-zero model covariance and fixed
+AR and MA coefficients. ``cov`` is a single ``(r, r)`` matrix; only its lower
+triangle is read. The result is symmetric. The AR model must be stationary,
+and both covariances must be positive semidefinite; singular covariances are
+allowed. Incompatible targets and unreliable inverse problems raise
+``VarmapackError``. As with ``cov2corr``, inputs are unchanged unless
+``out=cov`` is used. ``out`` must be a writable, aligned, C-contiguous
+``float64`` array of the same shape, and is unchanged on failure.
+
+Uneven-time OU models
+---------------------
+
+``OUModel(tau, cov, mu=None)`` specifies a stationary Gaussian
+Ornstein--Uhlenbeck model with diagonal drift. ``tau`` is a positive vector,
+``cov`` the stationary process covariance (not innovation covariance), and
+``mu`` an optional constant mean vector. The properties ``tau``, ``cov``,
+``mu`` and ``r`` describe the model; array properties return copies.
+
+.. code-block:: python
+
+    rng = randompack.Rng()
+    rng.seed(123)
+    t = varmapack.gamma_times(100, shape=16, mean_gap=1, rng=rng)
+    model = varmapack.OUModel(tau=[1, 2], cov=[[1, .5], [.5, 1]])
+    X = model.sim(t, nrep=10, rng=rng)  # shape (10, 100, 2)
+
+``sim(t, *, nrep=1, rng=None)`` uses exact transitions at finite, strictly
+increasing times, with stationary initialization and no burn-in. Times have
+the same units as ``tau``. Component i has autocorrelation
+``exp(-gap/tau[i])``. Both ``cov`` and the continuous-time driving covariance
+with entries ``cov[i,j]*(1/tau[i] + 1/tau[j])`` must be positive semidefinite;
+singular covariances are allowed. Only the lower triangle of ``cov`` is read.
+Unlike a general VAR model, drift is diagonal, with no directed interactions.
+
+``gamma_times(n, shape=16, mean_gap=1, rng=None)`` is independent of the model
+and returns a one-dimensional time vector starting at zero. Gaps are
+independent Gamma variables with scale ``mean_gap/shape`` and CV
+``1/sqrt(shape)``. Their realized mean is not normalized. Use ``shape=np.inf``
+for constant gaps. Unrepresentable positive gaps or times raise
+``VarmapackError`` rather than silently returning repeated times.
 
 Array shapes
 ------------

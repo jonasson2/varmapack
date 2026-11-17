@@ -5,15 +5,16 @@
 ## Overview
 
 Varmapack is a C library for simulation and analysis of Gaussian VAR, VMA,
-VARMA, and VARMAX time-series models. Its primary purpose is to generate
+VARMA, VARMAX, and continuous-time OU models. Its primary purpose is to generate
 simulated series from supplied model parameters, but it also provides model
 testcases, theoretical and sample autocovariances, covariance-to-correlation
-conversion, spectral radii, and impulse response functions. In contrast to some
+conversion, innovation-covariance recovery, spectral radii, and impulse response
+functions. In contrast to some
 other packages, the simulated series have the correct distribution from the
 start; they are burn-in (or spin-up) free. The package uses Randompack
 (https://github.com/jonasson2/randompack), [Jónasson (2026)]
 (https://arxiv.org/abs/2605.05099), to generate random numbers for the
-simulation. C, Python, and MATLAB interfaces are described in the
+simulation. C, Python, R, and MATLAB interfaces are described in the
 respective README files in the GitHub repository.
 
 Varmapack is based on a part of Algorithm 878 published in ACM TOMS in 2008
@@ -253,6 +254,61 @@ therefore yield values outside that interval after conversion.
 Like the other Boolean-valued analysis functions, `varmapack_cov2corr` returns
 `false` and sets `varmapack_last_error()` when an argument is invalid, an input
 entry is not finite, or a lag-zero variance is not positive.
+
+### Recovering innovation covariance
+
+`varmapack_cov2sig(A, B, cov, p, q, r, Sig)` recovers the innovation covariance
+from a specified lag-zero model covariance, with the AR and MA coefficients
+held fixed. `cov` and `Sig` are single column-major `r` by `r` matrices.
+Only the lower triangle of `cov` is read; the full symmetric `Sig` is returned.
+Pass `0` for `A` when `p=0`, or for `B` when `q=0`.
+
+The AR model must be stationary. Both covariances must be positive semidefinite
+within floating-point tolerance; singular covariances are allowed, but not
+every target is compatible with the supplied coefficients. Pass the same array
+for `cov` and `Sig` to convert in place; otherwise the output must not overlap
+any input.
+
+The function returns `false` and sets `varmapack_last_error()` for invalid
+input, an incompatible target, or a singular or numerically unreliable inverse
+problem. On failure, `Sig` is unchanged. The inverse Yule--Walker derivation is
+in *Recovering Innovation Covariance* (`output/pdf/cov2sig.pdf`).
+
+### Uneven-time OU simulation
+
+`varmapack_ou_create(tau, cov, mu, r)` constructs a stationary Gaussian
+Ornstein--Uhlenbeck model with diagonal drift. `tau` contains positive
+persistence times and `cov` is the stationary process covariance, not the
+innovation covariance. Both `cov` and the continuous-time driving covariance
+`D[i,j] = cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite.
+Only the lower triangle of `cov` is read; singular covariances are allowed.
+
+```c
+double tau[] = {1, 2}, cov[] = {1, .5, .5, 1}, t[100], X[200];
+varmapack_ou_model *model = varmapack_ou_create(tau, cov, 0, 2);
+if (!model) { /* report varmapack_last_error() */ }
+else {
+  bool ok = varmapack_gamma_times(100, 16, 1, t, rng);
+  if (ok) ok = varmapack_ou_sim(model, t, 100, 1, X, rng);
+  if (!ok) { /* report varmapack_last_error() */ }
+  varmapack_ou_free(model);
+}
+```
+
+`varmapack_ou_sim` draws the first observation from `N(mu,cov)` and uses exact
+gap-dependent transitions, without burn-in. Times must be finite and strictly
+increasing, in the units of `tau`; output has column-major shape `r*n*M`.
+Models copy their inputs, are reusable, and must be freed with
+`varmapack_ou_free`. Workspaces are local to each call; sharing an immutable
+model across threads is safe with separate RNGs and output arrays.
+
+`varmapack_gamma_times(n, shape, mean_gap, t, rng)` generates times starting at
+zero with independent Gamma gaps, scale `mean_gap/shape` and CV
+`1/sqrt(shape)`. It does not normalize the realized mean spacing. Positive
+infinite shape gives constant spacing. Unrepresentable positive gaps or times
+produce an error. Time generation is independent of the OU simulator, which
+also accepts actual observation times. Outputs and the RNG may be partly
+advanced if simulation or time generation fails.
 
 ### VARMAX simulation
 

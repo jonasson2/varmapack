@@ -1,0 +1,158 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=22mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Recovering Innovation Covariance}}
+
+\begin{document}
+\section*{Recovering Innovation Covariance}
+
+Consider a stationary, causal VARMA model
+$$
+x_t=\sum_{i=1}^{p}A_i x_{t-i}
+    +\sum_{j=0}^{q}B_j\varepsilon_{t-j},
+\qquad B_0=I,
+$$
+where $x_t$ is $r$-dimensional and the innovations are temporally uncorrelated
+with covariance $\Sigma$.
+
+Suppose the coefficient matrices and the desired contemporaneous covariance
+$$
+V=\operatorname{Cov}(x_t,x_t)
+$$
+are given. We wish to determine $\Sigma$.
+
+\subsection*{The Existing VYW System}
+
+For $p\geq1$, we use the reduced vector Yule--Walker (VYW) system derived in
+Appendix~B of J\'onasson and Ferrando (2006)~\cite{jf2006}. Their lagged covariance
+matrices $S_k$ are denoted here by
+$$
+\Gamma_k=\operatorname{Cov}(x_t,x_{t-k}),
+\qquad \Gamma_0=V,\qquad \Gamma_{-k}=\Gamma_k^T.
+$$
+The appendix eliminates $\Gamma_p$ and exploits the symmetry of $\Gamma_0$.
+Let $\operatorname{vec}$ stack matrix columns and $\operatorname{vech}$ stack the
+lower triangle column by column. Using the appendix's packing convention, define
+$$
+\begin{aligned}
+v&=\operatorname{vech}(\widehat{\Gamma}_0),&
+\sigma&=\operatorname{vech}(\Sigma),\\
+h&=\operatorname{col}\bigl(
+  \operatorname{vec}\Gamma_1,\ldots,\operatorname{vec}\Gamma_{p-1}\bigr).
+\end{aligned}
+$$
+Here $\widehat{\Gamma}_0$ is lower triangular, with the same strictly lower
+triangle as $\Gamma_0$ and half its diagonal, so that
+$\Gamma_0=\widehat{\Gamma}_0+\widehat{\Gamma}_0^T$. The diagonal of $\Sigma$ is
+\emph{not} halved in $\sigma$. The operator $\operatorname{col}$ stacks vectors;
+$h$ is empty when $p=1$.
+
+The reduced system can be written as
+$$
+F_0v+F_1h=g(\Sigma).
+$$
+The matrix $F=[\,F_0\;\;F_1\,]$ is the existing VYW coefficient matrix, constructed
+as in Appendix~B, equations (B.3)--(B.5). It depends only on the AR coefficients.
+Writing
+$$
+m=\frac{r(r+1)}{2},\qquad K=m+(p-1)r^2,
+$$
+$F_0$ has size $K\times m$ and $F_1$ has size $K\times(K-m)$.
+
+\subsection*{Linearity of the Right-Hand Side}
+
+The existing covariance recurrences are
+$$
+C_0=\Sigma,\qquad
+C_j=B_j\Sigma+\sum_{i=1}^{\min(p,j)}A_iC_{j-i},
+\quad j=1,\ldots,q,
+$$
+and
+$$
+G_k=\sum_{j=k}^{q}B_jC_{j-k}^T,\quad k=0,\ldots,q,
+\qquad G_k=0\quad(k>q).
+$$
+Thus every $C_j$ and $G_k$ is linear in $\Sigma$. The reduced right-hand side
+from Appendix~B is
+$$
+g(\Sigma)=\operatorname{col}\bigl(
+  \operatorname{vech}(G_0^T+G_pA_p^T),
+  \operatorname{vec}G_1,\ldots,\operatorname{vec}G_{p-1}\bigr)
+=R\sigma,
+$$
+where $R$ is a $K\times m$ matrix determined by the AR and MA coefficients.
+The $\operatorname{vech}$ operation in $g$ simply selects lower-triangle entries;
+it does not halve diagonal entries.
+
+\newpage
+\subsection*{Forward and Inverse Computations}
+
+In the usual forward computation, $\Sigma$ is known, and the VYW solve is
+$$
+\boxed{
+\begin{bmatrix}F_0&F_1\end{bmatrix}
+\begin{bmatrix}v\\h\end{bmatrix}=R\sigma.
+}
+$$
+For the inverse computation, $\Gamma_0=V$ is known instead. Move its contribution
+to the right-hand side and the contribution of $\Sigma$ to the left:
+$$
+\boxed{
+\begin{bmatrix}R&-F_1\end{bmatrix}
+\begin{bmatrix}\sigma\\h\end{bmatrix}=F_0v.
+}
+$$
+The two systems have the same dimension $K$. Both $\Gamma_0$ and $\Sigma$ have
+$m$ independent entries, so the inverse formulation exchanges which covariance
+is prescribed while retaining the auxiliary lagged covariances as unknowns.
+Only $\Sigma$ needs to be returned.
+
+No new derivation of the Kronecker-product matrices is required: $F_0$ and $F_1$
+come from the existing VYW construction. To assemble $R$, use the symmetric
+basis matrices $E_a$ satisfying $\operatorname{vech}(E_a)=e_a$, where $e_a$ is
+the $a$th coordinate vector in $\mathbb{R}^m$. Then
+$$
+R_{\cdot a}=g(E_a),\qquad a=1,\ldots,m.
+$$
+A diagonal basis matrix has one unit diagonal entry; an off-diagonal basis
+matrix has a pair of symmetric unit entries. Each column requires only the
+existing right-hand-side construction, not a full covariance solve.
+
+This is an \emph{inverse VYW formulation}, not an adjoint or transpose problem.
+The coefficient matrix changes, so a new LU factorization is needed.
+
+\subsection*{Special Cases}
+
+For a pure VAR(1) model, $\Gamma_1=A_1V$, giving the explicit formula
+$$
+\boxed{\Sigma=V-A_1VA_1^T.}
+$$
+For a pure VMA($q$) model, the equation is
+$$
+\boxed{V=\Sigma+\sum_{j=1}^{q}B_j\Sigma B_j^T.}
+$$
+
+\subsection*{Existence and Validity}
+
+A positive-semidefinite target $V$ does not necessarily yield a positive-semidefinite
+$\Sigma$. Thus not every target covariance is compatible with fixed VARMA
+coefficients.
+
+The inverse calculation must check for singularity or poor conditioning and verify
+that the recovered $\Sigma$ is positive semidefinite and reproduces $V$ through
+the forward covariance calculation.
+
+\begin{thebibliography}{1}
+\bibitem{jf2006}
+J\'onasson, K. and Ferrando, S.~E. (2006).
+\emph{Efficient likelihood evaluation for VARMA processes with missing values}.
+Report VHI-01-2006, Faculty of Engineering, University of Iceland.
+Appendix~B: \emph{Solution of the vector Yule--Walker equations}.
+\end{thebibliography}
+
+\end{document}

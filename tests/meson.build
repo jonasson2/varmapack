@@ -15,13 +15,18 @@ else
   message('tests/matlabcompare-rolling.txt not found; skipping copy')
 endif
 
-test_sources = files( 'RunTests.c', 'FromMatlab.c',
+test_sources = files( 'RunTests.c', 'FromMatlab.c', 'TestOU.c',
   'TestAcvf.c', 'TestAutocov.c', 'TestAutocovEdgeCases.c', 'TestSimEdgeCases.c',
-  'TestCov2corr.c', 'TestSimxEdgeCases.c', 'TestTestcase.c', 'TestVarSpecRad.c',
+  'TestCov2corr.c', 'TestCov2sig.c', 'TestSimxEdgeCases.c', 'TestTestcase.c',
+  'TestVarSpecRad.c',
   'TestFromMatlab.c', 'TestFindCFindG.c', 'TestPsdCondCov.c', 'TestPsi.c',
   'TestTestcasex.c', 'TestLyapunov.c', 'TestDistribution.c', )
 
 test_util = files('TestUtil.c')
+
+test_assertions = executable('TestAssertions', files('TestAssertions.c') + test_util,
+  dependencies : varmapack_dep)
+test('TestAssertions', test_assertions)
 
 run_tests = executable( 'RunTests',
   test_sources + test_util + files( '../examples/getopt.c',

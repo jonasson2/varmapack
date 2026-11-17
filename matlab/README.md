@@ -156,6 +156,7 @@ rho = varmapack.specrad([A1, A2]);
 rhoMA = varmapack.ma_specrad(B1);
 Gamma = varmapack.acvf([A1, A2], B1, Sig, maxlag);
 Corr = varmapack.cov2corr(Gamma);
+SigRecovered = varmapack.cov2sig([A1, A2], B1, Gamma(:, :, 1));
 GammaHat = varmapack.autocov(X3(:, :, 1), maxlag, "ML"); % Normalize by 1/n
 GammaHatC = varmapack.autocov(X3(:, :, 1), maxlag, "C"); % Normalize by 1/(n-k)
 
@@ -171,15 +172,46 @@ as the input. Lag-zero diagonal entries are exactly one. Other entries are not
 clipped to `[-1,1]`, so correlations obtained from lag-corrected sample
 autocovariances may lie outside that interval.
 
+`varmapack.cov2sig(A, B, cov)` recovers innovation covariance from a specified
+lag-zero model covariance and fixed AR and MA coefficients. `cov` is a single
+`r` by `r` matrix; only its lower triangle is used. The result is symmetric,
+and inputs are unchanged. The AR model must be stationary, and both covariances
+must be positive semidefinite; singular covariances are allowed. Incompatible
+targets and unreliable inverse problems raise errors. Use `[]` for absent
+AR or MA terms.
+
+### Uneven observation times
+
+```matlab
+rng = varmapack.Rng(123);
+t = varmapack.gamma_times(100, 16, 1, rng);
+model = varmapack.OUModel([1; 2], [1 .5; .5 1]);
+X = model.sim(t, 10, rng); % 2-by-100-by-10
+```
+
+The OU model simulates exact stationary Gaussian paths without burn-in at
+supplied finite, strictly increasing times. Persistence times `tau` use the
+same units as `t`. `cov` specifies stationary covariance, not innovation
+covariance. Both it and the driving covariance
+`D(i,j)=cov(i,j)*(1/tau(i)+1/tau(j))` must be positive semidefinite; singular
+covariances are allowed. The drift is diagonal, with no directed interactions.
+The optional third constructor argument is a constant mean vector.
+
+`gamma_times(n,shape,mean_gap,rng)` returns an `n`-by-1 vector starting at zero.
+Defaults are shape 16 and expected gap 1. Independent gaps have CV
+`1/sqrt(shape)`; the realized mean is not normalized. `shape=Inf` gives equal
+spacing. An unrepresentable positive gap or time raises an error.
+
 ### Functions
 
-The MATLAB interface is a package of functions in the `varmapack` namespace.
-It does not use a model object: pass model parameters directly to the relevant
-function.
+The MATLAB interface uses the `varmapack` namespace. VARMA functions take
+model parameters directly; `OUModel` stores the continuous-time parameters.
 
 | Function | Purpose |
 | :--- | :--- |
 | [`varmapack.Rng`](+varmapack/Rng.m) | Create random number generator. |
+| [`varmapack.OUModel`](+varmapack/OUModel.m) | Construct an OU model; simulate with `model.sim(t,M,rng)`. |
+| [`varmapack.gamma_times`](+varmapack/gamma_times.m) | Generate times with Gamma gaps. |
 | [`varmapack.sim`](+varmapack/sim.m) | Simulate one or more VARMA series. |
 | [`varmapack.simx`](+varmapack/simx.m) | Simulate one or more VARMAX series. |
 | [`varmapack.specrad`](+varmapack/specrad.m) | Compute the AR spectral radius. |
@@ -187,6 +219,7 @@ function.
 | [`varmapack.acvf`](+varmapack/acvf.m) | Compute theoretical autocovariances. |
 | [`varmapack.autocov`](+varmapack/autocov.m) | Compute sample autocovariances. |
 | [`varmapack.cov2corr`](+varmapack/cov2corr.m) | Convert covariances to correlations. |
+| [`varmapack.cov2sig`](+varmapack/cov2sig.m) | Recover innovation covariance. |
 | [`varmapack.psi`](+varmapack/psi.m) | Impulse-response matrices. |
 | [`varmapack.irf`](+varmapack/irf.m) | Orthogonalized impulse responses. |
 | [`varmapack.testcase`](+varmapack/testcase.m) | Construct testcase models. |
@@ -202,6 +235,9 @@ lags are concatenated horizontally:
 - `C` has shape `r` by `d*s`: `[C1, C2, ..., Cs]`, where each `Ck` is
   `r` by `d` and multiplies the `d`-vector `z(t-k+1)`.
 - `Sig` has shape `r` by `r`.
+- OU `tau` and `mu` are `r`-vectors and `cov` is `r` by `r`. OU simulation
+  always returns `r` by `numel(t)` by `M`, also for scalar models (trailing
+  singleton dimensions are omitted by MATLAB).
 - The mean `mu` has shape `r` by `nmu`, where `nmu <= n`; the last supplied
   column repeats to the end. Use `[]` or `0` for zero mean.
 - Startup values `X0` have shape `r` by `nX0` or `r` by `nX0` by `M`.
@@ -218,6 +254,8 @@ lags are concatenated horizontally:
   array, with the lag-zero matrix in its first page.
 - `cov2corr` accepts a covariance matrix or sequence and returns an array that
   has the same shape as the input.
+- `cov2sig` accepts a single `r` by `r` model covariance and returns an
+  `r` by `r` innovation covariance.
 
 ### Errors
 

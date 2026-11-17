@@ -4,6 +4,7 @@
 #include "TestUtil.h"
 #include "Tests.h"
 #include "varmapack.h"
+#include "error.h"
 #define DEBUG
 #include "printX.h"
 #include "debugprint.h"
@@ -12,12 +13,15 @@ static int contains(const char *hay, const char *needle) {
 }
 
 static void check_symmetric_positive_diag(double A[], int n) {
+  test_check_group diagonal = {0}, symmetry = {0};
   for (int j=0; j<n; j++) {
-    xCheck(A[j + j*n] > 0);
+    groupCheck(&diagonal, A[j + j*n] > 0);
     for (int i=0; i<n; i++) {
-      xCheck(fabs(A[i + j*n] - A[j + i*n]) < 1e-14);
+      groupCheck(&symmetry, fabs(A[i + j*n] - A[j + i*n]) < 1e-14);
     }
   }
+  checkGroup(&diagonal, "covariance has a positive diagonal");
+  checkGroup(&symmetry, "covariance is symmetric");
 }
 
 static void check_max(void) {
@@ -127,9 +131,9 @@ static void check_construct_all_named(void) {
     int nB = r*r*(q > 0 ? q : 1);
     int nS = r*r;
     double *A = 0, *B = 0, *Sig = 0;
-    xCheck(ALLOC(A, nA));
-    xCheck(ALLOC(B, nB));
-    xCheck(ALLOC(Sig, nS));
+    ASSERT(ALLOC(A, nA), "allocation failed");
+    ASSERT(ALLOC(B, nB), "allocation failed");
+    ASSERT(ALLOC(Sig, nS), "allocation failed");
     ok = varmapack_testcase(name, &icase, 0, &p, &q, &r, A, B, Sig, 0);
     checkVarmapackSuccess(ok);
     if (p > 0) checkArrayFinite(A, r*r*p);
@@ -148,23 +152,26 @@ static void check_construct_all_named(void) {
 
 static void check_deterministic_unnamed(void) {
   int p = 2, q = 1, r = 3, icase = -1;
-  double A[18], B[9], Sig[9];
+  double A[18], B[9], Sig[9], expectedA[18], expectedB[9], expectedSig[9];
   bool ok = varmapack_testcase("", &icase, 0, &p, &q, &r, A, B, Sig, 0);
   checkVarmapackSuccess(ok);
   xCheck(p == 2 && q == 1 && r == 3);
   for (int i=0; i<18; i++) {
-    xCheck(fabs(A[i] - 0.5/(2*3)) < 1e-15);
+    expectedA[i] = 0.5/(2*3);
   }
   for (int i=0; i<9; i++) {
-    xCheck(fabs(B[i] - 1.0/3) < 1e-15);
+    expectedB[i] = 1.0/3;
   }
   for (int j=0; j<3; j++) {
     for (int i=0; i<3; i++) {
       double expected = 1.0/(i + j + 1);
       if (i == j) expected += 0.2;
-      xCheck(fabs(Sig[i + j*3] - expected) < 1e-15);
+      expectedSig[i + j*3] = expected;
     }
   }
+  checkArrayTol(A, expectedA, 18, 1e-15);
+  checkArrayTol(B, expectedB, 9, 1e-15);
+  checkArrayTol(Sig, expectedSig, 9, 1e-15);
 }
 
 static void check_random_unnamed(void) {
@@ -213,7 +220,7 @@ static void check_rho_case(void) {
   icase = 0;
   bool ok = varmapack_testcase("rho", &icase, 0, &p, &q, &r, A, B, Sig, 0);
   checkVarmapackSuccess(ok);
-  for (int i=0; i<r*r*p; i++) xCheck(A[i] == 0);
+  checkArrayZero(A, r*r*p);
   p = 0;
   q = 1;
   r = 2;

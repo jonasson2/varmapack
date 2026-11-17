@@ -59,6 +59,37 @@ varmapack_cov2corr <- function(cov) {
   .Call("varmapack_cov2corr_R", cov, PACKAGE = "varmapack")
 }
 
+#' Recover innovation covariance from model covariance
+#'
+#' Recover the innovation covariance with the AR and MA coefficients held
+#' fixed. The AR model must be stationary, and the target and recovered
+#' covariances must be positive semidefinite; singular covariances are allowed.
+#'
+#' @param cov Numeric `r` by `r` lag-zero model covariance matrix. Only its
+#'   lower triangle is used.
+#' @param A,B AR and MA coefficient matrices, as `r` by `r` matrices or
+#'   `r` by `r` by `order` arrays. `NULL` omits the corresponding terms.
+#'
+#' @return A symmetric `r` by `r` innovation covariance matrix. Inputs are
+#'   unchanged. An incompatible target or unreliable inverse raises an error.
+#'
+#' @examples
+#' Sig <- varmapack_cov2sig(matrix(4/3, 1, 1), A = matrix(0.5, 1, 1))
+#' varmapack_model(A = matrix(0.5, 1, 1), Sig = Sig)$acvf(0)
+#'
+#' @seealso [varmapack_model()], [varmapack_cov2corr()]
+#' @export
+varmapack_cov2sig <- function(cov, A = NULL, B = NULL) {
+  if (!is.numeric(cov) || !is.matrix(cov) || nrow(cov) <= 0L ||
+      nrow(cov) != ncol(cov))
+    stop("cov must be a non-empty numeric square matrix", call. = FALSE)
+  r <- nrow(cov)
+  A <- .vp_square_terms(A, "A", r)
+  B <- .vp_square_terms(B, "B", r)
+  .Call("varmapack_cov2sig_R", A, B, matrix(as.double(cov), nrow = r),
+        PACKAGE = "varmapack")
+}
+
 #' Create a VARMA testcase model
 #'
 #' Create a built-in named testcase or an unnamed random, deterministic, or

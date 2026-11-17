@@ -16,6 +16,40 @@ extern "C" {
 
 char *varmapack_last_error(void); // Get last error string for this thread, or 0
 
+typedef struct varmapack_ou_model varmapack_ou_model;
+
+varmapack_ou_model *varmapack_ou_create( // Stationary diagonal-drift OU model
+  double tau[], // in   r finite positive persistence times
+  double cov[], // in   r*r stationary covariance; lower triangle is used
+  double mu[],  // in   r constant means, or 0 for zero means
+  int r);       // in   number of series
+  // Copies its inputs. cov and D_ij = cov_ij*(1/tau_i + 1/tau_j) must be PSD.
+  // Singular covariances are allowed. Returns 0 on failure; see last_error().
+
+void varmapack_ou_free(varmapack_ou_model *model); // Accepts 0
+
+bool varmapack_ou_sim( // Exact OU simulation, with no burn-in or time discretization
+  varmapack_ou_model *model, // in   model returned by varmapack_ou_create
+  double t[], // in   n finite strictly increasing observation times
+  int n,      // in   observations per path, at least 1
+  int M,      // in   number of independent paths, at least 1
+  double X[], // out  r*n*M values, column-major; must not overlap t
+  randompack_rng *rng); // in/out Randompack stream
+  // X(t[0]) is drawn from N(mu,cov). Each gap d uses a_i = exp(-d/tau_i)
+  // and innovation covariance Q_ij = cov_ij*(1-a_i*a_j).
+  // Times and tau have the same units; translating t does not change the law.
+  // Returns false on failure. X and the RNG can be partly advanced on failure.
+
+bool varmapack_gamma_times( // Observation times with independent Gamma gaps
+  int n,           // in   number of times, at least 1
+  double shape,    // in   finite positive shape, or +infinity for equal gaps
+  double mean_gap, // in   finite positive expected spacing
+  double t[],      // out  n strictly increasing times, starting at zero
+  randompack_rng *rng); // in/out stream; may be 0 for equal gaps or n=1
+  // Gap scale = mean_gap/shape, CV = 1/sqrt(shape). No sample normalization.
+  // Returns false if a positive gap/time cannot be represented as a double.
+  // The output and RNG can be partly advanced on failure.
+
 bool varmapack_sim ( // Simulate VARMA time series
   double A[],   // in      r×r×p, autoregressive parameter matrices
   double B[],   // in      r×r×q, moving average parameter matrices
@@ -100,6 +134,23 @@ bool varmapack_acvf( // Theoretical autocovariance function of VARMA model
   double Gamma[],// out  r×r×(maxlag+1) covariance sequence, Γk = Cov(xt, x{t-k})
   int maxlag);   // in   largest lag to compute
   // See varmapack_acvf.c for more details
+
+bool varmapack_cov2sig( // Recover innovation covariance from model covariance
+  double A[],   // in   r*r*p autoregressive matrices; may be 0 when p=0
+  double B[],   // in   r*r*q moving-average matrices; may be 0 when q=0
+  double cov[], // in   r*r target Cov(x_t,x_t); only the lower triangle is used
+  int p,        // in   number of autoregressive terms
+  int q,        // in   number of moving-average terms
+  int r,        // in   dimension of each x(t)
+  double Sig[]);// out  r*r symmetric innovation covariance; may equal cov
+  // Arrays are column-major. A must define a stationary model. cov and the
+  // recovered Sig must be positive semidefinite within floating-point tolerance;
+  // singular covariances are allowed.
+  // Uses the direct inverse VYW system, without switching to a Lyapunov solver.
+  // Returns false for invalid input, an incompatible target, a singular or
+  // ill-conditioned inverse system, or a failed forward covariance check.
+  // Consult varmapack_last_error() on failure; Sig is then unchanged.
+  // Except for Sig == cov, the output must not overlap any input.
 
 bool varmapack_autocov( // Sample autocovariance of observed data
   const char *transp, // in   string beginning "N" for X r×n, or "T" for X n×r

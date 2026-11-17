@@ -10,6 +10,7 @@
 #define daxpy_ scipy_daxpy_
 #define dcopy_ scipy_dcopy_
 #define ddot_ scipy_ddot_
+#define dgecon_ scipy_dgecon_
 #define dgeev_ scipy_dgeev_
 #define dgemm_ scipy_dgemm_
 #define dgemv_ scipy_dgemv_
@@ -58,6 +59,9 @@ void daxpy_(int *n, double *alpha, double x[], int *incx, double y[], int *incy)
 void dcopy_(int *n, double x[], int *incx, double y[], int *incy);
 
 double ddot_(int *n, double x[], int *incx, double y[], int *incy);
+
+void dgecon_(char *norm, int *n, double a[], int *lda, double *anorm, double *rcond,
+             double work[], int iwork[], int *info, fstrlen lennorm);
 
 void dgeev_(char *jobvl, char *jobvr, int *n, double a[], int *lda, double wr[], double
 	    wi[], double vl[], int *ldvl, double vr[], int *ldvr, double work[],

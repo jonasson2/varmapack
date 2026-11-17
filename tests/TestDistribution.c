@@ -37,7 +37,8 @@ static double sample_covariance(double X[], int r, int t1, int i, int t2,
   return sum/(TEST_NREP - 1);
 }
 
-static void check_standard_error(double estimate, double target, double se,
+static void check_standard_error(test_check_group *checks,
+                                 double estimate, double target, double se,
                                  char *quantity, int t, int i, int j) {
   double difference = fabs(estimate - target);
   double z = se > 0 ? difference/se : (difference == 0 ? 0 : INFINITY);
@@ -45,7 +46,7 @@ static void check_standard_error(double estimate, double target, double se,
   snprintf(message, sizeof(message),
            "%s t=%d i=%d j=%d: estimate %.8g, target %.8g, z=%.3f",
            quantity, t, i, j, estimate, target, z);
-  xCheckMessage(z <= MAX_Z, message);
+  groupCheckMessage(checks, z <= MAX_Z, message);
 }
 
 static double normal_cdf(double x) {
@@ -57,7 +58,7 @@ static int compare_uniforms(const void *a, const void *b) {
   return (*x > *y) - (*x < *y);
 }
 
-static void check_uniform_ks(double U[], char *label) {
+static void check_uniform_ks(double U[], char *label, test_check_group *checks) {
   double D = 0;
   double sample_size = TEST_NREP;
   // DKW bound: P(D > limit) <= PIT_ALPHA for independent uniform samples.
@@ -70,11 +71,14 @@ static void check_uniform_ks(double U[], char *label) {
   }
   snprintf(message, sizeof(message),
            "%s: KS D=%.6g, limit %.6g (alpha %.0e)", label, D, limit, PIT_ALPHA);
-  xCheckMessage(D <= limit, message);
+  if (checks) groupCheckMessage(checks, D <= limit, message);
+  else xCheckMessage(D <= limit, message);
 }
 
 static void check_normal_distribution(double X[], double mean, double variance,
-                                      int r, int t, int i) {
+                                      int r, int t, int i,
+                                      test_check_group *chi_checks,
+                                      test_check_group *ks_checks) {
   int counts[PIT_BINS] = {0};
   double standard_deviation = sqrt(variance);
   double expected = TEST_NREP/PIT_BINS;
@@ -88,7 +92,8 @@ static void check_normal_distribution(double X[], double mean, double variance,
     if (!isfinite(z) || !isfinite(u)) {
       snprintf(message, sizeof(message),
                "normal PIT t=%d i=%d replicate=%d: nonfinite value", t, i, m);
-      xCheckMessage(false, message);
+      groupCheckMessage(chi_checks, false, message);
+      groupCheckMessage(ks_checks, false, message);
       FREE(U);
       return;
     }
@@ -105,9 +110,9 @@ static void check_normal_distribution(double X[], double mean, double variance,
   snprintf(message, sizeof(message),
            "normal PIT t=%d i=%d: chi-square %.3f, limit %.1f",
            t, i, chi2, PIT_CHI2_LIMIT);
-  xCheckMessage(chi2 <= PIT_CHI2_LIMIT, message);
+  groupCheckMessage(chi_checks, chi2 <= PIT_CHI2_LIMIT, message);
   snprintf(message, sizeof(message), "normal PIT t=%d i=%d", t, i);
-  check_uniform_ks(U, message);
+  check_uniform_ks(U, message, ks_checks);
   FREE(U);
 }
 
@@ -157,7 +162,7 @@ static void check_sum(double X[], double Gamma[], double mu[], int r,
     }
     U[m] = normal_cdf(z);
   }
-  check_uniform_ks(U, label);
+  check_uniform_ks(U, label, 0);
 }
 
 static int select_component(int r, randompack_rng *rng) {
@@ -227,14 +232,19 @@ static void check_model_distribution(test_model *model, int seed) {
   checkVarmapackSuccess(ok);
   for (int it=0; it<LEN(times); it++) {
     int t = times[it];
+    test_check_group mean_checks = {0}, cov_checks = {0};
+    test_check_group chi_checks = {0}, ks_checks = {0};
     for (int i=0; i<r; i++) {
       double variance = Gamma[i + i*r];
       double se = sqrt(variance/TEST_NREP);
       double estimate = sample_mean(X, r, t, i);
       means[it*r + i] = estimate;
-      check_standard_error(estimate, mu[i], se, "mean", t, i, i);
-      check_normal_distribution(X, mu[i], variance, r, t, i);
+      check_standard_error(&mean_checks, estimate, mu[i], se, "mean", t, i, i);
+      check_normal_distribution(X, mu[i], variance, r, t, i, &chi_checks, &ks_checks);
     }
+    checkGroup(&mean_checks, "mean vector within sampling-error bounds");
+    checkGroup(&chi_checks, "marginal normality: chi-square PIT");
+    checkGroup(&ks_checks, "marginal normality: KS PIT");
     for (int j=0; j<r; j++) {
       for (int i=0; i<=j; i++) {
         double target = Gamma[i + j*r];
@@ -243,13 +253,15 @@ static void check_model_distribution(test_model *model, int seed) {
         double se = sqrt((variance_i*variance_j + target*target)/(TEST_NREP - 1));
         double estimate = sample_covariance(X, r, t, i, t, j,
                                             means[it*r + i], means[it*r + j]);
-        check_standard_error(estimate, target, se, "covariance", t, i, j);
+        check_standard_error(&cov_checks, estimate, target, se, "covariance", t, i, j);
       }
     }
+    checkGroup(&cov_checks, "covariance matrix within sampling-error bounds");
   }
   for (int ilag=0; ilag<LEN(lags); ilag++) {
     int lag = lags[ilag];
     int it = ilag + 1;
+    test_check_group lag_checks = {0};
     for (int j=0; j<r; j++) {
       for (int i=0; i<r; i++) {
         double target = Gamma[lag*r2 + i + j*r];
@@ -258,10 +270,11 @@ static void check_model_distribution(test_model *model, int seed) {
         double se = sqrt((variance_i*variance_j + target*target)/(TEST_NREP - 1));
         double estimate = sample_covariance(X, r, lag, i, 0, j,
                                             means[it*r + i], means[j]);
-        check_standard_error(estimate, target, se, "lagged covariance", lag,
+        check_standard_error(&lag_checks, estimate, target, se, "lagged covariance", lag,
                              i, j);
       }
     }
+    checkGroup(&lag_checks, "lagged covariance matrix within sampling-error bounds");
   }
   check_pairs_and_triples(X, Gamma, mu, r, seed);
   randompack_free(rng);

@@ -65,3 +65,42 @@ test_that("theoretical autocovariance rejects VARMAX models", {
   model <- varmapack_model(C = matrix(0.2, 1, 1), Sig = matrix(1, 1, 1))
   expect_error(model$acvf(1))
 })
+
+test_that("innovation covariance agrees with scalar formulas", {
+  expect_equal(varmapack_cov2sig(matrix(4), A = matrix(0.5)), matrix(3))
+  expect_equal(varmapack_cov2sig(matrix(2.125), B = matrix(0.25)), matrix(2))
+  expect_equal(varmapack_cov2sig(matrix(3.5), A = matrix(0.5), B = matrix(0.25)),
+               matrix(2))
+  cov <- matrix(c(2, 0.3, 0.3, 1), 2, 2)
+  expect_equal(varmapack_cov2sig(cov), cov)
+})
+
+test_that("innovation covariance preserves matrix orientation and inputs", {
+  A <- matrix(c(0.4, -0.1, 0.2, 0.3), 2, 2)
+  cov <- matrix(c(2, 0.3, NaN, 1), 2, 2)
+  original <- cov
+  full <- matrix(c(2, 0.3, 0.3, 1), 2, 2)
+  expect_equal(varmapack_cov2sig(cov, A = A), full - A %*% full %*% t(A),
+               tolerance = 1e-12)
+  expect_identical(cov, original)
+  for (target in list(matrix(1, 2, 2), matrix(0, 2, 2)))
+    expect_equal(varmapack_cov2sig(target, A = 0.5*diag(2)), 0.75*target)
+})
+
+test_that("innovation covariance round trips through all named models", {
+  for (name in varmapack_testcases()$name) {
+    model <- varmapack_testcase(name)
+    cov <- matrix(model$acvf(0), model$r, model$r)
+    original <- cov
+    A <- model$A
+    B <- model$B
+    Sig <- varmapack_cov2sig(cov, A = A, B = B)
+    expect_equal(Sig, model$Sig, tolerance = 1e-9, info = name)
+    recovered <- varmapack_model(A = A, B = B, Sig = Sig)$acvf(0)
+    expect_equal(matrix(recovered, model$r, model$r), cov,
+                 tolerance = 1e-9, info = name)
+    expect_identical(cov, original)
+    expect_identical(model$A, A)
+    expect_identical(model$B, B)
+  }
+})

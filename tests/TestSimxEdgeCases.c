@@ -16,11 +16,13 @@ static void check_white_noise_with_exog(void) {
   bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                                          X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group exog = {0};
   for (int j=0; j<M; j++) {
     for (int t=0; t<n; t++) {
-      xCheck(fabs(X[j*n + t] - E[j*n + t] - C[0]*z[t]) < 1e-12);
+      groupCheck(&exog, fabs(X[j*n + t] - E[j*n + t] - C[0]*z[t]) < 1e-12);
     }
   }
+  checkGroup(&exog, "exogenous contribution to white noise");
   randompack_free(rng);
 }
 
@@ -36,12 +38,13 @@ static void check_arx_recursion(void) {
   bool ok = varmapack_simx(A, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                                          X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
-  xCheck(fabs(X[0] - X0[0]) < 1e-12);
-  xCheck(fabs(X[1] - X0[1]) < 1e-12);
+  checkArrayTol(X, X0, h, 1e-12);
+  test_check_group recursion = {0};
   for (int t=h; t<n; t++) {
     double pred = A[0]*X[t-1] + E[t] + C[0]*z[t];
-    xCheck(fabs(X[t] - pred) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - pred) < 1e-12);
   }
+  checkGroup(&recursion, "ARX recursion");
   randompack_free(rng);
 }
 
@@ -53,15 +56,18 @@ static void check_minimum_startup(void) {
   bool ok = varmapack_simx(A, B, C, Sig, z, 1, p, q, s, 1, r, n, M,
                            X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group startup = {0}, recursion = {0};
   for (int j=0; j<M; j++) {
-    xCheck(fabs(X[j*n] - X0[0]) < 1e-12);
+    groupCheck(&startup, fabs(X[j*n] - X0[0]) < 1e-12);
     for (int t=h; t<n; t++) {
       int it = j*n + t;
       double expected = A[0]*X[it-1] + E[it] + B[0]*E[it-1] +
                         C[0]*z[t] + C[1]*z[t-1];
-      xCheck(fabs(X[it] - expected) < 1e-12);
+      groupCheck(&recursion, fabs(X[it] - expected) < 1e-12);
     }
   }
+  checkGroup(&startup, "minimal initial values shared by all paths");
+  checkGroup(&recursion, "ARMAX recursion after minimal startup");
   randompack_free(rng);
 }
 
@@ -72,12 +78,14 @@ static void check_zero_startup(void) {
   bool ok = varmapack_simx(0, 0, C, Sig, z, 1, p, q, s, 1, r, n, M,
                            0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group exog = {0};
   for (int j=0; j<M; j++) {
     for (int t=0; t<n; t++) {
       int it = j*n + t;
-      xCheck(fabs(X[it] - E[it] - C[0]*z[t]) < 1e-12);
+      groupCheck(&exog, fabs(X[it] - E[it] - C[0]*z[t]) < 1e-12);
     }
   }
+  checkGroup(&exog, "exogenous contribution without startup");
   randompack_free(rng);
 }
 
@@ -92,19 +100,22 @@ static void check_varma_without_exog(void) {
   bool ok = varmapack_simx(A, B, 0, Sig, 0, 1, p, q, s, 0, r, n, M,
                            X0, h, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group recursion = {0};
   for (int j=0; j<M; j++) {
     for (int t=h; t<n; t++) {
       int it = j*n + t;
       double prediction = E[it] + A[0]*X[it-1] + A[1]*X[it-2] + B[0]*E[it-1];
-      xCheck(fabs(X[it] - prediction) < 1e-12);
+      groupCheck(&recursion, fabs(X[it] - prediction) < 1e-12);
     }
   }
+  checkGroup(&recursion, "VARMA recursion without exogenous variables");
   randompack_free(rng);
 }
 
 static void check_vector_exog_result(double C[], double z[], int zPaths, int s,
                                      int d, int r, int n, int M, int h,
                                      double X[], double E[]) {
+  test_check_group startup = {0}, exog = {0};
   for (int j=0; j<M; j++) {
     int zOffset = zPaths == 1 ? 0 : j*d*n;
     for (int row=0; row<r; row++) {
@@ -115,7 +126,7 @@ static void check_vector_exog_result(double C[], double z[], int zPaths, int s,
             z[zOffset+col+(h-1-lag)*d];
         }
       }
-      xCheck(fabs(E[j*r*n+(h-1)*r+row] - expected) < 1e-12);
+      groupCheck(&startup, fabs(E[j*r*n+(h-1)*r+row] - expected) < 1e-12);
     }
     for (int t=h; t<n; t++) {
       for (int row=0; row<r; row++) {
@@ -126,10 +137,12 @@ static void check_vector_exog_result(double C[], double z[], int zPaths, int s,
               z[zOffset+col+(t-lag)*d];
           }
         }
-        xCheck(fabs(X[j*r*n+t*r+row] - expected) < 1e-12);
+        groupCheck(&exog, fabs(X[j*r*n+t*r+row] - expected) < 1e-12);
       }
     }
   }
+  checkGroup(&startup, "vector exogenous contribution to startup shocks");
+  checkGroup(&exog, "vector exogenous contribution to all paths");
 }
 
 static void check_vector_exog(void) {
@@ -201,12 +214,15 @@ static void check_multipath_z_and_X0(void) {
   bool ok = varmapack_simx(0, 0, C, Sig, z, M, p, q, s, 1, r, n, M,
                                          X0, h, M, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group startup = {0}, exog = {0};
   for (int j=0; j<M; j++) {
-    xCheck(fabs(X[j*n] - X0[j]) < 1e-12);
+    groupCheck(&startup, fabs(X[j*n] - X0[j]) < 1e-12);
     for (int t=h; t<n; t++) {
-      xCheck(fabs(X[j*n + t] - E[j*n + t] - C[0]*z[j*n + t]) < 1e-12);
+      groupCheck(&exog, fabs(X[j*n + t] - E[j*n + t] - C[0]*z[j*n + t]) < 1e-12);
     }
   }
+  checkGroup(&startup, "per-path initial values");
+  checkGroup(&exog, "per-path exogenous contribution");
   randompack_free(rng);
 }
 

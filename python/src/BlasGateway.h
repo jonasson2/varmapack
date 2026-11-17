@@ -38,6 +38,11 @@ static inline void getrf(int m, int n, double a[], int lda, int ipiv[], int *inf
   dgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
+static inline void gecon(int n, double a[], double anorm, double *rcond,
+                         double work[], int iwork[], int *info) {
+  dgecon_("1", &n, a, &n, &anorm, rcond, work, iwork, info, 1);
+}
+
 static inline void getrs(char *transa, int n, int nrhs, double a[], int lda, int ipiv[],
            double b[], int ldb, int *info) {
   dgetrs_(transa, &n, &nrhs, a, &lda, ipiv, b, &ldb, info, 1);

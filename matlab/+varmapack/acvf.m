@@ -8,7 +8,7 @@ function Gamma = acvf(A, B, Sig, maxlag)
 %   and moving-average coefficient matrices. Use [] for A or B when p=0 or
 %   q=0, respectively. Sig is the r-by-r shock covariance matrix.
 %
-%   See also VARMAPACK.AUTOCOV, VARMAPACK.SPECRAD.
+%   See also VARMAPACK.AUTOCOV, VARMAPACK.COV2SIG, VARMAPACK.SPECRAD.
   r = size(Sig, 1);
   if isempty(A), A = zeros(r, 0); end
   if isempty(B), B = zeros(r, 0); end

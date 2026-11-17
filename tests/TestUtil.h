@@ -1,4 +1,5 @@
 // Shared assertions, comparisons, RNG setup, and testcase fixtures for C tests.
+// Each array comparison or expected API outcome counts as one logical check.
 
 #ifndef TESTUTIL_H
 #define TESTUTIL_H
@@ -37,6 +38,27 @@
 #define checkVarmapackNaN(value) \
   checkVarmapackNaNFunc((value), __FILE__, __LINE__, __func__)
 
+// Initialize with {0}; accumulate one property, then call checkGroup once.
+typedef struct {
+  int total;
+  int failed;
+  int first_failed;
+  const char *file;
+  const char *func;
+  int line;
+  char condition[128];
+  char context[256];
+} test_check_group;
+
+#define groupCheck(group, e) \
+  groupCheckFunc((group), (e), #e, __FILE__, __LINE__, __func__, 0)
+
+#define groupCheckMessage(group, e, message) \
+  groupCheckFunc((group), (e), #e, __FILE__, __LINE__, __func__, (message))
+
+#define checkGroup(group, description) \
+  checkGroupFunc((group), (description), __FILE__, __LINE__, __func__)
+
 #define seededRng(seed) seededRngFunc((seed), __FILE__, __LINE__, __func__)
 
 #define reseedRng(rng, seed) \
@@ -60,6 +82,11 @@ void xCheckInit(const char *message);
 void xCheckAddMsg(const char *message);
 int xCheckNFailures(void);
 int xCheckNTotal(void);
+
+void groupCheckFunc(test_check_group *group, bool ok, const char *condition,
+                    const char *file, int line, const char *func, const char *context);
+void checkGroupFunc(test_check_group *group, const char *description,
+                    const char *file, int line, const char *func);
 
 bool almostSame(double a, double b);
 bool almostEqual(double a[], double b[], int n);

@@ -1,8 +1,13 @@
 LIBRARY varmapack
 EXPORTS
+  varmapack_ou_create
+  varmapack_ou_free
+  varmapack_ou_sim
+  varmapack_gamma_times
   varmapack_acvf
   varmapack_autocov
   varmapack_cov2corr
+  varmapack_cov2sig
   varmapack_irf
   varmapack_ma_specrad
   varmapack_psi

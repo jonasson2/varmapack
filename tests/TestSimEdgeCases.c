@@ -29,12 +29,14 @@ static void check_time_dependent_mean(void) {
   randompack_rng *rng = seededRng(8);
   ok = varmapack_sim(0, 0, Sig, mu, 3, p, q, r, n, M, 0, 0, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group mean = {0};
   for (int t=0; t<n; t++) {
     int imu = t < 3 ? t : 2;
     for (int i=0; i<r; i++) {
-      xCheck(fabs(X[t*r+i] - E[t*r+i] - mu[imu*r+i]) < 1e-12);
+      groupCheck(&mean, fabs(X[t*r+i] - E[t*r+i] - mu[imu*r+i]) < 1e-12);
     }
   }
+  checkGroup(&mean, "time-dependent mean applied to the full path");
   randompack_free(rng);
 }
 
@@ -145,11 +147,13 @@ static void check_conditional_ma_recursion(void) {
   randompack_rng *rng = seededRng(37);
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group recursion = {0};
   for (int t=3; t<n; t++) {
     double expected = A[0]*X[t-1] + E[t];
     expected += B[0]*E[t-1] + B[1]*E[t-2] + B[2]*E[t-3];
-    xCheck(fabs(X[t] - expected) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - expected) < 1e-12);
   }
+  checkGroup(&recursion, "conditional MA recursion");
   randompack_free(rng);
 }
 
@@ -171,10 +175,11 @@ static void check_singular_sigma(void) {
   checkVarmapackSuccess(ok);
   checkArrayFinite(X, r*n*M);
   checkArrayFinite(E, r*n*M);
+  test_check_group support = {0}, recursion = {0};
   for (int j=0; j<M; j++) {
     for (int t=0; t<n; t++) {
       int i = j*r*n + t*r;
-      xCheck(fabs(E[i] - E[i+1]) < 1e-12);
+      groupCheck(&support, fabs(E[i] - E[i+1]) < 1e-12);
     }
     for (int t=1; t<n; t++) {
       int i = j*r*n + t*r;
@@ -183,10 +188,12 @@ static void check_singular_sigma(void) {
                       + B[2]*E[im1+1];
       double xPred1 = E[i+1] + A[1]*X[im1] + A[3]*X[im1+1] + B[1]*E[im1]
                       + B[3]*E[im1+1];
-      xCheck(fabs(X[i] - xPred0) < 1e-12);
-      xCheck(fabs(X[i+1] - xPred1) < 1e-12);
+      groupCheck(&recursion, fabs(X[i] - xPred0) < 1e-12);
+      groupCheck(&recursion, fabs(X[i+1] - xPred1) < 1e-12);
     }
   }
+  checkGroup(&support, "shocks lie in singular covariance support");
+  checkGroup(&recursion, "VARMA recursion with singular shock covariance");
   randompack_free(rng);
 }
 
@@ -224,12 +231,14 @@ static void check_singular_conditional_covariance(void) {
   randompack_rng *rng = seededRng(59);
   ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, 0, 0, 1, X, E, rng);
   checkVarmapackSuccess(ok);
+  test_check_group support = {0};
   for (int j=0; j<M; j++) {
     int offset = j*r*n;
     double u0 = X[offset] - E[offset];
     double u1 = X[offset + 1] - E[offset + 1];
-    xCheck(fabs(u0 - u1) < 1e-12);
+    groupCheck(&support, fabs(u0 - u1) < 1e-12);
   }
+  checkGroup(&support, "startup lies in singular conditional covariance support");
   randompack_free(rng);
 }
 
@@ -325,9 +334,11 @@ static void check_nonstationary_with_X0(void) {
   ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   xCheck(fabs(X[0] - X0[0]) < 1e-15);
+  test_check_group recursion = {0};
   for (int t=1; t<n; t++) {
-    xCheck(fabs(X[t] - (A[0]*X[t-1] + E[t])) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - (A[0]*X[t-1] + E[t])) < 1e-12);
   }
+  checkGroup(&recursion, "nonstationary AR recursion");
   randompack_free(rng);
 }
 
@@ -341,8 +352,10 @@ static void check_multipath_X0(void) {
   bool ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 1,
                                         M, X, E, rng);
   checkVarmapackSuccess(ok);
-  xCheck(fabs(X[0] - X0[0]) < 1e-15);
-  xCheck(fabs(X[n] - X0[1]) < 1e-15);
+  test_check_group startup = {0};
+  groupCheck(&startup, fabs(X[0] - X0[0]) < 1e-15);
+  groupCheck(&startup, fabs(X[n] - X0[1]) < 1e-15);
+  checkGroup(&startup, "per-path initial values");
   randompack_free(rng);
 }
 
@@ -358,9 +371,12 @@ static void check_nonstationary_arma_with_X0(void) {
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X, X0, 3);
+  test_check_group recursion = {0};
   for (int t=1; t<n; t++) {
-    xCheck(fabs(X[t] - (A[0]*X[t - 1] + E[t] + B[0]*E[t - 1])) < 1e-12);
+    groupCheck(&recursion,
+               fabs(X[t] - (A[0]*X[t - 1] + E[t] + B[0]*E[t - 1])) < 1e-12);
   }
+  checkGroup(&recursion, "nonstationary ARMA recursion");
   randompack_free(rng);
 }
 
@@ -376,11 +392,13 @@ static void check_nonstationary_arma_with_presample_shocks(void) {
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 4, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X, X0, 4);
+  test_check_group recursion = {0};
   for (int t=3; t<n; t++) {
     double expected = A[0]*X[t - 1] + E[t] + B[0]*E[t - 1];
     expected += B[1]*E[t - 2] + B[2]*E[t - 3];
-    xCheck(fabs(X[t] - expected) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - expected) < 1e-12);
   }
+  checkGroup(&recursion, "nonstationary ARMA recursion with presample shocks");
   randompack_free(rng);
 }
 
@@ -432,9 +450,11 @@ static void check_nX0_longer_than_h(void) {
   ok = varmapack_sim(A, 0, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X, X0, 3);
+  test_check_group recursion = {0};
   for (int t=3; t<n; t++) {
-    xCheck(fabs(X[t] - (A[0]*X[t-1] + E[t])) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - (A[0]*X[t-1] + E[t])) < 1e-12);
   }
+  checkGroup(&recursion, "AR recursion after extended startup");
   randompack_free(rng);
 }
 
@@ -450,10 +470,12 @@ static void check_nX0_longer_than_h_with_ma(void) {
   ok = varmapack_sim(A, B, Sig, 0, 0, p, q, r, n, M, X0, 3, 1, X, E, rng);
   checkVarmapackSuccess(ok);
   checkArraySame(X, X0, 3);
+  test_check_group recursion = {0};
   for (int t=3; t<n; t++) {
     double expected = A[0]*X[t-1] + E[t] + B[0]*E[t-1];
-    xCheck(fabs(X[t] - expected) < 1e-12);
+    groupCheck(&recursion, fabs(X[t] - expected) < 1e-12);
   }
+  checkGroup(&recursion, "ARMA recursion after extended startup");
   randompack_free(rng);
 }
 

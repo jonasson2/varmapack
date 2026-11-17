@@ -132,6 +132,53 @@ def test_varmax_argument_errors():
         model.sim(4, nrep=2, X0=np.zeros((2, 2)), z=np.zeros((3, 4)), rng=rng)
 
 
+def test_innovation_covariance_errors():
+    for cov in (None, [1, 2], np.ones((2, 3)), np.ones((1, 2, 2)),
+                np.empty((0, 0))):
+        with pytest.raises(ValueError):
+            varmapack.cov2sig(cov)
+    for name in ("A", "B"):
+        with pytest.raises(ValueError):
+            varmapack.cov2sig(np.eye(2), **{name: np.eye(3)})
+    for kwargs in ({"A": [[1.1]]}, {"A": [[np.nan]]}, {"B": [[np.inf]]}):
+        with pytest.raises(varmapack.VarmapackError):
+            varmapack.cov2sig([[1.0]], **kwargs)
+    for cov in ([[np.nan]], [[-1.0]], [[1, 2], [2, 1]]):
+        with pytest.raises(varmapack.VarmapackError):
+            varmapack.cov2sig(cov)
+    with pytest.raises(varmapack.VarmapackError, match="singular"):
+        varmapack.cov2sig(np.eye(2), B=[[0, -1], [1, 0]])
+    out = np.full((2, 2), 7.0)
+    with pytest.raises(varmapack.VarmapackError):
+        varmapack.cov2sig(np.eye(2), A=[[0.5, 2], [0, 0.5]], out=out)
+    assert np.array_equal(out, np.full((2, 2), 7.0))
+    cov = np.array([[1.0, 2.0], [2.0, 1.0]])
+    with pytest.raises(varmapack.VarmapackError):
+        varmapack.cov2sig(cov, out=cov)
+    assert np.array_equal(cov, [[1.0, 2.0], [2.0, 1.0]])
+
+
+def test_innovation_covariance_output_errors():
+    cov = np.eye(2)
+    for out in ([[0, 0], [0, 0]], np.empty((2, 2), dtype=np.float32)):
+        with pytest.raises(TypeError):
+            varmapack.cov2sig(cov, out=out)
+    readonly = np.empty((2, 2))
+    readonly.flags.writeable = False
+    unaligned = np.ndarray((2, 2), dtype=np.float64, buffer=bytearray(33), offset=1)
+    for out in (np.empty((2, 3)), np.empty((2, 2)).T, readonly, unaligned):
+        with pytest.raises(ValueError):
+            varmapack.cov2sig(cov, out=out)
+    storage = np.ones(5)
+    with pytest.raises(ValueError, match="overlap"):
+        varmapack.cov2sig(storage[:4].reshape(2, 2), out=storage[1:].reshape(2, 2))
+    out = np.zeros((2, 2))
+    with pytest.raises(ValueError, match="overlap"):
+        varmapack.cov2sig(cov, A=out, out=out)
+    with pytest.raises(ValueError, match="overlap"):
+        varmapack.cov2sig(cov, B=out, out=out)
+
+
 def test_testcase_errors():
     with pytest.raises(varmapack.VarmapackError):
         varmapack.testcase("does-not-exist")

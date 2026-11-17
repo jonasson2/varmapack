@@ -56,6 +56,27 @@ test_that("VARMAX simulation rejects missing and mismatched paths", {
                          z = array(0, c(1, 4, 3))), "z")
 })
 
+test_that("innovation covariance rejects invalid inputs and inverse problems", {
+  for (cov in list(NULL, 1:4, matrix(1, 2, 3), array(1, c(1, 1, 2)),
+                   matrix(numeric(), 0, 0)))
+    expect_error(varmapack_cov2sig(cov), "square matrix")
+  expect_error(varmapack_cov2sig(diag(2), A = diag(3)), "dimensions")
+  expect_error(varmapack_cov2sig(diag(2), B = diag(3)), "dimensions")
+  expect_error(varmapack_cov2sig(matrix(1), A = matrix(1.1)), "nonstationary")
+  expect_error(varmapack_cov2sig(matrix(1), A = matrix(NA_real_)), "finite")
+  expect_error(varmapack_cov2sig(matrix(1), B = matrix(Inf)), "finite")
+  expect_error(varmapack_cov2sig(matrix(NA_real_)), "finite")
+  expect_error(varmapack_cov2sig(matrix(-1)), "positive semidefinite")
+  cov <- matrix(c(1, 2, 2, 1), 2, 2)
+  original <- cov
+  expect_error(varmapack_cov2sig(cov), "positive semidefinite")
+  expect_identical(cov, original)
+  expect_error(varmapack_cov2sig(diag(2), B = matrix(c(0, 1, -1, 0), 2, 2)),
+               "singular")
+  expect_error(varmapack_cov2sig(diag(2), A = matrix(c(0.5, 0, 2, 0.5), 2, 2)),
+               "positive semidefinite")
+})
+
 test_that("testcase construction rejects invalid arguments", {
   expect_error(varmapack_testcase("does-not-exist"), "unknown testcase")
   expect_error(varmapack_testcase(list()), "which")

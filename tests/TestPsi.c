@@ -13,7 +13,7 @@ static void TestFindPsi(void) {
   xCheck(model.r == 3 && model.p == 3 && model.q == 3);
   int h = imax(model.p, model.q);
   int n = model.r*h*model.r*h;
-  xCheck(ALLOC(Psi, n));
+  ASSERT(ALLOC(Psi, n), "allocation failed");
   FindPsi(model.A, model.B, Psi, model.p, model.q, model.r);
   // Expected Psi from Matlab find_Psi(A,B) for mediumARMA1 (3x9x3 flattened)
   double Psi_exp[] = {
@@ -39,8 +39,8 @@ static void TestFindPsiHat(void) {
   loadIndexedTestModel(&model, 12);
   int h = imax(model.p, model.q);
   int n = model.r*h*model.r*h;
-  xCheck(ALLOC(Psi, n));
-  xCheck(ALLOC(Psi_hat, n));
+  ASSERT(ALLOC(Psi, n), "allocation failed");
+  ASSERT(ALLOC(Psi_hat, n), "allocation failed");
   FindPsi(model.A, model.B, Psi, model.p, model.q, model.r);
   double Sig_mod[] = {
     1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 2.0
@@ -87,9 +87,9 @@ static void TestPsiSimple(void) {
   int p = 2;
   int h = imax(p, model.q);
   int n = model.r*h*model.r*h;
-  xCheck(ALLOC(A, model.r*model.r*p));
-  xCheck(ALLOC(Psi, n));
-  xCheck(ALLOC(Psi_hat, n));
+  ASSERT(ALLOC(A, model.r*model.r*p), "allocation failed");
+  ASSERT(ALLOC(Psi, n), "allocation failed");
+  ASSERT(ALLOC(Psi_hat, n), "allocation failed");
   copy(4, model.A, 1, A, 1);
   copy(4, A2, 1, A+4, 1);  // A := [A A2]
   model.Sig[0] = 1;        // So LSig is simple

@@ -5,7 +5,8 @@ Varmapack simulates Gaussian VARMA and VARMAX time-series models and
 computes related quantities such as theoretical autocovariances, impulse
 responses, and sample autocovariances.
 
-The main entry point is :class:`Model`.
+The main entry points are :class:`Model` for discrete-time models and
+:class:`OUModel` for continuous-time models at arbitrary observation times.
 
 Examples
 --------
@@ -45,12 +46,13 @@ try:
 except ImportError:  # pragma: no cover
     from importlib_metadata import version as _version
 
-from ._core import Model, VarmapackError, autocov, cov2corr, testcase, testcases
+from ._core import Model, VarmapackError, autocov, cov2corr, cov2sig, testcase, testcases
+from ._core import OUModel, gamma_times
 
 try:
     __version__ = _version("varmapack")
 except Exception:  # pragma: no cover
     __version__ = "unknown"
 
-__all__ = ["Model", "VarmapackError", "__version__", "autocov", "cov2corr",
-           "testcase", "testcases"]
+__all__ = ["Model", "OUModel", "gamma_times", "VarmapackError", "__version__", "autocov", "cov2corr",
+           "cov2sig", "testcase", "testcases"]

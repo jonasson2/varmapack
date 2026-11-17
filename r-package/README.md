@@ -5,8 +5,9 @@ varmapack
 time-series models. Simulated stationary series have the correct
 distribution from the first returned term, without discarding a burn-in
 segment. The package also provides model testcases, theoretical and
-sample autocovariances, covariance-to-correlation conversion, spectral
-radii, and impulse response functions.
+sample autocovariances, covariance-to-correlation conversion,
+innovation-covariance recovery, spectral radii, and impulse response
+functions.
 
 ## Documentation
 
@@ -46,6 +47,7 @@ remotes::install_github("jonasson2/varmapack", subdir = "r-package")
 model <- varmapack_testcase("smallARMA1")
 gamma <- model$acvf(maxlag = 2)
 corr <- varmapack_cov2corr(gamma)
+Sig <- varmapack_cov2sig(gamma[, , 1], A = model$A, B = model$B)
 ```
 
 `varmapack_cov2corr()` converts theoretical or sample autocovariances to
@@ -55,7 +57,33 @@ shape as the input. Lag-zero diagonal entries are exactly one. Other
 entries are not clipped to `[-1,1]`, so correlations obtained from
 lag-corrected sample autocovariances may lie outside that interval.
 
+`varmapack_cov2sig(cov, A = NULL, B = NULL)` recovers innovation
+covariance from a specified lag-zero model covariance and fixed AR and
+MA coefficients. `cov` is a single `r` by `r` matrix; only its lower
+triangle is used. The returned matrix is symmetric, and inputs are
+unchanged. The AR model must be stationary, and both covariances must be
+positive semidefinite; singular covariances are allowed. Incompatible
+targets and unreliable inverse problems raise errors.
+
+## Uneven Observation Times
+
+``` r
+rng <- randompack::randompack_rng()
+rng$seed(123)
+t <- varmapack_gamma_times(100, shape = 16, mean_gap = 1, rng = rng)
+model <- varmapack_ou_model(c(1, 2), matrix(c(1, .5, .5, 1), 2))
+X <- model$sim(t, nrep = 10, rng = rng) # 2 by 100 by 10
+```
+
+The OU model simulates exact stationary Gaussian paths at supplied
+times, without burn-in. `cov` is the stationary covariance, not
+innovation covariance; it and the driving covariance
+`cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite. Drift is
+diagonal. Times have the same units as persistence. Gamma gaps have CV
+`1/sqrt(shape)`, without normalization of the realized mean;
+`shape = Inf` gives equal spacing.
+
 An additional [European stock-index
 example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md)
-fits a VAR(1) to the built-in `EuStockMarkets` log returns and generates exact
-stationary simulations from the fitted model.
+fits a VAR(1) to the built-in `EuStockMarkets` log returns and generates
+exact stationary simulations from the fitted model.

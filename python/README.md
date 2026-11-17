@@ -4,8 +4,11 @@ Varmapack is a Python interface to the Varmapack C library for simulation and
 analysis of Gaussian VAR, VMA, VARMA, and VARMAX time-series models.
 
 It supports burn-in-free simulation, model testcases, theoretical and sample
-autocovariances, spectral radii, and impulse response functions.
+autocovariances, covariance conversions, innovation-covariance recovery,
+spectral radii, and impulse response functions.
 VARMAX models support scalar or vector-valued exogenous inputs.
+`OUModel` adds exact stationary simulation at uneven observation times;
+`gamma_times` generates independent Gamma spacings when needed.
 
 ## Quick Example
 
@@ -26,6 +29,23 @@ allocation on each call; its required shape is `(nrep, length, r)`.
 The repository also provides a Python version of the
 [European stock-index example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md),
 which simulates from a VAR(1) fitted to empirical multivariate returns.
+
+## Uneven Observation Times
+
+```python
+import randompack
+rng = randompack.Rng()
+rng.seed(123)
+t = varmapack.gamma_times(100, shape=16, mean_gap=1, rng=rng)
+model = varmapack.OUModel(tau=[1, 2], cov=[[1, .5], [.5, 1]])
+X = model.sim(t, nrep=10, rng=rng)  # (10, 100, 2)
+```
+
+`cov` specifies stationary covariance, not innovation covariance. The model
+uses diagonal drift and correlated driving noise. Times and persistence times
+have the same units. Gamma gaps are not normalized to their realized mean;
+use `shape=float("inf")` for equal spacing. See the usage guide for covariance
+compatibility requirements.
 
 ## Timing
 

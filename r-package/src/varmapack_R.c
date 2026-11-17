@@ -62,6 +62,60 @@ static SEXP named_list2(SEXP x, SEXP y, char *xname, char *yname) {
   return out;
 }
 
+static varmapack_ou_model *ou_model_R(SEXP tau, SEXP cov, SEXP mu) {
+  int r = Rf_length(tau);
+  if (TYPEOF(tau) != REALSXP || TYPEOF(cov) != REALSXP ||
+      TYPEOF(mu) != REALSXP || r < 1 || get_ndim(cov) != 2 ||
+      get_dim(cov, 0) != r || get_dim(cov, 1) != r || Rf_length(mu) != r)
+    Rf_error("invalid OU model dimensions or types");
+  varmapack_ou_model *model = varmapack_ou_create(REAL(tau), REAL(cov), REAL(mu), r);
+  if (!model) Rf_error("%s", varmapack_last_error());
+  return model;
+}
+
+SEXP varmapack_ou_validate_R(SEXP tau, SEXP cov, SEXP mu) {
+  varmapack_ou_model *model = ou_model_R(tau, cov, mu);
+  varmapack_ou_free(model);
+  return R_NilValue;
+}
+
+SEXP varmapack_ou_sim_R(SEXP tau, SEXP cov, SEXP mu, SEXP t, SEXP M_, SEXP rng_) {
+  int r = Rf_length(tau), n = Rf_length(t), M = Rf_asInteger(M_);
+  bool own_rng;
+  if (TYPEOF(t) != REALSXP || n < 1 || M < 1) Rf_error("invalid OU simulation");
+  SEXP X = PROTECT(new_series_array(r, n, M));
+  randompack_rng *rng = get_rng(rng_, &own_rng);
+  if (!rng) Rf_error("could not obtain a Randompack generator");
+  // Validate before allocating a native model, so RNG/SEXP errors cannot leak it.
+  if (TYPEOF(tau) != REALSXP || TYPEOF(cov) != REALSXP ||
+      TYPEOF(mu) != REALSXP || r < 1 || get_ndim(cov) != 2 ||
+      get_dim(cov, 0) != r || get_dim(cov, 1) != r || Rf_length(mu) != r) {
+    free_rng(rng, own_rng);
+    Rf_error("invalid OU model dimensions or types");
+  }
+  varmapack_ou_model *model = varmapack_ou_create(REAL(tau), REAL(cov), REAL(mu), r);
+  bool ok = model && varmapack_ou_sim(model, REAL(t), n, M, REAL(X), rng);
+  varmapack_ou_free(model);
+  free_rng(rng, own_rng);
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return X;
+}
+
+SEXP varmapack_gamma_times_R(SEXP n_, SEXP shape, SEXP mean_gap, SEXP rng_) {
+  int n = Rf_asInteger(n_);
+  bool own_rng;
+  SEXP t = PROTECT(Rf_allocVector(REALSXP, n));
+  randompack_rng *rng = get_rng(rng_, &own_rng);
+  if (!rng) Rf_error("could not obtain a Randompack generator");
+  bool ok = varmapack_gamma_times(n, Rf_asReal(shape), Rf_asReal(mean_gap),
+                                   REAL(t), rng);
+  free_rng(rng, own_rng);
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return t;
+}
+
 static SEXP named_list3(SEXP x, SEXP y, SEXP z, char *xname, char *yname,
                         char *zname) {
   SEXP out = PROTECT(Rf_allocVector(VECSXP, 3));
@@ -142,6 +196,18 @@ SEXP varmapack_acvf_R(SEXP A, SEXP B, SEXP Sig, SEXP maxlag_) {
   check_ok(ok, 1);
   UNPROTECT(1);
   return Gamma;
+}
+
+SEXP varmapack_cov2sig_R(SEXP A, SEXP B, SEXP cov) {
+  int r = get_dim(cov, 0);
+  int p = Rf_isNull(A) ? 0 : get_dim(A, 2);
+  int q = Rf_isNull(B) ? 0 : get_dim(B, 2);
+  SEXP Sig = PROTECT(Rf_allocMatrix(REALSXP, r, r));
+  bool ok = varmapack_cov2sig(Rf_isNull(A) ? 0 : REAL(A), Rf_isNull(B) ? 0 : REAL(B),
+                             REAL(cov), p, q, r, REAL(Sig));
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return Sig;
 }
 
 SEXP varmapack_psi_R(SEXP A, SEXP B, SEXP Sig, SEXP maxlag_) {

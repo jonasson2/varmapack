@@ -125,10 +125,13 @@ core_sources = files(
   'src/Lyapunov.c',
   'src/VYW.c',
   'src/varmapack_sim.c',
+  'src/varmapack_ou.c',
+  'src/varmapack_gamma_times.c',
   'src/varmapack_simx.c',
   'src/varmapack_acvf.c',
   'src/varmapack_autocov.c',
   'src/varmapack_cov2corr.c',
+  'src/varmapack_cov2sig.c',
   'src/varmapack_psi.c',
   'src/varmapack_specrad.c',
   'src/varmapack_ma_specrad.c',
@@ -143,6 +146,7 @@ py.install_sources('varmapack/__init__.py', subdir: 'varmapack')
 
 foreach t : [
   'test_basic.py',
+  'test_ou.py',
   'test_data.py',
   'test_errors.py',
   'test_interop.py',

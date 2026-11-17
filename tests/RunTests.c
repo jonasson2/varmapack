@@ -79,7 +79,11 @@ int main(int argc, char **argv) {
            TestAutocovEdgeCases);
   run_test("varmapack_cov2corr", "Covariance-to-correlation conversion",
            TestCov2corr);
+  run_test("varmapack_cov2sig", "Inverse VYW and covariance validation",
+           TestCov2sig);
   run_test("varmapack_sim", "VARMA simulation and errors", TestSimEdgeCases);
+  run_test("OU simulation", "Stationary and lagged covariances", TestOU);
+  run_test("Gamma times", "Gap moments and validation", TestGammaTimes);
   run_test("varmapack_simx", "VARMAX simulation and errors", TestSimxEdgeCases);
   run_test("PSD cond covariance", "Rank-deficient startup covariance",
            TestPsdCondCov);

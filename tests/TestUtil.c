@@ -63,6 +63,33 @@ int xCheckNTotal(void) {
   return NTOTAL;
 }
 
+void groupCheckFunc(test_check_group *group, bool ok, const char *condition,
+                    const char *file, int line, const char *func, const char *context) {
+  group->total++;
+  if (ok) return;
+  group->failed++;
+  if (group->failed != 1) return;
+  group->first_failed = group->total;
+  group->file = file;
+  group->line = line;
+  group->func = func;
+  STRSET(group->condition, condition);
+  STRSET(group->context, context);
+}
+
+void checkGroupFunc(test_check_group *group, const char *description,
+                    const char *file, int line, const char *func) {
+  char context[448];
+  if (group->failed == 0) {
+    recordCheck(true, description, file, line, func, 0);
+    return;
+  }
+  snprintf(context, sizeof(context), "%d of %d checks failed; first at check %d: %s%s%s",
+           group->failed, group->total, group->first_failed, group->condition,
+           group->context[0] ? "; " : "", group->context);
+  recordCheck(false, description, group->file, group->line, group->func, context);
+}
+
 bool almostSame(double a, double b) {
   return relabsdiff(&a, &b, 1) < 5.0e-14;
 }
@@ -73,32 +100,59 @@ bool almostEqual(double a[], double b[], int n) {
 
 void checkArrayTolFunc(double x[], double y[], int n, double tol,
                        const char *file, int line, const char *func) {
+  int first = -1, mismatches = 0;
+  char context[160];
   for (int i=0; i<n; i++) {
-    char context[128];
-    bool ok = fabs(x[i] - y[i]) < tol;
-    snprintf(context, sizeof(context), "index %d: %.17g versus %.17g, tol %.3g",
-             i, x[i], y[i], tol);
-    recordCheck(ok, "array values differ", file, line, func, context);
+    if (!(fabs(x[i] - y[i]) < tol)) {
+      if (first < 0) first = i;
+      mismatches++;
+    }
   }
+  if (mismatches > 0) {
+    snprintf(context, sizeof(context),
+             "%d of %d entries differ; first index %d: %.17g versus %.17g, tol %.3g",
+             mismatches, n, first, x[first], y[first], tol);
+  }
+  recordCheck(mismatches == 0, "array values differ", file, line, func,
+              mismatches ? context : 0);
 }
 
 void checkArrayZeroFunc(double x[], int n, const char *file, int line,
                         const char *func) {
+  int first = -1, nonzero = 0;
+  char context[128];
   for (int i=0; i<n; i++) {
-    char context[80];
-    snprintf(context, sizeof(context), "index %d: %.17g", i, x[i]);
-    recordCheck(x[i] == 0, "array value is not zero", file, line, func, context);
+    if (x[i] != 0) {
+      if (first < 0) first = i;
+      nonzero++;
+    }
   }
+  if (nonzero > 0) {
+    snprintf(context, sizeof(context),
+             "%d of %d entries are not zero; first index %d: %.17g",
+             nonzero, n, first, x[first]);
+  }
+  recordCheck(nonzero == 0, "array is not zero", file, line, func,
+              nonzero ? context : 0);
 }
 
 void checkArrayFiniteFunc(double x[], int n, const char *file, int line,
                           const char *func) {
+  int first = -1, nonfinite = 0;
+  char context[128];
   for (int i=0; i<n; i++) {
-    char context[80];
-    snprintf(context, sizeof(context), "index %d: %.17g", i, x[i]);
-    recordCheck(isfinite(x[i]), "array value is not finite", file, line, func,
-                context);
+    if (!isfinite(x[i])) {
+      if (first < 0) first = i;
+      nonfinite++;
+    }
   }
+  if (nonfinite > 0) {
+    snprintf(context, sizeof(context),
+             "%d of %d entries are not finite; first index %d: %.17g",
+             nonfinite, n, first, x[first]);
+  }
+  recordCheck(nonfinite == 0, "array is not finite", file, line, func,
+              nonfinite ? context : 0);
 }
 
 void checkVarmapackCleanFunc(const char *file, int line, const char *func) {
@@ -110,41 +164,46 @@ void checkVarmapackCleanFunc(const char *file, int line, const char *func) {
 void checkVarmapackSuccessFunc(bool ok, const char *file, int line,
                                const char *func) {
   char *message = varmapack_last_error();
-  recordCheck(ok, "Varmapack call failed", file, line, func, message);
-  recordCheck(message == 0 || message[0] == 0, "Varmapack error is not empty", file,
-              line, func, message);
+  recordCheck(ok && (message == 0 || message[0] == 0),
+              ok ? "Varmapack error is not empty" : "Varmapack call failed",
+              file, line, func, message);
 }
 
 void checkVarmapackFailureFunc(bool ok, const char *file, int line,
                                const char *func) {
   char *message = varmapack_last_error();
-  recordCheck(!ok, "Varmapack call unexpectedly succeeded", file, line, func,
-              message);
-  recordCheck(message != 0 && message[0] != 0, "Varmapack error is empty", file,
-              line, func, 0);
+  recordCheck(!ok && message != 0 && message[0] != 0,
+              ok ? "Varmapack call unexpectedly succeeded" : "Varmapack error is empty",
+              file, line, func, message);
 }
 
 void checkVarmapackNaNFunc(double value, const char *file, int line,
                            const char *func) {
   char *message = varmapack_last_error();
-  recordCheck(isnan(value), "Varmapack result is not NaN", file, line, func, message);
-  recordCheck(message != 0 && message[0] != 0, "Varmapack error is empty", file,
-              line, func, 0);
+  recordCheck(isnan(value) && message != 0 && message[0] != 0,
+              isnan(value) ? "Varmapack error is empty" : "Varmapack result is not NaN",
+              file, line, func, message);
 }
 
 randompack_rng *seededRngFunc(int seed, const char *file, int line,
                               const char *func) {
   randompack_rng *rng = randompack_create(0);
-  recordCheck(rng != 0, "Randompack generator creation failed", file, line, func, 0);
-  if (rng) reseedRngFunc(rng, seed, file, line, func);
+  if (!rng) {
+    xCheckFunc("Randompack generator creation failed", file, line, func, 0);
+    exit(EXIT_FAILURE);
+  }
+  reseedRngFunc(rng, seed, file, line, func);
   return rng;
 }
 
 void reseedRngFunc(randompack_rng *rng, int seed, const char *file,
                    int line, const char *func) {
   bool ok = randompack_seed(seed, 0, 0, rng);
-  recordCheck(ok, "Randompack seeding failed", file, line, func,
-              randompack_last_error(rng));
+  if (!ok) {
+    xCheckFunc("Randompack seeding failed", file, line, func,
+                randompack_last_error(rng));
+    exit(EXIT_FAILURE);
+  }
 }
 
 static void loadTestModel(test_model *model, const char *name, int index) {

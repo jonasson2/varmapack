@@ -11,6 +11,8 @@ function build_varmapack_mex(randompack_root)
   rpinc = fullfile(randompack_root, "src");
   rplib = build_library_dir(randompack_root, "Randompack");
   gateways = [
+    "varmapack_ou_gateway"
+    "varmapack_gamma_times_gateway"
     "varmapack_sim_gateway"
     "varmapack_simx_gateway"
     "varmapack_specrad_gateway"
@@ -20,6 +22,7 @@ function build_varmapack_mex(randompack_root)
     "varmapack_acvf_gateway"
     "varmapack_autocov_gateway"
     "varmapack_cov2corr_gateway"
+    "varmapack_cov2sig_gateway"
     "varmapack_testcase_gateway"
     "varmapack_testcasex_gateway"
   ];

@@ -2,6 +2,7 @@
 #include "Lyapunov.h"
 #include "VYW.h"
 #include "varmapack.h"
+#include "error.h"
 
 static void check_case(const char *name) {
   test_model model;
@@ -13,12 +14,12 @@ static void check_case(const char *name) {
   double *Gl = 0;
   loadNamedTestModel(&model, name);
   int rr = model.r*model.r;
-  xCheck(ALLOC(Sv, rr*(model.p+1)));
-  xCheck(ALLOC(Cv, rr*(model.q+1)));
-  xCheck(ALLOC(Gv, rr*(model.q+1)));
-  xCheck(ALLOC(Sl, rr*(model.p+1)));
-  xCheck(ALLOC(Cl, rr*(model.q+1)));
-  xCheck(ALLOC(Gl, rr*(model.q+1)));
+  ASSERT(ALLOC(Sv, rr*(model.p+1)), "allocation failed");
+  ASSERT(ALLOC(Cv, rr*(model.q+1)), "allocation failed");
+  ASSERT(ALLOC(Gv, rr*(model.q+1)), "allocation failed");
+  ASSERT(ALLOC(Sl, rr*(model.p+1)), "allocation failed");
+  ASSERT(ALLOC(Cl, rr*(model.q+1)), "allocation failed");
+  ASSERT(ALLOC(Gl, rr*(model.q+1)), "allocation failed");
   xCheck(VYWFactorizeSolve(model.A, model.B, model.Sig, model.p, model.q,
                            model.r, Sv, Cv, Gv));
   xCheck(LyapunovFactorizeSolve(model.A, model.B, model.Sig, model.p,
