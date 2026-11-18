@@ -1,11 +1,12 @@
 src_files = files( 'FindW.c', 'VarmaPackUtil.c', 'error.c', 'exog.c', 'sb03mdGateway.c',
+  'mb05odGateway.c',
   'Lyapunov.c', 'VYW.c', 'varmapack_sim.c', 'varmapack_simx.c', 'varmapack_acvf.c',
   'varmapack_autocov.c', 'varmapack_cov2corr.c', 'varmapack_cov2sig.c', 'varmapack_psi.c',
   'varmapack_specrad.c',
   'varmapack_ma_specrad.c', 'varmapack_testcase.c', 'varmapack_testcasex.c',
-  'rp_dpstrf.c', 'varmapack_ou.c', 'varmapack_gamma_times.c', )
+  'rp_dpstrf.c', 'varmapack_ou.c', 'varmapack_slepian.c', 'varmapack_gamma_times.c', )
 
-sb03md_fortran_files = files( 'sb03md-complete.F', )
+sb03md_fortran_files = files( 'sb03md-complete.F', 'mb05od-complete.F', )
 
 lib_kwargs = {
   'include_directories' : inc, 'dependencies' : [math_dep, blas_dep, randompack_dep],

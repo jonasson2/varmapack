@@ -22,7 +22,9 @@ void TestFromMatlab(void);
 void TestPsdCondCov(void);
 void TestTestcasex(void);
 void TestLyapunov(void);
+void TestMatrixExp(void);
 void TestDistribution(void);
 void TestOU(void);
+void TestSlepian(void);
 void TestGammaTimes(void);
 #endif /* TESTS_H */

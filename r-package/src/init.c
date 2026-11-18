@@ -17,11 +17,16 @@ SEXP varmapack_testcase_R(SEXP name, SEXP index, SEXP rho, SEXP p, SEXP q, SEXP 
 SEXP varmapack_testcases_R(void);
 SEXP varmapack_ou_validate_R(SEXP tau, SEXP cov, SEXP mu);
 SEXP varmapack_ou_sim_R(SEXP tau, SEXP cov, SEXP mu, SEXP t, SEXP M, SEXP rng);
+SEXP varmapack_slepian_factor_R(SEXP theta, SEXP cov, SEXP mu);
+SEXP varmapack_slepian_sim_R(SEXP theta, SEXP cov, SEXP mu, SEXP t, SEXP M,
+                             SEXP rng);
 SEXP varmapack_gamma_times_R(SEXP n, SEXP shape, SEXP mean_gap, SEXP rng);
 
 static const R_CallMethodDef CallEntries[] = {
   {"varmapack_ou_validate_R", (DL_FUNC)&varmapack_ou_validate_R, 3},
   {"varmapack_ou_sim_R", (DL_FUNC)&varmapack_ou_sim_R, 6},
+  {"varmapack_slepian_factor_R", (DL_FUNC)&varmapack_slepian_factor_R, 3},
+  {"varmapack_slepian_sim_R", (DL_FUNC)&varmapack_slepian_sim_R, 6},
   {"varmapack_gamma_times_R", (DL_FUNC)&varmapack_gamma_times_R, 4},
   {"varmapack_sim_R", (DL_FUNC)&varmapack_sim_R, 11},
   {"varmapack_acvf_R", (DL_FUNC)&varmapack_acvf_R, 4},

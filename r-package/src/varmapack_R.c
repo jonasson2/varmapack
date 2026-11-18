@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "varmapack.h"
+#include "slepian_internal.h"
 
 static int get_ndim(SEXP x) {
   return Rf_length(Rf_getAttrib(x, R_DimSymbol));
@@ -62,40 +63,86 @@ static SEXP named_list2(SEXP x, SEXP y, char *xname, char *yname) {
   return out;
 }
 
-static varmapack_ou_model *ou_model_R(SEXP tau, SEXP cov, SEXP mu) {
-  int r = Rf_length(tau);
-  if (TYPEOF(tau) != REALSXP || TYPEOF(cov) != REALSXP ||
-      TYPEOF(mu) != REALSXP || r < 1 || get_ndim(cov) != 2 ||
-      get_dim(cov, 0) != r || get_dim(cov, 1) != r || Rf_length(mu) != r)
+static int ou_dimension_R(SEXP parameter, SEXP cov, SEXP mu) {
+  if (TYPEOF(parameter) != REALSXP || TYPEOF(cov) != REALSXP ||
+      TYPEOF(mu) != REALSXP || get_ndim(cov) != 2)
     Rf_error("invalid OU model dimensions or types");
-  varmapack_ou_model *model = varmapack_ou_create(REAL(tau), REAL(cov), REAL(mu), r);
-  if (!model) Rf_error("%s", varmapack_last_error());
-  return model;
+  int r = get_dim(cov, 0), ndim = get_ndim(parameter);
+  bool vector = ndim == 0 && Rf_xlength(parameter) == r;
+  bool matrix = ndim == 2 && get_dim(parameter, 0) == r &&
+                get_dim(parameter, 1) == r;
+  if (r < 1 || get_dim(cov, 1) != r || Rf_xlength(mu) != r || !(vector || matrix))
+    Rf_error("invalid OU model dimensions or types");
+  return r;
 }
 
-SEXP varmapack_ou_validate_R(SEXP tau, SEXP cov, SEXP mu) {
-  varmapack_ou_model *model = ou_model_R(tau, cov, mu);
+static varmapack_ou_model *ou_model_R(SEXP parameter, SEXP cov, SEXP mu, int r) {
+  if (get_ndim(parameter) == 2)
+    return varmapack_ou_create_drift(REAL(parameter), REAL(cov), REAL(mu), r);
+  return varmapack_ou_create(REAL(parameter), REAL(cov), REAL(mu), r);
+}
+
+SEXP varmapack_ou_validate_R(SEXP parameter, SEXP cov, SEXP mu) {
+  int r = ou_dimension_R(parameter, cov, mu);
+  varmapack_ou_model *model = ou_model_R(parameter, cov, mu, r);
+  check_ok(model != 0, 0);
   varmapack_ou_free(model);
   return R_NilValue;
 }
 
-SEXP varmapack_ou_sim_R(SEXP tau, SEXP cov, SEXP mu, SEXP t, SEXP M_, SEXP rng_) {
-  int r = Rf_length(tau), n = Rf_length(t), M = Rf_asInteger(M_);
+SEXP varmapack_ou_sim_R(SEXP parameter, SEXP cov, SEXP mu, SEXP t,
+                        SEXP M_, SEXP rng_) {
+  int r = ou_dimension_R(parameter, cov, mu), n = Rf_length(t), M = Rf_asInteger(M_);
   bool own_rng;
   if (TYPEOF(t) != REALSXP || n < 1 || M < 1) Rf_error("invalid OU simulation");
   SEXP X = PROTECT(new_series_array(r, n, M));
   randompack_rng *rng = get_rng(rng_, &own_rng);
   if (!rng) Rf_error("could not obtain a Randompack generator");
-  // Validate before allocating a native model, so RNG/SEXP errors cannot leak it.
-  if (TYPEOF(tau) != REALSXP || TYPEOF(cov) != REALSXP ||
-      TYPEOF(mu) != REALSXP || r < 1 || get_ndim(cov) != 2 ||
-      get_dim(cov, 0) != r || get_dim(cov, 1) != r || Rf_length(mu) != r) {
-    free_rng(rng, own_rng);
-    Rf_error("invalid OU model dimensions or types");
-  }
-  varmapack_ou_model *model = varmapack_ou_create(REAL(tau), REAL(cov), REAL(mu), r);
+  varmapack_ou_model *model = ou_model_R(parameter, cov, mu, r);
   bool ok = model && varmapack_ou_sim(model, REAL(t), n, M, REAL(X), rng);
   varmapack_ou_free(model);
+  free_rng(rng, own_rng);
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return X;
+}
+
+static int slepian_dimension_R(SEXP theta, SEXP cov, SEXP mu) {
+  if (TYPEOF(theta) != REALSXP || TYPEOF(cov) != REALSXP ||
+      TYPEOF(mu) != REALSXP || get_ndim(theta) != 2 || get_ndim(cov) != 2)
+    Rf_error("invalid Slepian model dimensions or types");
+  int r = get_dim(theta, 0);
+  if (r < 1 || get_dim(theta, 1) != r || get_dim(cov, 0) != r ||
+      get_dim(cov, 1) != r || Rf_xlength(mu) != r)
+    Rf_error("invalid Slepian model dimensions or types");
+  return r;
+}
+
+SEXP varmapack_slepian_factor_R(SEXP theta, SEXP cov, SEXP mu) {
+  int r = slepian_dimension_R(theta, cov, mu);
+  SEXP factor = PROTECT(Rf_allocMatrix(REALSXP, r, r));
+  varmapack_slepian_model *model = varmapack_slepian_create(REAL(theta), REAL(cov),
+                                                          REAL(mu), r);
+  check_ok(model != 0, 0);
+  memcpy(REAL(factor), model->factor, (size_t)r*r*sizeof(double));
+  varmapack_slepian_free(model);
+  UNPROTECT(1);
+  return factor;
+}
+
+SEXP varmapack_slepian_sim_R(SEXP theta, SEXP factor, SEXP mu, SEXP t,
+                             SEXP M_, SEXP rng_) {
+  int r = slepian_dimension_R(theta, factor, mu);
+  int n = Rf_length(t), M = Rf_asInteger(M_);
+  bool own_rng;
+  if (TYPEOF(t) != REALSXP || n < 1 || M < 1)
+    Rf_error("invalid Slepian simulation");
+  if ((R_xlen_t)r*n > R_XLEN_T_MAX/M) Rf_error("problem size too large");
+  SEXP X = PROTECT(new_series_array(r, n, M));
+  randompack_rng *rng = get_rng(rng_, &own_rng);
+  if (!rng) Rf_error("could not obtain a Randompack generator");
+  varmapack_slepian_model model = {r, REAL(theta), REAL(mu), REAL(factor)};
+  bool ok = varmapack_slepian_sim(&model, REAL(t), n, M, REAL(X), rng);
   free_rng(rng, own_rng);
   check_ok(ok, 1);
   UNPROTECT(1);

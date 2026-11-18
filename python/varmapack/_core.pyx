@@ -19,9 +19,17 @@ cdef extern from "varmapack.h":
     ctypedef struct varmapack_ou_model
     varmapack_ou_model *varmapack_ou_create(double *tau, double *cov,
                                            double *mu, int r)
+    varmapack_ou_model *varmapack_ou_create_drift(double *K, double *cov,
+                                                double *mu, int r)
     void varmapack_ou_free(varmapack_ou_model *model)
     bint varmapack_ou_sim(varmapack_ou_model *model, double *t, int n, int M,
                           double *X, randompack_rng *rng)
+    ctypedef struct varmapack_slepian_model
+    varmapack_slepian_model *varmapack_slepian_create(double *theta, double *cov,
+                                                     double *mu, int r)
+    void varmapack_slepian_free(varmapack_slepian_model *model)
+    bint varmapack_slepian_sim(varmapack_slepian_model *model, double *t, int n,
+                               int M, double *X, randompack_rng *rng)
     bint varmapack_gamma_times(int n, double shape, double mean_gap, double *t,
                                randompack_rng *rng)
     enum:
@@ -105,54 +113,75 @@ def gamma_times(object n, double shape=16, double mean_gap=1, object rng=None):
 
 
 cdef class OUModel:
-    """Stationary Gaussian Ornstein--Uhlenbeck model with diagonal drift.
+    """Stationary Gaussian Ornstein--Uhlenbeck model.
 
     Parameters
     ----------
-    tau : array_like, shape (r,)
+    tau : array_like, shape (r,), optional
         Finite positive persistence times, in the units used for observation times.
+        Specify exactly one of ``tau`` and ``drift``.
     cov : array_like, shape (r, r)
         Stationary process covariance, not innovation covariance. Only its lower
         triangle is used. Both this matrix and the driving covariance
-        ``D[i,j] = cov[i,j]*(1/tau[i] + 1/tau[j])`` must be positive semidefinite.
-        Singular covariances are allowed.
+        ``K @ cov + cov @ K.T`` must be positive semidefinite.
+        With ``tau``, K is ``diag(1/tau)``. Singular covariances are allowed.
     mu : array_like, shape (r,), optional
         Constant mean vector; defaults to zero.
+    drift : array_like, shape (r, r), optional, keyword-only
+        Real matrix K in the drift term ``-K @ (X - mu)``. All eigenvalues of K
+        must have strictly positive real parts. Its units are inverse time.
 
     Notes
     -----
     Simulates exact transitions on arbitrary strictly increasing times without
-    burn-in. Component i has autocorrelation ``exp(-gap/tau[i])``. Correlated
-    driving noise couples the series, but the drift has no cross-variable terms.
+    burn-in. Over a gap of length d, the autoregressive coefficient matrix is
+    the matrix exponential ``exp(-K*d)``. At a constant gap, the sampled
+    process is a VAR(1). With diagonal drift, component i has autocorrelation
+    ``exp(-d/tau[i])``.
     Constructor inputs are copied. Parameter properties return copies.
     """
     cdef varmapack_ou_model *handle
-    cdef np.ndarray tauarr, covarr, meanarr
+    cdef np.ndarray tauarr, driftarr, covarr, meanarr
     cdef int rval
 
     def __cinit__(self):
         self.handle = NULL
 
-    def __init__(self, object tau, object cov, object mu=None):
-        cdef np.ndarray ta, co, me
+    def __init__(self, object tau=None, object cov=None, object mu=None, *,
+                 object drift=None):
+        cdef np.ndarray ta = None, K = None, co, me
         cdef varmapack_ou_model *new_handle
-        ta = np.array(tau, dtype=DTYPE_F64, copy=True)
+        cdef int r
+        if (tau is None) == (drift is None):
+            raise ValueError("specify exactly one of tau and drift")
         co = _matrix_to_c(cov, "cov")
         if co is None or co.shape[0] < 1 or co.shape[0] != co.shape[1]:
             raise ValueError("cov must be a non-empty square matrix")
-        if ta.ndim != 1 or ta.shape[0] != co.shape[0]:
-            raise ValueError("tau must be a vector with length r")
-        me = np.zeros(ta.shape[0]) if mu is None else np.array(mu, dtype=DTYPE_F64)
-        if me.ndim != 1 or me.shape[0] != ta.shape[0]:
+        r = _positive_count(co.shape[0], "model dimension")
+        me = np.zeros(r) if mu is None else np.array(mu, dtype=DTYPE_F64)
+        if me.ndim != 1 or me.shape[0] != r:
             raise ValueError("mu must be a vector with length r")
-        new_handle = varmapack_ou_create(<double *>ta.data, <double *>co.data,
-                                         <double *>me.data, ta.shape[0])
+        if drift is None:
+            ta = np.array(tau, dtype=DTYPE_F64, copy=True)
+            if ta.ndim != 1 or ta.shape[0] != r:
+                raise ValueError("tau must be a vector with length r")
+            new_handle = varmapack_ou_create(<double *>ta.data, <double *>co.data,
+                                            <double *>me.data, r)
+        else:
+            if np.iscomplexobj(drift):
+                raise ValueError("drift must be a real matrix")
+            K = _matrix_to_c(drift, "drift")
+            if K.shape[0] != r or K.shape[1] != r:
+                raise ValueError("drift must have shape (r, r)")
+            new_handle = varmapack_ou_create_drift(<double *>K.data,
+                                                  <double *>co.data,
+                                                  <double *>me.data, r)
         if new_handle == NULL:
             raise VarmapackError(_error_message())
         varmapack_ou_free(self.handle)
         self.handle = new_handle
-        self.tauarr, self.covarr, self.meanarr = ta, co, me
-        self.rval = ta.shape[0]
+        self.tauarr, self.driftarr, self.covarr, self.meanarr = ta, K, co, me
+        self.rval = r
 
     def __dealloc__(self):
         varmapack_ou_free(self.handle)
@@ -164,8 +193,17 @@ cdef class OUModel:
 
     @property
     def tau(self):
-        """Persistence times."""
-        return self.tauarr.copy()
+        """Persistence times, or None for matrix initialization."""
+        return None if self.tauarr is None else self.tauarr.copy()
+
+    @property
+    def drift(self):
+        """Matrix K in the drift -K @ (X - mu), or None if initialized with tau.
+
+        The autoregressive coefficient matrix over a gap d is exp(-K*d),
+        the matrix exponential.
+        """
+        return None if self.driftarr is None else self.driftarr.T.copy()
 
     @property
     def cov(self):
@@ -186,7 +224,7 @@ cdef class OUModel:
         Parameters
         ----------
         t : array_like, shape (n,)
-            Finite, strictly increasing times, in the units of ``tau``.
+            Finite, strictly increasing observation times.
         nrep : int, optional
             Positive number of independent paths.
         rng : randompack.Rng, optional
@@ -213,6 +251,124 @@ cdef class OUModel:
         try:
             if not varmapack_ou_sim(self.handle, <double *>times.data,
                                     n, count, <double *>X.data, ptr):
+                raise VarmapackError(_error_message())
+        finally:
+            if owned:
+                randompack_PY_free(ptr)
+        return X
+
+
+cdef class SlepianModel:
+    """Stationary Gaussian model that reduces to a vector MA(1) at unit steps.
+
+    Parameters
+    ----------
+    theta : array_like, shape (r, r)
+        Real unit-step MA(1) coefficient matrix.
+    cov : array_like, shape (r, r)
+        Stationary process covariance; only the lower triangle is used.
+        The driving covariance Sig must be positive semidefinite and
+        determined by ``cov = Sig + theta @ Sig @ theta.T``.
+    mu : array_like, shape (r,), optional
+        Constant mean vector; defaults to zero.
+
+    Notes
+    -----
+    Adjacent unit-width Brownian noise windows define the model at fractional
+    gaps. Paths start in stationarity without burn-in. Parameter arrays
+    are copied on input and output.
+    """
+    cdef varmapack_slepian_model *handle
+    cdef np.ndarray thetaarr, covarr, meanarr
+    cdef int rval
+
+    def __cinit__(self):
+        self.handle = NULL
+
+    def __init__(self, object theta, object cov, object mu=None):
+        cdef np.ndarray th, co, me
+        cdef varmapack_slepian_model *new_handle
+        cdef int r
+        if np.iscomplexobj(theta):
+            raise ValueError("theta must be a real matrix")
+        th = _matrix_to_c(theta, "theta")
+        co = _matrix_to_c(cov, "cov")
+        if th is None or th.shape[0] < 1 or th.shape[0] != th.shape[1]:
+            raise ValueError("theta must be a non-empty square matrix")
+        r = _positive_count(th.shape[0], "model dimension")
+        if co is None or co.shape[0] != r or co.shape[1] != r:
+            raise ValueError("cov must have shape (r, r)")
+        me = np.zeros(r) if mu is None else np.array(mu, dtype=DTYPE_F64)
+        if me.ndim != 1 or me.shape[0] != r:
+            raise ValueError("mu must be a vector with length r")
+        new_handle = varmapack_slepian_create(<double *>th.data, <double *>co.data,
+                                              <double *>me.data, r)
+        if new_handle == NULL:
+            raise VarmapackError(_error_message())
+        varmapack_slepian_free(self.handle)
+        self.handle = new_handle
+        self.thetaarr, self.covarr, self.meanarr = th, co, me
+        self.rval = r
+
+    def __dealloc__(self):
+        varmapack_slepian_free(self.handle)
+
+    @property
+    def r(self):
+        """Number of series."""
+        return self.rval
+
+    @property
+    def theta(self):
+        """Unit-step MA(1) coefficient matrix."""
+        return self.thetaarr.T.copy()
+
+    @property
+    def cov(self):
+        """Stationary process covariance."""
+        c = self.covarr.T.copy()
+        i, j = np.triu_indices(self.rval, 1)
+        c[i, j] = c[j, i]
+        return c
+
+    @property
+    def mu(self):
+        """Constant mean vector."""
+        return self.meanarr.copy()
+
+    def sim(self, object t, *, object nrep=1, object rng=None):
+        """Simulate independent stationary paths at the supplied times.
+
+        Parameters
+        ----------
+        t : array_like, shape (n,)
+            Finite, strictly increasing observation times.
+        nrep : int, optional
+            Positive number of independent paths.
+        rng : randompack.Rng, optional
+            Stream to use instead of a temporary default Randompack generator.
+
+        Returns
+        -------
+        X : ndarray, shape (nrep, n, r)
+            Stationary Gaussian paths.
+        """
+        cdef np.ndarray times = np.ascontiguousarray(t, dtype=DTYPE_F64)
+        cdef np.ndarray X
+        cdef bint owned = False
+        cdef randompack_rng *ptr
+        cdef int count = _positive_count(nrep, "nrep")
+        cdef int n
+        if self.handle == NULL:
+            raise ValueError("SlepianModel has not been initialized")
+        if times.ndim != 1 or times.shape[0] < 1:
+            raise ValueError("t must be a nonempty vector")
+        n = _positive_count(times.shape[0], "length of t")
+        X = np.empty((count, n, self.rval), dtype=DTYPE_F64)
+        ptr = _rng_from_object(rng, &owned)
+        try:
+            if not varmapack_slepian_sim(self.handle, <double *>times.data,
+                                         n, count, <double *>X.data, ptr):
                 raise VarmapackError(_error_message())
         finally:
             if owned:

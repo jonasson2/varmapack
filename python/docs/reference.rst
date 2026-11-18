@@ -14,6 +14,7 @@ Classes
 
    Model
    OUModel
+   SlepianModel
    VarmapackError
 
 Top-level functions
@@ -71,6 +72,20 @@ OU model methods and attributes
 
    OUModel.sim
    OUModel.tau
+   OUModel.drift
    OUModel.cov
    OUModel.mu
    OUModel.r
+
+Slepian model methods and attributes
+------------------------------------
+
+.. autosummary::
+   :toctree: reference/generated
+   :nosignatures:
+
+   SlepianModel.sim
+   SlepianModel.theta
+   SlepianModel.cov
+   SlepianModel.mu
+   SlepianModel.r

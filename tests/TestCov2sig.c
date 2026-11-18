@@ -263,7 +263,16 @@ static void check_invalid_input(void) {
   indefinite[1] = INFINITY;
   checkVarmapackFailure(varmapack_cov2sig(0, 0, indefinite, 0, 0, 2, output));
   double extremes[] = {1e200, 0, 0, 1e-200};
-  checkVarmapackFailure(varmapack_cov2sig(0, 0, extremes, 0, 0, 2, output));
+  double recovered[4];
+  checkVarmapackSuccess(varmapack_cov2sig(0, 0, extremes, 0, 0, 2, recovered));
+  checkArraySame(recovered, extremes, 4);
+  double V2[] = {1,0,0,.25}, B2[] = {0,1,0,0};
+  checkVarmapackFailure(varmapack_cov2sig(0, B2, V2, 0, 1, 2, output));
+  V2[0] = 1e16; B2[1] = 1e-8;
+  checkVarmapackFailure(varmapack_cov2sig(0, B2, V2, 0, 1, 2, output));
+  V2[3] = 1.25;
+  checkVarmapackSuccess(varmapack_cov2sig(0, B2, V2, 0, 1, 2, recovered));
+  xCheck(fabs(recovered[3]-.25) < 1e-14);
   V[0] = nextafter(0, 1);
   A[0] = 0.9;
   checkVarmapackFailure(varmapack_cov2sig(A, 0, V, 1, 0, 1, Sig));

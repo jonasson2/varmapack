@@ -1,8 +1,13 @@
 # Mathematical Description
 
 For more details of the mathematics, see Kristján Jónasson (2026),
-["Burn-in-Free Simulation of VARMA Time Series"]
-(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
+["Burn-in-free simulation of VARMA time series"](https://doi.org/10.1016/j.softx.2026.103100),
+*SoftwareX*, 36.
+
+The mathematics of new features for the Varmapack 0.2 series (0.2.xxx) is
+described separately in
+[Varmapack 0.2: Mathematics of New Features (Draft)](math-v0.2-draft.md).
+That note contains LLM-generated material and has not yet been proof-read.
 
 ## VARMA and VARMAX models
 
@@ -72,37 +77,6 @@ the supplied states and exogenous sequence. When more than $\max(p,q,s-1)$
 values of $x_t$ and corresponding $z_t$ are available, they should be supplied,
 to improve the information used to draw the innovations.
 
-## Continuous-time OU models
-
-`OUModel` specifies a stationary Gaussian Ornstein--Uhlenbeck process with
-diagonal drift. Write $\Gamma=\operatorname{Cov}(X(t),X(t))$ and let
-$\tau_i>0$ be component persistence times. Over a gap $d>0$ the exact transition is
-
-$$
-X(t+d)-\mu=A_d(X(t)-\mu)+\epsilon_d,\qquad
-A_d=\operatorname{diag}(e^{-d/\tau_i}),
-$$
-
-where independent transition innovations have covariance
-
-$$
-Q_d=\Gamma-A_d\Gamma A_d^T,\qquad
-(Q_d)_{ij}=\Gamma_{ij}(1-e^{-d(1/\tau_i+1/\tau_j)}).
-$$
-
-Initialization uses $X(t_0)\sim N(\mu,\Gamma)$, with no burn-in. Both
-$\Gamma$ and the driving covariance
-$D_{ij}=\Gamma_{ij}(1/\tau_i+1/\tau_j)$ must be positive semidefinite.
-This permits correlated noise but not cross-variable drift. The lagged
-covariance is $\operatorname{Cov}(X(t+d),X(t))=A_d\Gamma$.
-See Särkkä and Solin (2019), *Applied Stochastic Differential Equations*,
-sections 6.2 and 6.5 ([author-hosted text](https://users.aalto.fi/~asolin/sde-book/sde-book.pdf)).
-
-The separate Gamma time generator draws independent gaps with shape $s$ and
-scale $\bar d/s$, hence expected gap $\bar d$ and CV $1/\sqrt{s}$. It returns
-$t_0=0$ and cumulative gap sums without normalizing the sample mean. Infinite
-shape denotes constant gaps. The simulator also accepts actual observation times.
-
 ## Autocovariances
 
 Varmapack can compute the theoretical autocovariance function of model (1),
@@ -114,8 +88,7 @@ $$
 up to a user-specified maximum lag.
 
 The inverse problem, recovering $\Sigma$ from a specified $\Gamma_0$, is
-described in the separate note *Recovering Innovation Covariance*
-(`output/pdf/cov2sig.pdf` in the repository; source: `output/pdf/cov2sig.tex`).
+described in [Recovering innovation covariance](math-v0.2-draft.md#recovering-innovation-covariance).
 
 Varmapack can also compute sample autocovariance matrices from observed data.
 The default maximum-likelihood normalization is

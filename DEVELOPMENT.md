@@ -59,6 +59,26 @@ and Spark1, source the ignored machine-local preparation helper first; use
 `scripts/elja/prepare.sh -h` or `scripts/spark1/prepare.sh -h` for its compiler
 and library options.
 
+## Internal matrix exponential
+
+`src/mb05odGateway.h` declares the internal C call
+`mb05odGateway(A, delta, n, E, accuracy)`, computing `E = exp(delta*A)` for
+column-major real matrices. It preserves `A` (unless `E == A`) and leaves `E`
+unchanged on failure. The optional `mb05od_accuracy` receives the SLICOT
+`MDIG`, `IDIG`, and `IWARN` values. A successful return with a nonzero warning
+must be assessed by the caller; it does not imply full accuracy.
+
+The gateway uses SLICOT MB05OD with balancing and Padé order 9. MB05OD and
+its two SLICOT dependencies, MB04MD and MB05OY, are bundled unchanged in
+`src/mb05od-complete.F`, with provenance, license, and SciPy-OpenBLAS symbol
+mapping in the preamble. No system SLICOT installation is needed. Matrix-drift
+OU uses `mb05odExponential` without balancing on a scaled Van Loan block matrix;
+the diagonal persistence-time path does not use the gateway.
+With GNU Fortran, `meson test` also compiles this source using
+`-std=f2008 -pedantic-errors -Werror`, independently of the ordinary build's
+warning suppression for bundled Fortran. This retains the upstream labelled
+DO loops, which Fortran 2008 permits.
+
 ## MATLAB reference implementation
 
 The independent MATLAB reference functions are in `matlab-reference/`. They use

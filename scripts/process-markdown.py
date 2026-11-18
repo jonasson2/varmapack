@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Expand Markdown includes, adjust headings, and translate shared macros."""
+"""Export shared Markdown with includes, headings, macros, and online doc links."""
 
 import argparse
 import pathlib
 import re
 import sys
+from urllib.parse import urlsplit, urlunsplit
 
 
 INCLUDE_RE = re.compile(r"^\s*<!--\s*include\s+([^>]+?)\s*-->\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})([ \t]+.*)$")
+DOC_LINK_RE = re.compile(r"(?<!!)\[([^\]\n]+)\]\(([^()\s]+)\)")
+DOCS_URL = "https://varmapack.readthedocs.io/en/latest/"
 MACROS = {
     r"\Cov": r"\operatorname{Cov}",
     r"\Var": r"\operatorname{Var}",
@@ -22,6 +25,23 @@ def shift_heading(line, offset):
         return line
     level = min(max(len(match.group(1)) + offset, 1), 6)
     return "#"*level + match.group(2) + ("\n" if line.endswith("\n") else "")
+
+
+def export_doc_links(line, path, root):
+    docs = root / "python/docs"
+
+    def replace(match):
+        target = urlsplit(match.group(2))
+        if target.scheme or target.netloc or not target.path.endswith(".md"):
+            return match.group(0)
+        source = (path.parent / target.path).resolve()
+        if not source.is_file() or not source.is_relative_to(docs):
+            return match.group(0)
+        page = source.relative_to(docs).with_suffix(".html").as_posix()
+        url = urlunsplit(("", "", DOCS_URL + page, target.query, target.fragment))
+        return f"[{match.group(1)}]({url})"
+
+    return DOC_LINK_RE.sub(replace, line)
 
 
 def read_document(path, root, stack, offset, include_offset, drop_first_heading):
@@ -42,7 +62,7 @@ def read_document(path, root, stack, offset, include_offset, drop_first_heading)
         if drop_heading and HEADING_RE.match(line):
             drop_heading = False
             continue
-        lines.append(shift_heading(line, offset))
+        lines.append(export_doc_links(shift_heading(line, offset), path, root))
     return "".join(lines)
 
 

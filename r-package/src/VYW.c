@@ -1,4 +1,4 @@
-// Inverse VYW (cov -> Sig): see ../output/pdf/cov2sig.tex and cov2sig.pdf.
+// Inverse VYW: see "Recovering innovation covariance" in python/docs/math-v0.2-draft.md.
 
 #include "VYW.h"
 

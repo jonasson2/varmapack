@@ -1,5 +1,5 @@
 project('varmapack', 'c', 'fortran',
-  version: '0.1.2',
+  version: '0.2.0',
   default_options: ['c_std=c11']
 )
 
@@ -122,10 +122,12 @@ core_sources = files(
   'src/error.c',
   'src/exog.c',
   'src/sb03mdGateway.c',
+  'src/mb05odGateway.c',
   'src/Lyapunov.c',
   'src/VYW.c',
   'src/varmapack_sim.c',
   'src/varmapack_ou.c',
+  'src/varmapack_slepian.c',
   'src/varmapack_gamma_times.c',
   'src/varmapack_simx.c',
   'src/varmapack_acvf.c',
@@ -138,6 +140,7 @@ core_sources = files(
   'src/varmapack_testcase.c',
   'src/rp_dpstrf.c',
   'src/sb03md-complete.F',
+  'src/mb05od-complete.F',
 )
 python_gateway_sources = files('varmapack/RandompackPythonGateway.c')
 
@@ -147,6 +150,7 @@ py.install_sources('varmapack/__init__.py', subdir: 'varmapack')
 foreach t : [
   'test_basic.py',
   'test_ou.py',
+  'test_slepian.py',
   'test_data.py',
   'test_errors.py',
   'test_interop.py',

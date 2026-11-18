@@ -30,6 +30,13 @@ function test_varmapack_ou
   must_fail(@() varmapack.OUModel(Inf, 1));
   must_fail(@() varmapack.OUModel(1, -1));
   must_fail(@() varmapack.OUModel([1 2], 1));
+  K = [1 -1; 0 1];
+  model = varmapack.OUModel(K, eye(2), [], 'drift');
+  assert(isempty(model.tau) && isequal(model.drift, K));
+  X = model.sim([0 .5], 20000, rng);
+  empirical = squeeze(X(:,2,:))*squeeze(X(:,1,:))'/20000;
+  assert(max(abs(empirical-exp(-.5)*[1 .5; 0 1]), [], 'all') < .04);
+  must_fail(@() varmapack.OUModel([1 3; 0 1], eye(2), [], 'drift'));
   must_fail(@() model.sim([0 0]));
   must_fail(@() model.sim([0 NaN]));
   must_fail(@() model.sim([0 1], 0));

@@ -12,6 +12,7 @@ function build_varmapack_mex(randompack_root)
   rplib = build_library_dir(randompack_root, "Randompack");
   gateways = [
     "varmapack_ou_gateway"
+    "varmapack_slepian_gateway"
     "varmapack_gamma_times_gateway"
     "varmapack_sim_gateway"
     "varmapack_simx_gateway"

@@ -1,3 +1,9 @@
+# varmapack 0.2.0
+
+* Added inverse covariance recovery with `varmapack_cov2sig()`.
+* Added stationary OU and Slepian models and Gamma-spaced observation times
+  for simulation on irregular grids.
+
 # varmapack 0.1.2
 
 - Added an empirical example using European stock-index returns and expanded

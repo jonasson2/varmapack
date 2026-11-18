@@ -53,6 +53,18 @@ test_that("OU rejects invalid models and observation times", {
   expect_error(model$sim(0, rng = list()))
 })
 
+test_that("OU accepts a full drift matrix", {
+  K <- matrix(c(1L, 0L, -1L, 1L), 2)
+  model <- varmapack_ou_model(cov = diag(2), drift = K)
+  expect_null(model$tau)
+  expect_equal(model$drift, K)
+  X <- model$sim(c(0, .5), nrep = 20000L, rng = ou_rng())
+  expect_lt(max(abs(X[, 2, ] %*% t(X[, 1, ]) / 20000 -
+                    exp(-.5) * matrix(c(1, 0, .5, 1), 2))), .035)
+  expect_error(varmapack_ou_model(c(1, 1), diag(2), drift = K), "exactly one")
+  expect_error(varmapack_ou_model(cov = diag(2), drift = matrix(1)), "cov")
+})
+
 test_that("Gamma times have the specified gap moments and RNG behavior", {
   for (shape in c(.5, 1, 4, 16)) {
     t <- varmapack_gamma_times(50001, shape, 2, rng = ou_rng())

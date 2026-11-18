@@ -194,13 +194,19 @@ supplied finite, strictly increasing times. Persistence times `tau` use the
 same units as `t`. `cov` specifies stationary covariance, not innovation
 covariance. Both it and the driving covariance
 `D(i,j)=cov(i,j)*(1/tau(i)+1/tau(j))` must be positive semidefinite; singular
-covariances are allowed. The drift is diagonal, with no directed interactions.
-The optional third constructor argument is a constant mean vector.
+covariances are allowed. The optional third constructor argument is a constant
+mean vector. For a full drift matrix, use
+`varmapack.OUModel(K,cov,mu,'drift')`, with drift `-K*(X-mu)`. Pass `[]` for
+a zero mean. The autoregressive coefficient matrix over a gap `d` is
+`expm(-K*d)`. With constant gaps, the sampled process is a VAR(1).
 
 `gamma_times(n,shape,mean_gap,rng)` returns an `n`-by-1 vector starting at zero.
 Defaults are shape 16 and expected gap 1. Independent gaps have CV
 `1/sqrt(shape)`; the realized mean is not normalized. `shape=Inf` gives equal
 spacing. An unrepresentable positive gap or time raises an error.
+
+`varmapack.SlepianModel(.5,1.25)` uses the same `sim` interface for a
+Slepian-based model, which reduces to MA(1) at unit spacing.
 
 ### Functions
 
@@ -211,6 +217,7 @@ model parameters directly; `OUModel` stores the continuous-time parameters.
 | :--- | :--- |
 | [`varmapack.Rng`](+varmapack/Rng.m) | Create random number generator. |
 | [`varmapack.OUModel`](+varmapack/OUModel.m) | Construct an OU model; simulate with `model.sim(t,M,rng)`. |
+| [`varmapack.SlepianModel`](+varmapack/SlepianModel.m) | Construct a Slepian-based MA model; simulate with `model.sim(t,M,rng)`. |
 | [`varmapack.gamma_times`](+varmapack/gamma_times.m) | Generate times with Gamma gaps. |
 | [`varmapack.sim`](+varmapack/sim.m) | Simulate one or more VARMA series. |
 | [`varmapack.simx`](+varmapack/simx.m) | Simulate one or more VARMAX series. |

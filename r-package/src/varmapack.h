@@ -11,7 +11,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 
-#define VARMAPACK_VERSION "0.1.2"
+#define VARMAPACK_VERSION "0.2.0"
 #define VARMAPACK_TESTCASE_NAME_LEN 32
 
 char *varmapack_last_error(void); // Get last error string for this thread, or 0
@@ -26,18 +26,48 @@ varmapack_ou_model *varmapack_ou_create( // Stationary diagonal-drift OU model
   // Copies its inputs. cov and D_ij = cov_ij*(1/tau_i + 1/tau_j) must be PSD.
   // Singular covariances are allowed. Returns 0 on failure; see last_error().
 
+varmapack_ou_model *varmapack_ou_create_drift( // Stationary OU with general drift -K
+  double K[],   // in   r*r real column-major matrix; eigenvalues have Re > 0
+  double cov[], // in   r*r stationary covariance; lower triangle is used
+  double mu[],  // in   r constant means, or 0 for zero means
+  int r);       // in   number of series
+  // Copies its inputs. cov and K*cov + cov*K^T must be PSD.
+  // For a gap d, the autoregressive coefficient matrix is exp(-K*d) (matrix exp).
+  // Singular covariances are allowed. Returns 0 on failure; see last_error().
+
 void varmapack_ou_free(varmapack_ou_model *model); // Accepts 0
 
 bool varmapack_ou_sim( // Exact OU simulation, with no burn-in or time discretization
-  varmapack_ou_model *model, // in   model returned by varmapack_ou_create
+  varmapack_ou_model *model, // in   model returned by either OU constructor
   double t[], // in   n finite strictly increasing observation times
   int n,      // in   observations per path, at least 1
   int M,      // in   number of independent paths, at least 1
   double X[], // out  r*n*M values, column-major; must not overlap t
   randompack_rng *rng); // in/out Randompack stream
-  // X(t[0]) is drawn from N(mu,cov). Each gap d uses a_i = exp(-d/tau_i)
-  // and innovation covariance Q_ij = cov_ij*(1-a_i*a_j).
-  // Times and tau have the same units; translating t does not change the law.
+  // X(t[0]) is drawn from N(mu,cov). Each gap d uses A = exp(-d*K)
+  // and innovation covariance Q = cov - A*cov*A^T, with K = diag(1/tau)
+  // for the diagonal constructor. Rates in K are per unit of t.
+  // Returns false on failure. X and the RNG can be partly advanced on failure.
+
+typedef struct varmapack_slepian_model varmapack_slepian_model;
+
+varmapack_slepian_model *varmapack_slepian_create( // Slepian-based MA(1) model
+  double theta[], // in   r*r column-major unit-step MA coefficient matrix
+  double cov[],   // in   r*r stationary covariance; lower triangle is used
+  double mu[],    // in   r constant means, or 0 for zero means
+  int r);         // in   number of series
+  // Copies inputs and solves cov = Sig + theta*Sig*theta^T for a PSD Sig.
+  // Returns 0 on failure; see last_error().
+
+void varmapack_slepian_free(varmapack_slepian_model *model); // Accepts 0
+
+bool varmapack_slepian_sim( // Exact simulation using unit-width noise windows
+  varmapack_slepian_model *model, // in   model returned by varmapack_slepian_create
+  double t[], // in   n finite strictly increasing observation times
+  int n,      // in   observations per path, at least 1
+  int M,      // in   number of independent paths, at least 1
+  double X[], // out  r*n*M values, column-major; must not overlap t
+  randompack_rng *rng); // in/out Randompack stream
   // Returns false on failure. X and the RNG can be partly advanced on failure.
 
 bool varmapack_gamma_times( // Observation times with independent Gamma gaps

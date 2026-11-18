@@ -1,5 +1,5 @@
 // Recover innovation covariance from lag-zero covariance using inverse VYW.
-// Derivation: ../output/pdf/cov2sig.tex and cov2sig.pdf.
+// Derivation: "Recovering innovation covariance" in python/docs/math-v0.2-draft.md.
 
 #include <math.h>
 #include "varmapack.h"
@@ -12,7 +12,8 @@ bool varmapack_cov2sig(double A[], double B[], double cov[], int p, int q, int r
                        double Sig[]) {
   double *V = 0, *candidate = 0, *factor = 0, *S = 0, *C = 0, *G = 0;
   int rr, nS, nG, square, worksize;
-  double scale = 0;
+  double *As = 0, *Bs = 0;
+  int *ex = 0;
   bool ok = false;
   clear_error();
   if (p < 0 || q < 0 || r <= 0 || cov == 0 || Sig == 0 ||
@@ -34,25 +35,50 @@ bool varmapack_cov2sig(double A[], double B[], double cov[], int p, int q, int r
   for (int j=0; j<r; j++) {
     for (int i=j; i<r; i++) {
       if (!isfinite(cov[i+j*r])) return fail_error("nonfinite covariance");
-      scale = fmax(scale, fabs(cov[i+j*r]));
     }
   }
-  double rho = varmapack_specrad(A, r, p);
-  if (!isfinite(rho)) {
-    return varmapack_last_error() ? false : fail_error("nonfinite spectral radius");
-  }
-  if (rho >= 1) return fail_error("nonstationary model");
   if (!ALLOC(V, rr) || !ALLOC(candidate, rr) || !ALLOC(factor, rr) ||
+      !ALLOC(ex, r) || (p && !ALLOC(As, nS-rr)) || (q && !ALLOC(Bs, nG-rr)) ||
       !ALLOC(S, nS) || !ALLOC(C, nG) || !ALLOC(G, nG)) {
     fail_error("allocation failed");
     goto done;
   }
-  // Normalize so PSD tolerances do not depend on the units of the covariance.
-  if (scale == 0) scale = 1;
+  // Solve for D^-1 X with power-of-two scales close to each marginal SD.
+  for (int i=0; i<r; i++) {
+    double v = cov[i+i*r];
+    if (v < 0) {
+      fail_error("covariance is not positive semidefinite: negative marginal variance");
+      goto done;
+    }
+    ex[i] = v == 0 ? 0 : ilogb(v)/2;
+  }
+  for (int k=0; k<imax(p,q); k++) {
+    for (int j=0; j<r; j++) {
+      for (int i=0; i<r; i++) {
+        int u = k*rr+j*r+i, shift = ex[j]-ex[i];
+        if (k < p) As[u] = scalbn(A[u], shift);
+        if (k < q) Bs[u] = scalbn(B[u], shift);
+        if ((k < p && (!isfinite(As[u]) || (A[u] && !As[u]))) ||
+            (k < q && (!isfinite(Bs[u]) || (B[u] && !Bs[u])))) {
+          fail_error("scaled coefficient is not representable");
+          goto done;
+        }
+      }
+    }
+  }
+  double rho = varmapack_specrad(As, r, p);
+  if (!isfinite(rho) || rho >= 1) {
+    if (!varmapack_last_error()) fail_error("nonstationary model");
+    goto done;
+  }
   for (int j=0; j<r; j++) {
     for (int i=j; i<r; i++) {
-      double value = cov[i+j*r]/scale;
-      if (value == 0 && cov[i+j*r] != 0) {
+      double value = scalbn(cov[i+j*r], -ex[i]-ex[j]);
+      if (cov[i+j*r] != 0 && (cov[i+i*r] == 0 || cov[j+j*r] == 0)) {
+        fail_error("covariance is not positive semidefinite: nonzero zero-variance row");
+        goto done;
+      }
+      if (!isfinite(value) || (value == 0 && cov[i+j*r] != 0)) {
         fail_error("covariance scale range is too large");
         goto done;
       }
@@ -60,9 +86,15 @@ bool varmapack_cov2sig(double A[], double B[], double cov[], int p, int q, int r
     }
   }
   if (!psdFactor(V, r, factor, 0)) goto done;
-  if (!VYWInverse(A, B, V, p, q, r, candidate)) goto done;
-  if (!psdFactor(candidate, r, factor, 0)) goto done;
-  if (!VYWFactorizeSolve(A, B, candidate, p, q, r, S, C, G)) {
+  if (!VYWInverse(As, Bs, V, p, q, r, candidate)) goto done;
+  bool triangular;
+  if (!psdFactor(candidate, r, factor, &triangular)) goto done;
+  if (!triangular) {
+    // Return the PSD matrix actually accepted by the rank-revealing factorization.
+    syrk("Low", "NoT", r, r, 1, factor, r, 0, candidate, r);
+    copylowertoupper(r, candidate, r);
+  }
+  if (!VYWFactorizeSolve(As, Bs, candidate, p, q, r, S, C, G)) {
     fail_error("forward covariance check failed");
     goto done;
   }
@@ -72,7 +104,7 @@ bool varmapack_cov2sig(double A[], double B[], double cov[], int p, int q, int r
       fail_error("forward covariance check failed");
       goto done;
     }
-    double value = candidate[i]*scale;
+    double value = scalbn(candidate[i], ex[i%r]+ex[i/r]);
     if (!isfinite(value) || (value == 0 && candidate[i] != 0)) {
       fail_error("innovation covariance is outside the representable range");
       goto done;
@@ -82,6 +114,7 @@ bool varmapack_cov2sig(double A[], double B[], double cov[], int p, int q, int r
   copy(rr, candidate, 1, Sig, 1);
   ok = true;
 done:
+  FREE(Bs); FREE(As); FREE(ex);
   FREE(G); FREE(C); FREE(S); FREE(factor); FREE(candidate); FREE(V);
   return ok;
 }

@@ -151,7 +151,21 @@ the same units as ``tau``. Component i has autocorrelation
 ``exp(-gap/tau[i])``. Both ``cov`` and the continuous-time driving covariance
 with entries ``cov[i,j]*(1/tau[i] + 1/tau[j])`` must be positive semidefinite;
 singular covariances are allowed. Only the lower triangle of ``cov`` is read.
-Unlike a general VAR model, drift is diagonal, with no directed interactions.
+
+For drift that couples the components, supply ``drift=K`` instead of ``tau``.
+The drift term is ``-K @ (X - mu)``. The eigenvalues of K must have positive
+real parts, and ``K @ cov + cov @ K.T`` must be positive semidefinite. The
+unused property (``tau`` or ``drift``) is ``None``.
+
+The autoregressive coefficient matrix over a gap of length :math:`d` is
+:math:`A_d = \exp(-Kd)` (a matrix exponential, not elementwise). With constant
+gaps the sampled process is a VAR(1); with unequal gaps its coefficient
+matrix changes from step to step.
+
+.. code-block:: python
+
+    model = varmapack.OUModel(drift=[[1, -1], [0, 1]], cov=[[1, 0], [0, 1]])
+    X = model.sim(t, nrep=10, rng=rng)
 
 ``gamma_times(n, shape=16, mean_gap=1, rng=None)`` is independent of the model
 and returns a one-dimensional time vector starting at zero. Gaps are
@@ -159,6 +173,23 @@ independent Gamma variables with scale ``mean_gap/shape`` and CV
 ``1/sqrt(shape)``. Their realized mean is not normalized. Use ``shape=np.inf``
 for constant gaps. Unrepresentable positive gaps or times raise
 ``VarmapackError`` rather than silently returning repeated times.
+
+Uneven-time Slepian-based MA models
+-----------------------------------
+
+``SlepianModel(theta, cov, mu=None)`` takes a real unit-step MA(1)
+coefficient matrix and a stationary covariance. The driving covariance
+``Sig`` is recovered from ``cov = Sig + theta @ Sig @ theta.T``;
+the constructor rejects incompatible or unreliable solves.
+
+Use the same ``sim(t, *, nrep=1, rng=None)`` interface as for OU. The
+model uses unit-width noise windows, so the gaps in ``t`` are measured
+relative to that width. With unit spacing it gives a vector MA(1).
+
+.. code-block:: python
+
+    model = varmapack.SlepianModel(theta=[[.5]], cov=[[1.25]])
+    X = model.sim(t, nrep=10, rng=rng)  # shape (10, 100, 1)
 
 Array shapes
 ------------

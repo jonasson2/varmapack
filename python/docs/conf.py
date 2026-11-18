@@ -22,6 +22,7 @@ extensions = [
 ]
 
 myst_enable_extensions = ["dollarmath"]
+myst_heading_anchors = 2
 
 mathjax3_config = {
     "tex": {

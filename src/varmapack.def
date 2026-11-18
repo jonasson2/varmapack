@@ -1,8 +1,12 @@
 LIBRARY varmapack
 EXPORTS
   varmapack_ou_create
+  varmapack_ou_create_drift
   varmapack_ou_free
   varmapack_ou_sim
+  varmapack_slepian_create
+  varmapack_slepian_free
+  varmapack_slepian_sim
   varmapack_gamma_times
   varmapack_acvf
   varmapack_autocov

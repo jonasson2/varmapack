@@ -4,31 +4,41 @@
 \alias{varmapack_ou_model}
 \title{Create a stationary Ornstein--Uhlenbeck model}
 \usage{
-varmapack_ou_model(tau, cov, mu = NULL)
+varmapack_ou_model(tau = NULL, cov, mu = NULL, drift = NULL)
 }
 \arguments{
-\item{tau}{Finite positive numeric vector of persistence times.}
+\item{tau}{Finite positive numeric vector of persistence times. Supply
+exactly one of \code{tau} and \code{drift}.}
 
 \item{cov}{Stationary process covariance, not innovation covariance. Only
-the lower triangle is used. Both \code{cov} and the driving covariance with
-entries \code{cov[i,j]*(1/tau[i] + 1/tau[j])} must be positive semidefinite.
-Singular covariances are allowed.}
+the lower triangle is used. Both \code{cov} and the driving covariance
+\code{K \%*\% cov + cov \%*\% t(K)} must be positive semidefinite, where
+\code{K = diag(1/tau)} for persistence-time initialization. Singular
+covariances are allowed.}
 
 \item{mu}{Optional constant mean vector, defaulting to zero.}
+
+\item{drift}{Square matrix K in the drift term \code{-K \%*\% (X - mu)}.
+Its eigenvalues must have strictly positive real parts.}
 }
 \value{
-A \code{VarmapackOUModel} object with fields \code{tau}, \code{cov}, \code{mu}, \code{r},
+A \code{VarmapackOUModel} object with fields \code{tau}, \code{drift}, \code{cov}, \code{mu}, \code{r},
 and method \code{sim(t, nrep = 1L, rng = NULL)}. The result has dimensions
 \code{r} by \code{length(t)} by \code{nrep}, including for one-dimensional models.
-Times must be finite and strictly increasing, in the units of \code{tau}.
+The unused parameter field (\code{tau} or \code{drift}) is \code{NULL}.
+Times must be finite and strictly increasing.
 The first observation is drawn from \code{N(mu, cov)}. Supply a
 \code{randompack::randompack_rng()} through \code{rng} to control the stream.
 }
 \description{
-A Gaussian continuous-time model with diagonal drift, simulated exactly at
-arbitrary observation times. Component i has autocorrelation
-\code{exp(-gap/tau[i])}. Correlated driving noise couples the series; there are
-no cross-variable drift terms. No burn-in is required.
+A Gaussian continuous-time model, simulated exactly at arbitrary
+observation times without burn-in. With diagonal drift, component i has
+autocorrelation \code{exp(-gap/tau[i])}.
+}
+\details{
+Over a gap of length d, the autoregressive coefficient matrix is
+the matrix exponential \eqn{\exp(-Kd)}. With constant gaps, the sampled
+process is a VAR(1); with unequal gaps, the matrix varies from step to step.
 }
 \examples{
 rng <- randompack::randompack_rng()

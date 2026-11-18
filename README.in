@@ -34,9 +34,9 @@ point factorization can select a different numerical rank and therefore consume
 a different number of normal variates. The resulting paths remain draws from
 the same conditional distribution.
 
-A preprint describing Varmapack is available on arXiv: Kristján Jónasson
-(2026), ["Burn-in-Free Simulation of VARMA Time Series"]
-(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
+Varmapack is described in Kristján Jónasson (2026),
+["Burn-in-free simulation of VARMA time series"](https://doi.org/10.1016/j.softx.2026.103100),
+*SoftwareX*, 36.
 
 <!-- include python/docs/math.md -->
 
@@ -272,7 +272,7 @@ any input.
 The function returns `false` and sets `varmapack_last_error()` for invalid
 input, an incompatible target, or a singular or numerically unreliable inverse
 problem. On failure, `Sig` is unchanged. The inverse Yule--Walker derivation is
-in *Recovering Innovation Covariance* (`output/pdf/cov2sig.pdf`).
+in [Recovering innovation covariance](python/docs/math-v0.2-draft.md#recovering-innovation-covariance).
 
 ### Uneven-time OU simulation
 
@@ -282,6 +282,11 @@ persistence times and `cov` is the stationary process covariance, not the
 innovation covariance. Both `cov` and the continuous-time driving covariance
 `D[i,j] = cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite.
 Only the lower triangle of `cov` is read; singular covariances are allowed.
+`varmapack_ou_create_drift(K, cov, mu, r)` instead takes a full column-major
+drift parameter matrix K, with drift `-K*(X-mu)`. K must have eigenvalues with
+strictly positive real parts, and `K*cov + cov*K'` must be positive semidefinite.
+The autoregressive coefficient matrix over a gap of length `d` is the matrix
+exponential `exp(-K*d)`. With constant gaps, the sampled process is a VAR(1).
 
 ```c
 double tau[] = {1, 2}, cov[] = {1, .5, .5, 1}, t[100], X[200];
@@ -297,7 +302,7 @@ else {
 
 `varmapack_ou_sim` draws the first observation from `N(mu,cov)` and uses exact
 gap-dependent transitions, without burn-in. Times must be finite and strictly
-increasing, in the units of `tau`; output has column-major shape `r*n*M`.
+increasing; output has column-major shape `r*n*M`.
 Models copy their inputs, are reusable, and must be freed with
 `varmapack_ou_free`. Workspaces are local to each call; sharing an immutable
 model across threads is safe with separate RNGs and output arrays.
@@ -309,6 +314,20 @@ infinite shape gives constant spacing. Unrepresentable positive gaps or times
 produce an error. Time generation is independent of the OU simulator, which
 also accepts actual observation times. Outputs and the RNG may be partly
 advanced if simulation or time generation fails.
+
+### Uneven-time Slepian-based MA simulation
+
+`varmapack_slepian_create(theta, cov, mu, r)` takes the unit-step MA(1)
+coefficient matrix `theta` and the stationary covariance `cov`. The optional
+mean `mu` defaults to zero. Both matrices are column-major; only the lower
+triangle of `cov` is used. The constructor solves
+`cov = Sig + theta*Sig*theta^T` for the driving covariance `Sig`.
+
+`varmapack_slepian_sim(model, t, n, M, X, rng)` uses unit-width Brownian
+noise windows and starts in stationarity without burn-in. At unit spacing
+it reduces to a vector MA(1). Supply finite, strictly increasing times;
+the output has column-major shape `r*n*M`. Free the model with
+`varmapack_slepian_free`.
 
 ### VARMAX simulation
 
@@ -370,6 +389,12 @@ both libraries:
     }
 ```
 
+## Empirical example
+
+The [European stock-index example](examples/EuStockMarkets.md) applies a VAR(1)
+model fitted to the `EuStockMarkets` log returns. Matching C, R, Python, and
+Matlab programs generate exact stationary simulations from the fitted model.
+
 ## Testing
 
 Varmapack includes three Meson test programs:
@@ -384,6 +409,9 @@ Run the C test suite with:
 ```sh
     meson test -C build --print-errorlogs
 ```
+
+See `tests/README.md` for the test groups, statistical validation, and
+numerical-robustness cases.
 
 `AgainstMatlab` compares the public numerical functions and simulated series,
 using identical Randompack streams where applicable. The standard suite uses
@@ -432,3 +460,14 @@ time:
 
 `TimeSetup` and `TimeBreakEven` are development benchmarks for analyzing the
 two startup solvers. See `DEVELOPMENT.md` for their use.
+
+The `AnalyseSpeedup` scripts separate the main contributions to the timing
+comparisons with R's MTS, Python's Statsmodels VARMAX, and Matlab's `varm`:
+
+```sh
+    Rscript benchmark/AnalyseSpeedup.R
+    python benchmark/AnalyseSpeedup.py
+    benchmark/AnalyseSpeedup.sh
+```
+
+Each script accepts `-h` for its timing and workload options.

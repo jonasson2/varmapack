@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
            TestCov2sig);
   run_test("varmapack_sim", "VARMA simulation and errors", TestSimEdgeCases);
   run_test("OU simulation", "Stationary and lagged covariances", TestOU);
+  run_test("Slepian simulation", "Unit and fractional observation gaps", TestSlepian);
   run_test("Gamma times", "Gap moments and validation", TestGammaTimes);
   run_test("varmapack_simx", "VARMAX simulation and errors", TestSimxEdgeCases);
   run_test("PSD cond covariance", "Rank-deficient startup covariance",
@@ -92,6 +93,7 @@ int main(int argc, char **argv) {
   run_test("impulse responses", "Psi coefficients and orthogonalized IRFs",
            TestPsi);
   run_test("Lyapunov solver", "Internal equation solver", TestLyapunov);
+  run_test("matrix exponential", "SLICOT MB05OD C gateway", TestMatrixExp);
   vprint(table_fmt, "TOTAL", "", NTOTAL - NFAIL, NFAIL);
   return (NFAIL > 0);
 }

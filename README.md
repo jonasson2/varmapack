@@ -34,15 +34,20 @@ point factorization can select a different numerical rank and therefore consume
 a different number of normal variates. The resulting paths remain draws from
 the same conditional distribution.
 
-A preprint describing Varmapack is available on arXiv: Kristján Jónasson
-(2026), ["Burn-in-Free Simulation of VARMA Time Series"]
-(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
+Varmapack is described in Kristján Jónasson (2026),
+["Burn-in-free simulation of VARMA time series"](https://doi.org/10.1016/j.softx.2026.103100),
+*SoftwareX*, 36.
 
 ## Mathematical Description
 
 For more details of the mathematics, see Kristján Jónasson (2026),
-["Burn-in-Free Simulation of VARMA Time Series"]
-(https://arxiv.org/abs/2608.29199), arXiv:2608.29199.
+["Burn-in-free simulation of VARMA time series"](https://doi.org/10.1016/j.softx.2026.103100),
+*SoftwareX*, 36.
+
+The mathematics of new features for the Varmapack 0.2 series (0.2.xxx) is
+described separately in
+[Varmapack 0.2: Mathematics of New Features (Draft)](https://varmapack.readthedocs.io/en/latest/math-v0.2-draft.html).
+That note contains LLM-generated material and has not yet been proof-read.
 
 ### VARMA and VARMAX models
 
@@ -112,37 +117,6 @@ the supplied states and exogenous sequence. When more than $\max(p,q,s-1)$
 values of $x_t$ and corresponding $z_t$ are available, they should be supplied,
 to improve the information used to draw the innovations.
 
-### Continuous-time OU models
-
-`OUModel` specifies a stationary Gaussian Ornstein--Uhlenbeck process with
-diagonal drift. Write $\Gamma=\operatorname{Cov}(X(t),X(t))$ and let
-$\tau_i>0$ be component persistence times. Over a gap $d>0$ the exact transition is
-
-$$
-X(t+d)-\mu=A_d(X(t)-\mu)+\varepsilon_d,\qquad
-A_d=\operatorname{diag}(e^{-d/\tau_i}),
-$$
-
-where independent transition innovations have covariance
-
-$$
-Q_d=\Gamma-A_d\Gamma A_d^T,\qquad
-(Q_d)_{ij}=\Gamma_{ij}(1-e^{-d(1/\tau_i+1/\tau_j)}).
-$$
-
-Initialization uses $X(t_0)\sim N(\mu,\Gamma)$, with no burn-in. Both
-$\Gamma$ and the driving covariance
-$D_{ij}=\Gamma_{ij}(1/\tau_i+1/\tau_j)$ must be positive semidefinite.
-This permits correlated noise but not cross-variable drift. The lagged
-covariance is $\operatorname{Cov}(X(t+d),X(t))=A_d\Gamma$.
-See Särkkä and Solin (2019), *Applied Stochastic Differential Equations*,
-sections 6.2 and 6.5 ([author-hosted text](https://users.aalto.fi/~asolin/sde-book/sde-book.pdf)).
-
-The separate Gamma time generator draws independent gaps with shape $s$ and
-scale $\bar d/s$, hence expected gap $\bar d$ and CV $1/\sqrt{s}$. It returns
-$t_0=0$ and cumulative gap sums without normalizing the sample mean. Infinite
-shape denotes constant gaps. The simulator also accepts actual observation times.
-
 ### Autocovariances
 
 Varmapack can compute the theoretical autocovariance function of model (1),
@@ -154,8 +128,7 @@ $$
 up to a user-specified maximum lag.
 
 The inverse problem, recovering $\Sigma$ from a specified $\Gamma_0$, is
-described in the separate note *Recovering Innovation Covariance*
-(`output/pdf/cov2sig.pdf` in the repository; source: `output/pdf/cov2sig.tex`).
+described in [Recovering innovation covariance](https://varmapack.readthedocs.io/en/latest/math-v0.2-draft.html#recovering-innovation-covariance).
 
 Varmapack can also compute sample autocovariance matrices from observed data.
 The default maximum-likelihood normalization is
@@ -448,7 +421,7 @@ any input.
 The function returns `false` and sets `varmapack_last_error()` for invalid
 input, an incompatible target, or a singular or numerically unreliable inverse
 problem. On failure, `Sig` is unchanged. The inverse Yule--Walker derivation is
-in *Recovering Innovation Covariance* (`output/pdf/cov2sig.pdf`).
+in [Recovering innovation covariance](https://varmapack.readthedocs.io/en/latest/math-v0.2-draft.html#recovering-innovation-covariance).
 
 ### Uneven-time OU simulation
 
@@ -458,6 +431,11 @@ persistence times and `cov` is the stationary process covariance, not the
 innovation covariance. Both `cov` and the continuous-time driving covariance
 `D[i,j] = cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite.
 Only the lower triangle of `cov` is read; singular covariances are allowed.
+`varmapack_ou_create_drift(K, cov, mu, r)` instead takes a full column-major
+drift parameter matrix K, with drift `-K*(X-mu)`. K must have eigenvalues with
+strictly positive real parts, and `K*cov + cov*K'` must be positive semidefinite.
+The autoregressive coefficient matrix over a gap of length `d` is the matrix
+exponential `exp(-K*d)`. With constant gaps, the sampled process is a VAR(1).
 
 ```c
 double tau[] = {1, 2}, cov[] = {1, .5, .5, 1}, t[100], X[200];
@@ -473,7 +451,7 @@ else {
 
 `varmapack_ou_sim` draws the first observation from `N(mu,cov)` and uses exact
 gap-dependent transitions, without burn-in. Times must be finite and strictly
-increasing, in the units of `tau`; output has column-major shape `r*n*M`.
+increasing; output has column-major shape `r*n*M`.
 Models copy their inputs, are reusable, and must be freed with
 `varmapack_ou_free`. Workspaces are local to each call; sharing an immutable
 model across threads is safe with separate RNGs and output arrays.
@@ -485,6 +463,20 @@ infinite shape gives constant spacing. Unrepresentable positive gaps or times
 produce an error. Time generation is independent of the OU simulator, which
 also accepts actual observation times. Outputs and the RNG may be partly
 advanced if simulation or time generation fails.
+
+### Uneven-time Slepian-based MA simulation
+
+`varmapack_slepian_create(theta, cov, mu, r)` takes the unit-step MA(1)
+coefficient matrix `theta` and the stationary covariance `cov`. The optional
+mean `mu` defaults to zero. Both matrices are column-major; only the lower
+triangle of `cov` is used. The constructor solves
+`cov = Sig + theta*Sig*theta^T` for the driving covariance `Sig`.
+
+`varmapack_slepian_sim(model, t, n, M, X, rng)` uses unit-width Brownian
+noise windows and starts in stationarity without burn-in. At unit spacing
+it reduces to a vector MA(1). Supply finite, strictly increasing times;
+the output has column-major shape `r*n*M`. Free the model with
+`varmapack_slepian_free`.
 
 ### VARMAX simulation
 

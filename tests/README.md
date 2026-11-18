@@ -27,6 +27,9 @@ deliberately failing checks and preservation of the first failure's context.
 
 ## Statistical validation
 
+`TestSlepian.c` checks the unit-step MA(1) recursion with fixed random draws,
+lagged cross-covariances at fractional gaps, and covariance and time validation.
+
 `TestDistribution.c` provides distribution-level tests for 23 VARMA models. It
 covers the named test models, four AR persistence levels through $\rho=0.999$,
 a $(p,q,r)=(3,3,20)$ model, a near-invertible MA model with spectral radius
@@ -91,6 +94,19 @@ radii, theoretical and sample autocovariances, covariance-to-correlation
 conversion, impulse responses, VARMAX simulation, error handling,
 reproducibility with seeded random-number generators, and the internal
 Lyapunov solver.
+
+## Matrix Exponential
+
+`TestMatrixExp.c` tests the internal `mb05odGateway` against scalar and
+diagonal exponentials, damped rotations, a defective Jordan block, and a
+strongly scaled matrix requiring balancing. It also checks the published
+SLICOT example, composition and inverse identities, zero matrices and gaps,
+negative gaps, in-place output, accuracy diagnostics, invalid inputs, overflow,
+and preservation of the output on failure. These are deterministic tests;
+the OU simulator does not yet use this gateway.
+GNU Fortran builds additionally require this bundled source to compile with
+`-std=f2008 -pedantic-errors -Werror`. Labelled DO loops remain unchanged;
+they are permitted by Fortran 2008.
 
 ## OU and Gamma Times
 

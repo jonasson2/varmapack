@@ -41,11 +41,17 @@ model = varmapack.OUModel(tau=[1, 2], cov=[[1, .5], [.5, 1]])
 X = model.sim(t, nrep=10, rng=rng)  # (10, 100, 2)
 ```
 
-`cov` specifies stationary covariance, not innovation covariance. The model
-uses diagonal drift and correlated driving noise. Times and persistence times
-have the same units. Gamma gaps are not normalized to their realized mean;
+`cov` specifies stationary covariance, not innovation covariance. With
+`tau`, the drift is diagonal. For a full matrix use
+`OUModel(drift=K, cov=cov)`, with drift `-K @ (X - mu)`. The autoregressive
+coefficient matrix over a gap `d` is the matrix exponential `exp(-K*d)`.
+Gamma gaps are not normalized to their realized mean;
 use `shape=float("inf")` for equal spacing. See the usage guide for covariance
 compatibility requirements.
+
+`SlepianModel(theta=[[.5]], cov=[[1.25]])` uses the same `sim` interface
+for a Slepian-based moving-average model, which reduces to MA(1) at unit
+spacing.
 
 ## Timing
 

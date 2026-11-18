@@ -1,21 +1,29 @@
 #' Create a stationary Ornstein--Uhlenbeck model
 #'
-#' A Gaussian continuous-time model with diagonal drift, simulated exactly at
-#' arbitrary observation times. Component i has autocorrelation
-#' `exp(-gap/tau[i])`. Correlated driving noise couples the series; there are
-#' no cross-variable drift terms. No burn-in is required.
+#' A Gaussian continuous-time model, simulated exactly at arbitrary
+#' observation times without burn-in. With diagonal drift, component i has
+#' autocorrelation `exp(-gap/tau[i])`.
 #'
-#' @param tau Finite positive numeric vector of persistence times.
+#' @param tau Finite positive numeric vector of persistence times. Supply
+#'   exactly one of `tau` and `drift`.
 #' @param cov Stationary process covariance, not innovation covariance. Only
-#'   the lower triangle is used. Both `cov` and the driving covariance with
-#'   entries `cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite.
-#'   Singular covariances are allowed.
+#'   the lower triangle is used. Both `cov` and the driving covariance
+#'   `K %*% cov + cov %*% t(K)` must be positive semidefinite, where
+#'   `K = diag(1/tau)` for persistence-time initialization. Singular
+#'   covariances are allowed.
 #' @param mu Optional constant mean vector, defaulting to zero.
+#' @param drift Square matrix K in the drift term `-K %*% (X - mu)`.
+#'   Its eigenvalues must have strictly positive real parts.
 #'
-#' @return A `VarmapackOUModel` object with fields `tau`, `cov`, `mu`, `r`,
+#' @details Over a gap of length d, the autoregressive coefficient matrix is
+#'   the matrix exponential \eqn{\exp(-Kd)}. With constant gaps, the sampled
+#'   process is a VAR(1); with unequal gaps, the matrix varies from step to step.
+#'
+#' @return A `VarmapackOUModel` object with fields `tau`, `drift`, `cov`, `mu`, `r`,
 #'   and method `sim(t, nrep = 1L, rng = NULL)`. The result has dimensions
 #'   `r` by `length(t)` by `nrep`, including for one-dimensional models.
-#'   Times must be finite and strictly increasing, in the units of `tau`.
+#'   The unused parameter field (`tau` or `drift`) is `NULL`.
+#'   Times must be finite and strictly increasing.
 #'   The first observation is drawn from `N(mu, cov)`. Supply a
 #'   `randompack::randompack_rng()` through `rng` to control the stream.
 #'
@@ -26,8 +34,8 @@
 #' model <- varmapack_ou_model(c(1, 2), matrix(c(1, .5, .5, 1), 2))
 #' X <- model$sim(t, nrep = 3, rng = rng)
 #' @export
-varmapack_ou_model <- function(tau, cov, mu = NULL) {
-  VarmapackOUModel$new(tau, cov, mu)
+varmapack_ou_model <- function(tau = NULL, cov, mu = NULL, drift = NULL) {
+  VarmapackOUModel$new(tau, cov, mu, drift)
 }
 
 .vp_rng_pointer <- function(rng) {
@@ -40,12 +48,23 @@ varmapack_ou_model <- function(tau, cov, mu = NULL) {
 VarmapackOUModel <- R6::R6Class(
   "VarmapackOUModel",
   public = list(
-    tau = NULL, cov = NULL, mu = NULL, r = NULL,
-    initialize = function(tau, cov, mu = NULL) {
-      tau <- .vp_numeric_array(tau, "tau")
-      if (!is.null(dim(tau)) || length(tau) < 1L || any(tau <= 0))
-        stop("tau must be a positive vector", call. = FALSE)
-      r <- length(tau)
+    tau = NULL, drift = NULL, cov = NULL, mu = NULL, r = NULL,
+    initialize = function(tau, cov, mu = NULL, drift = NULL) {
+      if (is.null(tau) == is.null(drift))
+        stop("specify exactly one of tau and drift", call. = FALSE)
+      if (is.null(drift)) {
+        tau <- .vp_numeric_array(tau, "tau")
+        if (!is.null(dim(tau)) || length(tau) < 1L || any(tau <= 0))
+          stop("tau must be a positive vector", call. = FALSE)
+        tau <- as.double(tau)
+        r <- length(tau)
+      } else {
+        drift <- .vp_numeric_array(drift, "drift")
+        if (!is.matrix(drift) || nrow(drift) < 1L || nrow(drift) != ncol(drift))
+          stop("drift must be a nonempty square matrix", call. = FALSE)
+        r <- nrow(drift)
+        drift <- matrix(as.double(drift), r, r)
+      }
       if (!is.numeric(cov) || !is.matrix(cov) ||
           nrow(cov) != r || ncol(cov) != r)
         stop("cov must be an r by r matrix", call. = FALSE)
@@ -55,9 +74,11 @@ VarmapackOUModel <- R6::R6Class(
       mu <- .vp_numeric_array(mu, "mu")
       if (!is.null(dim(mu)) || length(mu) != r)
         stop("mu must be a vector of length r", call. = FALSE)
-      .Call("varmapack_ou_validate_R", as.double(tau), cov, as.double(mu),
+      parameter <- if (is.null(drift)) tau else drift
+      .Call("varmapack_ou_validate_R", parameter, cov, as.double(mu),
             PACKAGE = "varmapack")
-      self$tau <- as.double(tau)
+      self$tau <- tau
+      self$drift <- drift
       self$cov <- cov
       self$mu <- as.double(mu)
       self$r <- r
@@ -67,7 +88,8 @@ VarmapackOUModel <- R6::R6Class(
       if (!is.null(dim(t)) || length(t) < 1L || any(diff(t) <= 0))
         stop("t must be a nonempty strictly increasing vector", call. = FALSE)
       nrep <- .vp_count(nrep, "nrep", 1L)
-      .Call("varmapack_ou_sim_R", self$tau, self$cov, self$mu, as.double(t),
+      parameter <- if (is.null(self$drift)) self$tau else self$drift
+      .Call("varmapack_ou_sim_R", parameter, self$cov, self$mu, as.double(t),
             nrep, .vp_rng_pointer(rng), PACKAGE = "varmapack")
     }
   )

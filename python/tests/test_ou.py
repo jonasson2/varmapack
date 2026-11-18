@@ -86,6 +86,29 @@ def test_ou_errors():
         model.sim([0], nrep=1.5)
 
 
+def test_ou_matrix_drift():
+    K = np.array([[1., -2.], [2., 1.]])
+    model = vp.OUModel(cov=np.eye(2), drift=K)
+    assert model.tau is None and model.r == 2
+    K[:] = 99
+    model.drift[:] = 99
+    np.testing.assert_equal(model.drift, [[1, -2], [2, 1]])
+    h = .5
+    X = model.sim([0, h, h + .1], nrep=30000, rng=rng())
+    np.testing.assert_allclose(X[:, 1].T @ X[:, 1] / len(X), np.eye(2), atol=.03)
+    c, s = np.cos(2*h), np.sin(2*h)
+    expected = np.exp(-h) * np.array([[c, s], [-s, c]])
+    np.testing.assert_allclose(X[:, 1].T @ X[:, 0] / len(X), expected, atol=.03)
+    with pytest.raises(ValueError, match="exactly one"):
+        vp.OUModel(tau=[1, 1], cov=np.eye(2), drift=np.eye(2))
+    with pytest.raises(ValueError, match="shape"):
+        vp.OUModel(cov=np.eye(2), drift=[[1]])
+    with pytest.raises(ValueError, match="real"):
+        vp.OUModel(cov=np.eye(2), drift=1j * np.eye(2))
+    with pytest.raises(vp.VarmapackError, match="incompatible"):
+        vp.OUModel(cov=np.eye(2), drift=[[1, 3], [0, 1]])
+
+
 def test_gamma_times():
     for shape in [.5, 1, 4, 16]:
         t = vp.gamma_times(60001, shape=shape, mean_gap=2, rng=rng())

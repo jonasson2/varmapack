@@ -1,0 +1,4 @@
+﻿SlepianModel
+============
+
+.. autoclass:: varmapack.SlepianModel

@@ -120,10 +120,80 @@ static void check_ou_transitions(void) {
   randompack_free(rng);
 }
 
+static void check_ou_matrix_transitions(void) {
+  double K[] = {1, 0, -1, 1}, C[] = {1, 0, NAN, 1}, t[] = {0, .5, 1, 1001};
+  double X[8], normal[8], one = 1;
+  randompack_rng *rng = seededRng(81);
+  varmapack_ou_model *model = varmapack_ou_create_drift(K, C, 0, 2);
+  xCheck(model != 0);
+  if (model) {
+    K[2] = 99; // The native constructor copies its inputs.
+    checkVarmapackSuccess(varmapack_ou_sim(model, t, 4, 1, X, rng));
+    reseedRng(rng, 81);
+    for (int i=0; i<8; i+=2)
+      ASSERT(randompack_mvn("T", 0, &one, 1, 2, normal+i, 1, 0, rng), "RNG");
+    double expected[8] = {normal[0], normal[1]};
+    for (int k=1; k<4; k++) {
+      double dt = t[k]-t[k-1], a = exp(-dt), a2 = a*a;
+      // A = a*[1 dt; 0 1]; Q = I - A*A'.
+      double l11 = sqrt(1-a2*(1+dt*dt)), l21 = -a2*dt/l11;
+      double l22 = sqrt(1-a2-l21*l21);
+      int i = 2*k;
+      expected[i] = a*(expected[i-2]+dt*expected[i-1])+l11*normal[i];
+      expected[i+1] = a*expected[i-1]+l21*normal[i]+l22*normal[i+1];
+    }
+    checkArrayTol(X, expected, 8, 1e-12);
+    t[1] = 1e-18;
+    reseedRng(rng, 81);
+    checkVarmapackSuccess(varmapack_ou_sim(model, t, 2, 1, X, rng));
+    // The increment covariance divided by the tiny gap must approach D.
+    double increment[] = {(X[2]-X[0])/1e-9, (X[3]-X[1])/1e-9};
+    double limit[] = {sqrt(2)*normal[2], -normal[2]/sqrt(2)+sqrt(1.5)*normal[3]};
+    checkArrayTol(increment, limit, 2, 1e-6);
+  }
+  varmapack_ou_free(model);
+  double unstable[] = {0, 1, -1, 0}, incompatible[] = {1, 0, 3, 1};
+  double stiff[] = {1, 0, 0, 1e15}, tau[] = {1, 1e-15}, reference[8];
+  t[1] = .5;
+  model = varmapack_ou_create_drift(stiff, C, 0, 2);
+  varmapack_ou_model *diag = varmapack_ou_create(tau, C, 0, 2);
+  reseedRng(rng, 42);
+  checkVarmapackSuccess(varmapack_ou_sim(diag, t, 4, 1, reference, rng));
+  reseedRng(rng, 42);
+  checkVarmapackSuccess(varmapack_ou_sim(model, t, 4, 1, X, rng));
+  checkArrayTol(X, reference, 8, 1e-13);
+  varmapack_ou_free(model); varmapack_ou_free(diag);
+  stiff[2] = 1;
+  model = varmapack_ou_create_drift(stiff, C, 0, 2);
+  xCheck(model != 0);
+  if (model) {
+    reseedRng(rng, 42);
+    // The unit off-diagonal changes this transition by only O(1e-15).
+    if (varmapack_ou_sim(model, t, 2, 1, X, rng))
+      checkArrayTol(X, reference, 4, 1e-9);
+    else xCheck(strstr(varmapack_last_error(), "accuracy") != 0);
+  }
+  varmapack_ou_free(model);
+  xCheck(!varmapack_ou_create_drift(unstable, C, 0, 2));
+  xCheck(!varmapack_ou_create_drift(incompatible, C, 0, 2));
+  double supported[] = {1, 0, 1, 2}, rank_one[] = {1, 1, NAN, 1};
+  model = varmapack_ou_create_drift(supported, rank_one, 0, 2);
+  xCheck(model != 0);
+  if (model) {
+    checkVarmapackSuccess(varmapack_ou_sim(model, t, 4, 1, X, rng));
+    test_check_group support = {0};
+    for (int i=0; i<8; i+=2) groupCheck(&support, fabs(X[i]-X[i+1]) < 1e-7);
+    checkGroup(&support, "matrix OU preserves rank-one stationary support");
+  }
+  varmapack_ou_free(model);
+  randompack_free(rng);
+}
+
 void TestOU(void) {
   check_ou_statistics();
   check_ou_errors_and_psd();
   check_ou_transitions();
+  check_ou_matrix_transitions();
 }
 
 void TestGammaTimes(void) {

@@ -41,6 +41,9 @@ LATEX WORKFLOW
 - Treat .tex and .bib files as editable sources. Treat LaTeX-generated files
   (including PDFs and auxiliary files) as build artefacts; do not edit them.
 - Prefer $...$ to \(...\) and $$...$$ to \[...\] for mathematical notation.
+- Invoke Pandoc with `pandoc -d pdf` to honour the user's defaults in
+  `~/.local/share/pandoc/defaults/pdf.yaml` (A4, 2 cm margins, 11-point text).
+  Do not rely on the interactive shell alias; override defaults only when requested.
 - Do not externally edit a source file while its editor buffer has unsaved
   changes. Save first; after an external edit, reload the buffer before editing
   it locally again.

@@ -15,14 +15,23 @@ else
   message('tests/matlabcompare-rolling.txt not found; skipping copy')
 endif
 
-test_sources = files( 'RunTests.c', 'FromMatlab.c', 'TestOU.c',
+test_sources = files( 'RunTests.c', 'FromMatlab.c', 'TestOU.c', 'TestSlepian.c',
   'TestAcvf.c', 'TestAutocov.c', 'TestAutocovEdgeCases.c', 'TestSimEdgeCases.c',
   'TestCov2corr.c', 'TestCov2sig.c', 'TestSimxEdgeCases.c', 'TestTestcase.c',
   'TestVarSpecRad.c',
   'TestFromMatlab.c', 'TestFindCFindG.c', 'TestPsdCondCov.c', 'TestPsi.c',
-  'TestTestcasex.c', 'TestLyapunov.c', 'TestDistribution.c', )
+  'TestTestcasex.c', 'TestLyapunov.c', 'TestMatrixExp.c', 'TestDistribution.c', )
 
 test_util = files('TestUtil.c')
+
+strict_fortran_checks = []
+if fc.get_id() == 'gcc'
+  strict_fortran_checks += custom_target('mb05od-strict-fortran',
+    input : '../src/mb05od-complete.F',
+    output : 'mb05od-strict.o',
+    command : fc.cmd_array() + ['-c', '-std=f2008', '-pedantic-errors', '-Werror',
+                                '@INPUT@', '-o', '@OUTPUT@'], )
+endif
 
 test_assertions = executable('TestAssertions', files('TestAssertions.c') + test_util,
   dependencies : varmapack_dep)
@@ -35,7 +44,8 @@ run_tests = executable( 'RunTests',
   dependencies : [math_dep, blas_dep, randompack_dep],
   c_args : debug_print_args + local_dpstrf_args + ['-DVARMAPACK_BUILD'], )
 
-test('RunTests', run_tests, args : ['-v'], workdir : meson.current_build_dir())
+test('RunTests', run_tests, args : ['-v'], workdir : meson.current_build_dir(),
+  depends : strict_fortran_checks)
 
 against_matlab = executable( 'AgainstMatlab',
   files('RunAgainstMatlab.c', 'TestAgainstMatlab.c', 'FromMatlab.c') + test_util +

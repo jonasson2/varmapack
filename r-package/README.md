@@ -77,11 +77,17 @@ X <- model$sim(t, nrep = 10, rng = rng) # 2 by 100 by 10
 
 The OU model simulates exact stationary Gaussian paths at supplied
 times, without burn-in. `cov` is the stationary covariance, not
-innovation covariance; it and the driving covariance
-`cov[i,j]*(1/tau[i] + 1/tau[j])` must be positive semidefinite. Drift is
-diagonal. Times have the same units as persistence. Gamma gaps have CV
+innovation covariance; it and the driving covariance must be positive
+semidefinite. For diagonal drift, `tau` gives the persistence times. For a
+full drift matrix, use `varmapack_ou_model(cov = cov, drift = K)`, with
+drift `-K %*% (X - mu)`. The autoregressive coefficient matrix over a gap
+`d` is the matrix exponential of `-K*d`. Gamma gaps have CV
 `1/sqrt(shape)`, without normalization of the realized mean;
 `shape = Inf` gives equal spacing.
+
+`varmapack_slepian_model(theta = matrix(.5), cov = matrix(1.25))` uses
+the same `sim` interface for a Slepian-based model, which reduces to
+MA(1) at unit spacing.
 
 An additional [European stock-index
 example](https://github.com/jonasson2/varmapack/blob/main/examples/EuStockMarkets.md)
