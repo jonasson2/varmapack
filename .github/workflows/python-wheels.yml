@@ -43,7 +43,7 @@ jobs:
             image: manylinux_2_28
             artifact: wheels-linux-aarch64-cp314
           - name: macOS ARM64
-            runner: macos-14
+            runner: macos-15
             arch: arm64
             blas: accelerate
             release_build: "cp310-* cp311-* cp312-* cp313-* cp314-*"
