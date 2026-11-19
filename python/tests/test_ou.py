@@ -129,3 +129,11 @@ def test_gamma_times():
                           (4, np.inf, 1e308)]:
         with pytest.raises((ValueError, vp.VarmapackError)):
             vp.gamma_times(n, shape, gap)
+def test_ou_specrad():
+    diagonal = vp.OUModel([1, 2], np.eye(2))
+    rotation = vp.OUModel(drift=[[.5, -3], [3, .5]], cov=np.eye(2))
+    assert diagonal.specrad(.25) == pytest.approx(np.exp(-.125))
+    assert rotation.specrad(2.) == pytest.approx(np.exp(-1))
+    for gap in (0, -1, np.inf, np.nan, [1], 1j):
+        with pytest.raises(ValueError, match="gap"):
+            rotation.specrad(gap)

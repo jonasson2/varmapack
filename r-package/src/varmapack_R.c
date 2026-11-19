@@ -26,6 +26,15 @@ static SEXP new_series_array(int r, int n, int M) {
   return x;
 }
 
+static int lag_count_R(SEXP lags, int r) {
+  R_xlen_t n = Rf_xlength(lags);
+  if (TYPEOF(lags) != REALSXP || get_ndim(lags) != 0 || n > INT_MAX)
+    Rf_error("lags must be a real vector of supported length");
+  if (n && (R_xlen_t)r*r > R_XLEN_T_MAX/n)
+    Rf_error("problem size too large");
+  return n;
+}
+
 static randompack_rng *get_rng(SEXP rng_, bool *own_rng) {
   randompack_rng *rng;
   *own_rng = false;
@@ -118,6 +127,40 @@ static int slepian_dimension_R(SEXP theta, SEXP cov, SEXP mu) {
   return r;
 }
 
+SEXP varmapack_ou_acvf_R(SEXP parameter, SEXP cov, SEXP mu, SEXP lags) {
+  int r = ou_dimension_R(parameter, cov, mu), n = lag_count_R(lags, r);
+  SEXP out = PROTECT(new_series_array(r, r, n));
+  varmapack_ou_model *model = ou_model_R(parameter, cov, mu, r);
+  bool ok = model && varmapack_ou_acvf(model, REAL(lags), n, REAL(out));
+  varmapack_ou_free(model);
+  check_ok(ok, 1);
+  UNPROTECT(1);
+  return out;
+}
+
+SEXP varmapack_ou_specrad_R(SEXP parameter, SEXP cov, SEXP mu, SEXP gap) {
+  int r = ou_dimension_R(parameter, cov, mu);
+  if (TYPEOF(gap) != REALSXP || Rf_xlength(gap) != 1)
+    Rf_error("gap must be a real scalar");
+  varmapack_ou_model *model = ou_model_R(parameter, cov, mu, r);
+  check_ok(model != 0, 0);
+  double rho = varmapack_ou_specrad(model, REAL(gap)[0]);
+  varmapack_ou_free(model);
+  check_ok(!isnan(rho), 0);
+  return Rf_ScalarReal(rho);
+}
+
+SEXP varmapack_slepian_acvf_R(SEXP theta, SEXP factor, SEXP mu, SEXP cov,
+                              SEXP lags) {
+  int r = slepian_dimension_R(theta, factor, mu), n = lag_count_R(lags, r);
+  slepian_dimension_R(theta, cov, mu);
+  SEXP out = PROTECT(new_series_array(r, r, n));
+  varmapack_slepian_model model = {r, REAL(theta), REAL(mu), REAL(factor), REAL(cov)};
+  check_ok(varmapack_slepian_acvf(&model, REAL(lags), n, REAL(out)), 1);
+  UNPROTECT(1);
+  return out;
+}
+
 SEXP varmapack_slepian_factor_R(SEXP theta, SEXP cov, SEXP mu) {
   int r = slepian_dimension_R(theta, cov, mu);
   SEXP factor = PROTECT(Rf_allocMatrix(REALSXP, r, r));
@@ -141,7 +184,7 @@ SEXP varmapack_slepian_sim_R(SEXP theta, SEXP factor, SEXP mu, SEXP t,
   SEXP X = PROTECT(new_series_array(r, n, M));
   randompack_rng *rng = get_rng(rng_, &own_rng);
   if (!rng) Rf_error("could not obtain a Randompack generator");
-  varmapack_slepian_model model = {r, REAL(theta), REAL(mu), REAL(factor)};
+  varmapack_slepian_model model = {r, REAL(theta), REAL(mu), REAL(factor), 0};
   bool ok = varmapack_slepian_sim(&model, REAL(t), n, M, REAL(X), rng);
   free_rng(rng, own_rng);
   check_ok(ok, 1);

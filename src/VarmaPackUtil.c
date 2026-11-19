@@ -7,6 +7,19 @@
 #include "varmapack_config.h"
 #include "VarmaUtilities.h"
 #include "VYW.h"
+#include <math.h>
+
+HIDDEN bool acvfLags(double lags[], int n, int rr, double Gamma[]) {
+  size_t count;
+  if (n < 0 || (n > 0 && (!lags || !Gamma)))
+    return fail_error("invalid lag covariance arguments");
+  if (!sizeProduct(n, rr, &count) || count > SIZE_MAX/sizeof(double))
+    return fail_error("problem size too large");
+  for (int k=0; k<n; k++) {
+    if (!isfinite(lags[k])) return fail_error("lags must be finite");
+  }
+  return true;
+}
 
 static int slicotCutoff(int p, int q);
 static void SExtend(double A[], double G[], double S[], double Scol[], int p, int q,

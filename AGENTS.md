@@ -1,5 +1,8 @@
 Always obey the rules below.
 
+Keep local Codex plans in the Git-ignored `codex-plans/` directory.
+Shared release instructions belong in `DEVELOPMENT.md`.
+
 ---------------------------
 CORE C STYLE
 ---------------------------

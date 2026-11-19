@@ -71,6 +71,8 @@ OU model methods and attributes
    :nosignatures:
 
    OUModel.sim
+   OUModel.acvf
+   OUModel.specrad
    OUModel.tau
    OUModel.drift
    OUModel.cov
@@ -85,6 +87,7 @@ Slepian model methods and attributes
    :nosignatures:
 
    SlepianModel.sim
+   SlepianModel.acvf
    SlepianModel.theta
    SlepianModel.cov
    SlepianModel.mu

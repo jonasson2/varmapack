@@ -70,6 +70,7 @@ scripts/spark1/
 scripts/windows/
 
 # Local reference material
+/codex-plans/
 article/
 nogit/
 third-party/

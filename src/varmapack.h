@@ -37,6 +37,10 @@ varmapack_ou_model *varmapack_ou_create_drift( // Stationary OU with general dri
 
 void varmapack_ou_free(varmapack_ou_model *model); // Accepts 0
 
+double varmapack_ou_specrad(varmapack_ou_model *model, double gap);
+  // Spectral radius of the sampled VAR(1) transition for a finite positive gap.
+  // Returns NaN on error; see varmapack_last_error().
+
 bool varmapack_ou_sim( // Exact OU simulation, with no burn-in or time discretization
   varmapack_ou_model *model, // in   model returned by either OU constructor
   double t[], // in   n finite strictly increasing observation times
@@ -49,6 +53,12 @@ bool varmapack_ou_sim( // Exact OU simulation, with no burn-in or time discretiz
   // for the diagonal constructor. Rates in K are per unit of t.
   // Returns false on failure. X and the RNG can be partly advanced on failure.
 
+bool varmapack_ou_acvf(varmapack_ou_model *model, double lags[], int n,
+                       double Gamma[]);
+  // n finite real lags in any order; n=0 is allowed. Gamma holds n consecutive
+  // column-major r-by-r matrices Cov(X(t+h), X(t)). Arrays must not overlap.
+  // Returns false on error; Gamma may be partially written.
+
 typedef struct varmapack_slepian_model varmapack_slepian_model;
 
 varmapack_slepian_model *varmapack_slepian_create( // Slepian-based MA(1) model
@@ -60,6 +70,10 @@ varmapack_slepian_model *varmapack_slepian_create( // Slepian-based MA(1) model
   // Returns 0 on failure; see last_error().
 
 void varmapack_slepian_free(varmapack_slepian_model *model); // Accepts 0
+
+bool varmapack_slepian_acvf(varmapack_slepian_model *model, double lags[], int n,
+                            double Gamma[]);
+  // Same convention as varmapack_ou_acvf. Zero for |h| >= 2.
 
 bool varmapack_slepian_sim( // Exact simulation using unit-width noise windows
   varmapack_slepian_model *model, // in   model returned by varmapack_slepian_create

@@ -455,6 +455,8 @@ increasing; output has column-major shape `r*n*M`.
 Models copy their inputs, are reusable, and must be freed with
 `varmapack_ou_free`. Workspaces are local to each call; sharing an immutable
 model across threads is safe with separate RNGs and output arrays.
+`varmapack_ou_specrad(model, gap)` gives the sampled VAR(1) spectral radius
+at a fixed positive gap.
 
 `varmapack_gamma_times(n, shape, mean_gap, t, rng)` generates times starting at
 zero with independent Gamma gaps, scale `mean_gap/shape` and CV
@@ -477,6 +479,10 @@ noise windows and starts in stationarity without burn-in. At unit spacing
 it reduces to a vector MA(1). Supply finite, strictly increasing times;
 the output has column-major shape `r*n*M`. Free the model with
 `varmapack_slepian_free`.
+
+`varmapack_ou_acvf` and `varmapack_slepian_acvf` return
+`Cov(X(t+h), X(t))` for finite real lags `h` as consecutive column-major
+matrices. Negative lags transpose the corresponding positive-lag matrix.
 
 ### VARMAX simulation
 

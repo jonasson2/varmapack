@@ -151,6 +151,7 @@ foreach t : [
   'test_basic.py',
   'test_ou.py',
   'test_slepian.py',
+  'test_continuous_acvf.py',
   'test_data.py',
   'test_errors.py',
   'test_interop.py',

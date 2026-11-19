@@ -7,6 +7,8 @@
 #include "varmapack.h"
 #include "varmapack_config.h"
 
+HIDDEN bool acvfLags(double lags[], int n, int rr, double Gamma[]);
+
 HIDDEN void FindC( // Compute Ci = cov(x(t), eps(t-i))
   double A[],   // in   r×r×p  autoregressive parameter matrices
   double B[],   // in   r×r×q  moving average parameter matrices

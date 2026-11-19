@@ -13,6 +13,7 @@ static void check_ou_statistics(void) {
   varmapack_ou_model *model = varmapack_ou_create(tau, cov, mu, r);
   xCheck(model != 0);
   if (model) {
+    xCheck(fabs(varmapack_ou_specrad(model, 1.5)-exp(-.5)) < 1e-14);
     bool ok = varmapack_ou_sim(model, t, n, M, X, rng);
     checkVarmapackSuccess(ok);
     test_check_group means = {0}, covariances = {0};
@@ -127,6 +128,8 @@ static void check_ou_matrix_transitions(void) {
   varmapack_ou_model *model = varmapack_ou_create_drift(K, C, 0, 2);
   xCheck(model != 0);
   if (model) {
+    xCheck(fabs(varmapack_ou_specrad(model, .5)-exp(-.5)) < 1e-14);
+    checkVarmapackNaN(varmapack_ou_specrad(model, 0));
     K[2] = 99; // The native constructor copies its inputs.
     checkVarmapackSuccess(varmapack_ou_sim(model, t, 4, 1, X, rng));
     reseedRng(rng, 81);
@@ -194,6 +197,19 @@ void TestOU(void) {
   check_ou_errors_and_psd();
   check_ou_transitions();
   check_ou_matrix_transitions();
+  double K[] = {1, 0, -1, 1}, cov[] = {1, 0, NAN, 1};
+  double lags[] = {.5, -.5, 0}, G[12], a = exp(-.5);
+  double expected[] = {a, 0, .5*a, a, a, .5*a, 0, a, 1, 0, 0, 1};
+  varmapack_ou_model *model = varmapack_ou_create_drift(K, cov, 0, 2);
+  xCheck(model != 0);
+  if (model) {
+    checkVarmapackSuccess(varmapack_ou_acvf(model, lags, 3, G));
+    checkArrayTol(G, expected, 12, 1e-12);
+    checkVarmapackSuccess(varmapack_ou_acvf(model, 0, 0, 0));
+    lags[0] = INFINITY;
+    checkVarmapackFailure(varmapack_ou_acvf(model, lags, 3, G));
+  }
+  varmapack_ou_free(model);
 }
 
 void TestGammaTimes(void) {

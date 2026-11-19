@@ -29,6 +29,8 @@ The unused parameter field (\code{tau} or \code{drift}) is \code{NULL}.
 Times must be finite and strictly increasing.
 The first observation is drawn from \code{N(mu, cov)}. Supply a
 \code{randompack::randompack_rng()} through \code{rng} to control the stream.
+\code{acvf(lags)} returns Cov(X(t+h), X(t)) as an r by r by length(lags) array.
+\code{specrad(gap)} returns the sampled VAR(1) spectral radius at a fixed gap.
 }
 \description{
 A Gaussian continuous-time model, simulated exactly at arbitrary

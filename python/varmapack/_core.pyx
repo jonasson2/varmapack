@@ -3,6 +3,7 @@ import numpy as np
 cimport numpy as np
 
 from libc.stddef cimport size_t
+from libc.math cimport isnan
 from cpython.pycapsule cimport PyCapsule_GetPointer
 
 DTYPE_F64 = np.dtype(np.float64)
@@ -22,12 +23,17 @@ cdef extern from "varmapack.h":
     varmapack_ou_model *varmapack_ou_create_drift(double *K, double *cov,
                                                 double *mu, int r)
     void varmapack_ou_free(varmapack_ou_model *model)
+    double varmapack_ou_specrad(varmapack_ou_model *model, double gap)
+    bint varmapack_ou_acvf(varmapack_ou_model *model, double *lags, int n,
+                           double *Gamma)
     bint varmapack_ou_sim(varmapack_ou_model *model, double *t, int n, int M,
                           double *X, randompack_rng *rng)
     ctypedef struct varmapack_slepian_model
     varmapack_slepian_model *varmapack_slepian_create(double *theta, double *cov,
                                                      double *mu, int r)
     void varmapack_slepian_free(varmapack_slepian_model *model)
+    bint varmapack_slepian_acvf(varmapack_slepian_model *model, double *lags, int n,
+                                double *Gamma)
     bint varmapack_slepian_sim(varmapack_slepian_model *model, double *t, int n,
                                int M, double *X, randompack_rng *rng)
     bint varmapack_gamma_times(int n, double shape, double mean_gap, double *t,
@@ -110,6 +116,16 @@ def gamma_times(object n, double shape=16, double mean_gap=1, object rng=None):
         if owned:
             randompack_PY_free(ptr)
     return t
+
+
+cdef np.ndarray _lag_array(object lags):
+    cdef np.ndarray h
+    if np.iscomplexobj(lags):
+        raise ValueError("lags must be real")
+    h = np.asarray(lags, dtype=DTYPE_F64)
+    if h.ndim > 1 or not np.isfinite(h).all():
+        raise ValueError("lags must be a finite scalar or one-dimensional array")
+    return h
 
 
 cdef class OUModel:
@@ -217,6 +233,38 @@ cdef class OUModel:
     def mu(self):
         """Constant mean vector."""
         return self.meanarr.copy()
+
+    def specrad(self, gap):
+        """Return the sampled VAR(1) spectral radius for a positive finite gap."""
+        cdef np.ndarray value = np.asarray(gap)
+        cdef double rho
+        if value.ndim or np.iscomplexobj(value):
+            raise ValueError("gap must be a real scalar")
+        if self.handle == NULL:
+            raise ValueError("OUModel has not been initialized")
+        rho = varmapack_ou_specrad(self.handle, float(value))
+        if isnan(rho):
+            raise ValueError(_error_message())
+        return rho
+
+    def acvf(self, lags):
+        """Return Cov(X(t+h), X(t)) at real lags h (scalar or 1-D).
+
+        The shape is (r, r) for a scalar or (len(lags), r, r) for an array.
+        """
+        cdef np.ndarray h = _lag_array(lags)
+        cdef np.ndarray flat = np.require(h.reshape(-1), requirements=["C", "A"])
+        cdef np.ndarray result
+        cdef int n
+        if self.handle == NULL:
+            raise ValueError("OUModel has not been initialized")
+        n = _positive_count(flat.size, "number of lags") if flat.size else 0
+        result = np.empty((n, self.rval, self.rval), dtype=DTYPE_F64)
+        if not varmapack_ou_acvf(self.handle, <double *>flat.data,
+                                 n, <double *>result.data):
+            raise VarmapackError(_error_message())
+        result = result.swapaxes(-1, -2).copy()
+        return result[0] if h.ndim == 0 else result
 
     def sim(self, object t, *, object nrep=1, object rng=None):
         """Simulate independent stationary paths at the supplied times.
@@ -335,6 +383,25 @@ cdef class SlepianModel:
     def mu(self):
         """Constant mean vector."""
         return self.meanarr.copy()
+
+    def acvf(self, lags):
+        """Return Cov(X(t+h), X(t)) at real lags h (scalar or 1-D).
+
+        The shape is (r, r) for a scalar or (len(lags), r, r) for an array.
+        """
+        cdef np.ndarray h = _lag_array(lags)
+        cdef np.ndarray flat = np.require(h.reshape(-1), requirements=["C", "A"])
+        cdef np.ndarray result
+        cdef int n
+        if self.handle == NULL:
+            raise ValueError("SlepianModel has not been initialized")
+        n = _positive_count(flat.size, "number of lags") if flat.size else 0
+        result = np.empty((n, self.rval, self.rval), dtype=DTYPE_F64)
+        if not varmapack_slepian_acvf(self.handle, <double *>flat.data,
+                                      n, <double *>result.data):
+            raise VarmapackError(_error_message())
+        result = result.swapaxes(-1, -2).copy()
+        return result[0] if h.ndim == 0 else result
 
     def sim(self, object t, *, object nrep=1, object rng=None):
         """Simulate independent stationary paths at the supplied times.

@@ -5,5 +5,5 @@
 // returned by varmapack_slepian_create owns its arrays and may be freed.
 struct varmapack_slepian_model {
   int r;
-  double *theta, *mu, *factor;
+  double *theta, *mu, *factor, *cov;
 };

@@ -45,6 +45,14 @@ classdef SlepianModel
       obj.mu = mu;
       obj.r = r;
     end
+    function G = acvf(obj, lags)
+      %ACVF  Cov(X(t+h), X(t)) at real lags h, as r-by-r-by-numel(lags).
+      if ~isnumeric(lags) || ~isreal(lags) || ~(isvector(lags) || isempty(lags))
+        error('varmapack:SlepianModel:lags', 'lags must be a real vector');
+      end
+      G = varmapack_slepian_gateway(obj.theta, obj.factor, obj.mu, obj.cov, ...
+                                    full(double(lags(:))));
+    end
     function X = sim(obj, t, M, rng)
       %SIM  Simulate M independent stationary paths at observation times t.
       if nargin < 3 || isempty(M), M = 1; end

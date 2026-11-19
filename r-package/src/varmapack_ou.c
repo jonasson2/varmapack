@@ -12,6 +12,7 @@ struct varmapack_ou_model {
   double *tau, *mu, *sd, *corr, *factor;
   double *drift, *driving, *cov;
   double drift_scale, driving_scale;
+  double max_tau, min_rate;
 };
 
 void varmapack_ou_free(varmapack_ou_model *model) {
@@ -35,6 +36,7 @@ varmapack_ou_model *varmapack_ou_create(double tau[], double cov[], double mu[],
   if (!ALLOC(model, 1)) goto alloc_fail;
   model->r = r;
   if (!ALLOC(model->tau, r) || !ALLOC(model->mu, r) || !ALLOC(model->sd, r) ||
+      !ALLOC(model->cov, rr) ||
       !ALLOC(model->corr, rr) || !ALLOC(model->factor, rr) || !ALLOC(D, rr))
     goto alloc_fail;
   for (int i=0; i<r; i++) {
@@ -44,6 +46,7 @@ varmapack_ou_model *varmapack_ou_create(double tau[], double cov[], double mu[],
       goto fail;
     }
     model->tau[i] = tau[i];
+    model->max_tau = fmax(model->max_tau, tau[i]);
     model->mu[i] = mu ? mu[i] : 0;
     model->sd[i] = sqrt(cov[i+i*r]);
   }
@@ -55,6 +58,7 @@ varmapack_ou_model *varmapack_ou_create(double tau[], double cov[], double mu[],
         goto fail;
       }
       double v = si == 0 || sj == 0 ? 0 : (c/si)/sj;
+      model->cov[i+j*r] = model->cov[j+i*r] = c;
       model->corr[i+j*r] = model->corr[j+i*r] = v;
       // Correlation of the continuous-time driving noise, scaled to unit diagonal.
       double h = fabs(log(tau[i])-log(tau[j]))/2;
@@ -82,7 +86,7 @@ fail:
   return 0;
 }
 
-static bool ou_stable_drift(double K[], int r, double scratch[]) {
+static bool ou_stable_drift(double K[], int r, double scratch[], double *min_rate) {
   double *wr = 0, *wi = 0, *work = 0, query, dummy[1];
   int info, lwork;
   bool ok = false;
@@ -94,12 +98,15 @@ static bool ou_stable_drift(double K[], int r, double scratch[]) {
   if (!ALLOC(work, lwork)) goto alloc_fail;
   geev("N", "N", r, scratch, r, wr, wi, dummy, 1, dummy, 1, work, lwork, &info);
   if (info != 0) goto eig_fail;
+  double rate = INFINITY;
   for (int i=0; i<r; i++) {
     if (!isfinite(wr[i]) || !isfinite(wi[i]) || wr[i] <= 0) {
       fail_error("OU drift matrix must have eigenvalues with positive real parts");
       goto done;
     }
+    rate = fmin(rate, wr[i]);
   }
+  *min_rate = rate;
   ok = true;
   goto done;
 alloc_fail:
@@ -166,7 +173,7 @@ varmapack_ou_model *varmapack_ou_create_drift(double K[], double cov[], double m
       C[i+j*r] = C[j+i*r] = v;
     }
   }
-  if (!ou_stable_drift(model->drift, r, KC)) goto fail;
+  if (!ou_stable_drift(model->drift, r, KC, &model->min_rate)) goto fail;
   if (!psdFactor(C, r, model->factor, 0)) goto fail;
   gemm("N", "N", r, r, r, 1, model->drift, r, C, r, 0, KC, r);
   for (int j=0; j<r; j++) {
@@ -257,6 +264,60 @@ static bool ou_matrix_transition(varmapack_ou_model *model, double dt,
     }
   }
   return true;
+}
+
+double varmapack_ou_specrad(varmapack_ou_model *model, double gap) {
+  clear_error();
+  if (!model || !isfinite(gap) || gap <= 0) {
+    fail_error("OU spectral radius requires a valid model and a finite positive gap");
+    return NAN;
+  }
+  return exp(model->drift ? -gap*model->min_rate : -gap/model->max_tau);
+}
+
+bool varmapack_ou_acvf(varmapack_ou_model *model, double lags[], int n,
+                       double Gamma[]) {
+  clear_error();
+  if (!model) return fail_error("invalid OU model");
+  int r = model->r, rr = r*r;
+  double *A = 0, *Q = 0, *B = 0, *work = 0;
+  double *cov = model->cov;
+  bool ok = false;
+  if (!acvfLags(lags, n, rr, Gamma)) return false;
+  if (n == 0) return true;
+  if (model->drift && (!ALLOC(A, rr) || !ALLOC(Q, rr) ||
+      !ALLOC(B, 4*(size_t)rr) || !ALLOC(work, rr))) {
+    fail_error("allocation failed");
+    goto done;
+  }
+  for (int k=0; k<n; k++) {
+    double h = fabs(lags[k]);
+    double *G = Gamma+(size_t)k*rr;
+    if (h == 0) copy(rr, cov, 1, G, 1);
+    else if (model->drift) {
+      if (!ou_matrix_transition(model, h, A, Q, B, work)) goto done;
+      if (lags[k] < 0) gemm("N", "T", r, r, r, 1, cov, r, A, r, 0, G, r);
+      else gemm("N", "N", r, r, r, 1, A, r, cov, r, 0, G, r);
+    }
+    else {
+      for (int j=0; j<r; j++) {
+        for (int i=0; i<r; i++) {
+          int d = lags[k] < 0 ? j : i;
+          G[i+j*r] = exp(-h/model->tau[d])*cov[i+j*r];
+        }
+      }
+    }
+    for (int i=0; i<rr; i++) {
+      if (!isfinite(G[i])) {
+        fail_error("OU lag covariance is not representable");
+        goto done;
+      }
+    }
+  }
+  ok = true;
+done:
+  FREE(work); FREE(B); FREE(Q); FREE(A);
+  return ok;
 }
 
 bool varmapack_ou_sim(varmapack_ou_model *model, double t[], int n, int M,

@@ -216,8 +216,8 @@ model parameters directly; `OUModel` stores the continuous-time parameters.
 | Function | Purpose |
 | :--- | :--- |
 | [`varmapack.Rng`](+varmapack/Rng.m) | Create random number generator. |
-| [`varmapack.OUModel`](+varmapack/OUModel.m) | Construct an OU model; simulate with `model.sim(t,M,rng)`. |
-| [`varmapack.SlepianModel`](+varmapack/SlepianModel.m) | Construct a Slepian-based MA model; simulate with `model.sim(t,M,rng)`. |
+| [`varmapack.OUModel`](+varmapack/OUModel.m) | OU model with `sim(t,M,rng)` and `acvf(lags)`. |
+| [`varmapack.SlepianModel`](+varmapack/SlepianModel.m) | Slepian-based MA model with `sim(t,M,rng)` and `acvf(lags)`. |
 | [`varmapack.gamma_times`](+varmapack/gamma_times.m) | Generate times with Gamma gaps. |
 | [`varmapack.sim`](+varmapack/sim.m) | Simulate one or more VARMA series. |
 | [`varmapack.simx`](+varmapack/simx.m) | Simulate one or more VARMAX series. |

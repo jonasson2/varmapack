@@ -68,6 +68,26 @@ classdef OUModel
       obj.mu = mu;
       obj.r = r;
     end
+    function rho = specrad(obj, gap)
+      %SPECRAD  Sampled VAR(1) spectral radius at a positive finite gap.
+      if ~isnumeric(gap) || ~isreal(gap) || ~isscalar(gap)
+        error('varmapack:OUModel:gap', 'gap must be a real scalar');
+      end
+      matrix_drift = ~isempty(obj.drift);
+      if matrix_drift, parameter = obj.drift; else, parameter = obj.tau; end
+      rho = varmapack_ou_gateway(parameter, obj.cov, obj.mu, matrix_drift, ...
+                                 full(double(gap)), 'specrad');
+    end
+    function G = acvf(obj, lags)
+      %ACVF  Cov(X(t+h), X(t)) at real lags h, as r-by-r-by-numel(lags).
+      if ~isnumeric(lags) || ~isreal(lags) || ~(isvector(lags) || isempty(lags))
+        error('varmapack:OUModel:lags', 'lags must be a real vector');
+      end
+      matrix_drift = ~isempty(obj.drift);
+      if matrix_drift, parameter = obj.drift; else, parameter = obj.tau; end
+      G = varmapack_ou_gateway(parameter, obj.cov, obj.mu, matrix_drift, ...
+                               full(double(lags(:))));
+    end
     function X = sim(obj, t, M, rng)
       %SIM  Simulate M independent stationary paths at observation times t.
       if nargin < 3 || isempty(M), M = 1; end

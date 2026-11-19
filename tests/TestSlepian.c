@@ -101,4 +101,17 @@ void TestSlepian(void) {
   check_unit_spacing();
   check_fractional_spacing();
   check_slepian_errors();
+  double theta[] = {0, .25, .5, 0}, cov[] = {1.25, 0, NAN, 1.0625};
+  double lags[] = {.5, -1.5, 2}, G[12];
+  double expected[] = {.625, .125, .25, .53125, 0, .25, .125, 0, 0, 0, 0, 0};
+  varmapack_slepian_model *model = varmapack_slepian_create(theta, cov, 0, 2);
+  xCheck(model != 0);
+  if (model) {
+    checkVarmapackSuccess(varmapack_slepian_acvf(model, lags, 3, G));
+    checkArrayTol(G, expected, 12, 1e-12);
+    checkVarmapackSuccess(varmapack_slepian_acvf(model, 0, 0, 0));
+    lags[0] = NAN;
+    checkVarmapackFailure(varmapack_slepian_acvf(model, lags, 3, G));
+  }
+  varmapack_slepian_free(model);
 }

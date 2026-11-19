@@ -11,7 +11,7 @@ static double *real_array(const mxArray *arg) {
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  if ((nrhs != 3 && nrhs != 6) || nlhs > 1)
+  if ((nrhs != 3 && nrhs != 5 && nrhs != 6) || nlhs > 1)
     mexErrMsgIdAndTxt("varmapack:slepian:arguments", "Wrong number of arguments");
   double *theta = real_array(prhs[0]);
   double *cov = real_array(prhs[1]);
@@ -26,7 +26,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   double *t = 0;
   int n = 0, M = 0;
   randompack_rng *rng = 0;
-  if (nrhs == 6) {
+  double *stationary = 0;
+  if (nrhs == 5) {
+    stationary = real_array(prhs[3]);
+    t = real_array(prhs[4]);
+    mwSize nt = mxGetNumberOfElements(prhs[4]);
+    if (nt > INT_MAX || mxGetNumberOfDimensions(prhs[3]) != 2 ||
+        mxGetM(prhs[3]) != r || mxGetN(prhs[3]) != r)
+      mexErrMsgIdAndTxt("varmapack:slepian:dimensions", "Invalid covariance or lags");
+    n = nt;
+    mwSize dims[] = {r, r, nt};
+    out = mxCreateNumericArray(3, dims, mxDOUBLE_CLASS, mxREAL);
+  }
+  else if (nrhs == 6) {
     t = real_array(prhs[3]);
     mwSize nt = mxGetNumberOfElements(prhs[3]);
     if (nt < 1 || nt > INT_MAX || !mxIsNumeric(prhs[4]) ||
@@ -45,9 +57,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   bool ok;
   if (out) {
-    // In simulation mode the second matrix is the prepared innovation factor.
-    varmapack_slepian_model model = {r, theta, mu, cov};
-    ok = varmapack_slepian_sim(&model, t, n, M, mxGetPr(out), rng);
+    // The second matrix is the prepared innovation factor.
+    varmapack_slepian_model model = {r, theta, mu, cov, stationary};
+    ok = nrhs == 5 ? varmapack_slepian_acvf(&model, t, n, mxGetPr(out)) :
+      varmapack_slepian_sim(&model, t, n, M, mxGetPr(out), rng);
   }
   else {
     out = mxCreateDoubleMatrix(r, r, mxREAL);

@@ -26,6 +26,8 @@
 #'   Times must be finite and strictly increasing.
 #'   The first observation is drawn from `N(mu, cov)`. Supply a
 #'   `randompack::randompack_rng()` through `rng` to control the stream.
+#'   `acvf(lags)` returns Cov(X(t+h), X(t)) as an r by r by length(lags) array.
+#'   `specrad(gap)` returns the sampled VAR(1) spectral radius at a fixed gap.
 #'
 #' @examples
 #' rng <- randompack::randompack_rng()
@@ -43,6 +45,12 @@ varmapack_ou_model <- function(tau = NULL, cov, mu = NULL, drift = NULL) {
   if (!inherits(rng, "RandompackRNG") || is.null(rng$ptr))
     stop("rng must be a randompack_rng() object", call. = FALSE)
   rng$ptr
+}
+
+.vp_lags <- function(lags) {
+  lags <- .vp_numeric_array(lags, "lags")
+  if (!is.null(dim(lags))) stop("lags must be a vector", call. = FALSE)
+  as.double(lags)
 }
 
 VarmapackOUModel <- R6::R6Class(
@@ -82,6 +90,19 @@ VarmapackOUModel <- R6::R6Class(
       self$cov <- cov
       self$mu <- as.double(mu)
       self$r <- r
+    },
+    specrad = function(gap) {
+      gap <- .vp_numeric_array(gap, "gap")
+      if (length(gap) != 1L || !is.null(dim(gap)))
+        stop("gap must be a real scalar", call. = FALSE)
+      parameter <- if (is.null(self$drift)) self$tau else self$drift
+      .Call("varmapack_ou_specrad_R", parameter, self$cov, self$mu, as.double(gap),
+            PACKAGE = "varmapack")
+    },
+    acvf = function(lags) {
+      parameter <- if (is.null(self$drift)) self$tau else self$drift
+      .Call("varmapack_ou_acvf_R", parameter, self$cov, self$mu, .vp_lags(lags),
+            PACKAGE = "varmapack")
     },
     sim = function(t, nrep = 1L, rng = NULL) {
       t <- .vp_numeric_array(t, "t")

@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdint.h>
+#include <string.h>
 #include "mex.h"
 #include "varmapack.h"
 
@@ -10,7 +11,8 @@ static double *real_array(const mxArray *arg) {
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-  if ((nrhs != 4 && nrhs != 7) || nlhs > 1 || !mxIsLogicalScalar(prhs[3]))
+  if ((nrhs < 4 || nrhs > 7) || nlhs > 1 ||
+      !mxIsLogicalScalar(prhs[3]))
     mexErrMsgIdAndTxt("varmapack:ou:arguments", "Wrong number of arguments");
   double *parameter = real_array(prhs[0]);
   double *cov = real_array(prhs[1]);
@@ -28,8 +30,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   mxArray *out = 0;
   double *t = 0;
   int n = 0, M = 0;
+  double gap = 0;
   randompack_rng *rng = 0;
-  if (nrhs == 7) {
+  if (nrhs == 5) {
+    t = real_array(prhs[4]);
+    mwSize nt = mxGetNumberOfElements(prhs[4]);
+    if (nt > INT_MAX)
+      mexErrMsgIdAndTxt("varmapack:ou:dimensions", "Too many lags");
+    n = nt;
+    mwSize dims[] = {r, r, nt};
+    out = mxCreateNumericArray(3, dims, mxDOUBLE_CLASS, mxREAL);
+  }
+  else if (nrhs == 6) {
+    char mode[8];
+    if (!mxIsChar(prhs[5]) || mxGetString(prhs[5], mode, sizeof(mode)) ||
+        strcmp(mode, "specrad") || mxGetNumberOfElements(prhs[4]) != 1)
+      mexErrMsgIdAndTxt("varmapack:ou:gap", "Expected a scalar gap for specrad");
+    gap = real_array(prhs[4])[0];
+  }
+  else if (nrhs == 7) {
     t = real_array(prhs[4]);
     mwSize nt = mxGetNumberOfElements(prhs[4]);
     if (nt < 1 || nt > INT_MAX || !mxIsNumeric(prhs[5]) ||
@@ -50,6 +69,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     varmapack_ou_create_drift(parameter, cov, mu, r) :
     varmapack_ou_create(parameter, cov, mu, r);
   bool ok = model != 0;
+  if (ok && nrhs == 6) {
+    double rho = varmapack_ou_specrad(model, gap);
+    ok = !isnan(rho);
+    if (ok) out = mxCreateDoubleScalar(rho);
+  }
+  if (ok && nrhs == 5) ok = varmapack_ou_acvf(model, t, n, mxGetPr(out));
   if (ok && nrhs == 7) ok = varmapack_ou_sim(model, t, n, M, mxGetPr(out), rng);
   varmapack_ou_free(model);
   if (!ok) {

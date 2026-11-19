@@ -15,6 +15,7 @@
 #'   `r` by `length(t)` by `nrep`. Times must be finite and strictly
 #'   increasing. Supply a `randompack::randompack_rng()` through `rng`
 #'   to control the stream.
+#'   `acvf(lags)` returns Cov(X(t+h), X(t)) as an r by r by length(lags) array.
 #'
 #' @examples
 #' rng <- randompack::randompack_rng()
@@ -55,6 +56,10 @@ VarmapackSlepianModel <- R6::R6Class(
       mu <- as.double(mu)
       factor <- .Call("varmapack_slepian_factor_R", theta, cov, mu, PACKAGE = "varmapack")
       private$params <- list(theta = theta, cov = cov, mu = mu, factor = factor)
+    },
+    acvf = function(lags) {
+      .Call("varmapack_slepian_acvf_R", self$theta, private$params$factor,
+            self$mu, self$cov, .vp_lags(lags), PACKAGE = "varmapack")
     },
     sim = function(t, nrep = 1L, rng = NULL) {
       t <- .vp_numeric_array(t, "t")

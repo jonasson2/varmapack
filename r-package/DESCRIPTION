@@ -6,8 +6,10 @@ Authors@R:
     person("Kristján", "Jónasson", , "jonasson@hi.is", role = c("aut", "cre"))
 Description: Simulates Gaussian vector autoregressive-moving-average
     time-series models without a burn-in period by drawing startup shocks from
-    their model-implied conditional distribution. Also provides model
-    test cases, autocovariances, spectral radii, and impulse responses.
+    their model-implied conditional distribution. Also simulates stationary
+    Ornstein-Uhlenbeck and Slepian-based moving-average models at unevenly
+    spaced observation times. Provides model test cases, autocovariances,
+    spectral radii, impulse responses, and innovation covariance recovery.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.0.0)

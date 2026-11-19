@@ -139,11 +139,22 @@ Ornstein--Uhlenbeck model with diagonal drift. ``tau`` is a positive vector,
 
 .. code-block:: python
 
+    import randompack
+    import varmapack
+
     rng = randompack.Rng()
     rng.seed(123)
     t = varmapack.gamma_times(100, shape=16, mean_gap=1, rng=rng)
-    model = varmapack.OUModel(tau=[1, 2], cov=[[1, .5], [.5, 1]])
-    X = model.sim(t, nrep=10, rng=rng)  # shape (10, 100, 2)
+    cov = [[1, .5], [.5, 1]]
+    ou = varmapack.OUModel(tau=[1, 2], cov=cov)
+    ma = varmapack.SlepianModel(theta=[[.5, 0], [0, .5]], cov=cov)
+    X_ou = ou.sim(t, nrep=10, rng=rng)
+    X_ma = ma.sim(t, nrep=10, rng=rng)
+    print(X_ou.shape, X_ma.shape)  # both (10, 100, 2)
+
+Both models provide ``acvf(lags)`` for theoretical covariance at real time
+lags, e.g. ``ou.acvf([0, 0.5, 1])``.
+``ou.specrad(gap)`` gives the sampled VAR(1) spectral radius at a fixed gap.
 
 ``sim(t, *, nrep=1, rng=None)`` uses exact transitions at finite, strictly
 increasing times, with stationary initialization and no burn-in. Times have
@@ -185,11 +196,6 @@ the constructor rejects incompatible or unreliable solves.
 Use the same ``sim(t, *, nrep=1, rng=None)`` interface as for OU. The
 model uses unit-width noise windows, so the gaps in ``t`` are measured
 relative to that width. With unit spacing it gives a vector MA(1).
-
-.. code-block:: python
-
-    model = varmapack.SlepianModel(theta=[[.5]], cov=[[1.25]])
-    X = model.sim(t, nrep=10, rng=rng)  # shape (10, 100, 1)
 
 Array shapes
 ------------

@@ -21,6 +21,7 @@ and method \code{sim(t, nrep = 1L, rng = NULL)}. The result has dimensions
 \code{r} by \code{length(t)} by \code{nrep}. Times must be finite and strictly
 increasing. Supply a \code{randompack::randompack_rng()} through \code{rng}
 to control the stream.
+\code{acvf(lags)} returns Cov(X(t+h), X(t)) as an r by r by length(lags) array.
 }
 \description{
 A stationary Gaussian model with unit-width Brownian noise windows.

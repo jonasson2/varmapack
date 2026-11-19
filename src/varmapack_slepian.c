@@ -2,6 +2,7 @@
 #include "slepian_internal.h"
 #include "BlasGateway.h"
 #include "VarmaPackUtil.h"
+#include "VarmaUtilities.h"
 #include "error.h"
 
 void varmapack_slepian_free(varmapack_slepian_model *model) {
@@ -9,6 +10,7 @@ void varmapack_slepian_free(varmapack_slepian_model *model) {
   FREE(model->theta);
   FREE(model->mu);
   FREE(model->factor);
+  FREE(model->cov);
   FREE(model);
 }
 
@@ -23,7 +25,8 @@ varmapack_slepian_model *varmapack_slepian_create(double theta[], double cov[],
     return 0;
   }
   if (!ALLOC(model, 1) || !ALLOC(model->theta, rr) || !ALLOC(model->mu, r) ||
-      !ALLOC(model->factor, rr) || !ALLOC(Sig, rr)) goto alloc_fail;
+      !ALLOC(model->factor, rr) || !ALLOC(model->cov, rr) ||
+      !ALLOC(Sig, rr)) goto alloc_fail;
   model->r = r;
   for (int i=0; i<r; i++) {
     if (mu && !isfinite(mu[i])) {
@@ -46,6 +49,8 @@ varmapack_slepian_model *varmapack_slepian_create(double theta[], double cov[],
   if (!psdFactor(Sig, r, model->factor, 0)) goto fail;
   for (int i=0; i<r; i++) scal(r, sd[i], model->factor+i, r);
   copy(rr, theta, 1, model->theta, 1);
+  lacpy("Low", r, r, cov, r, model->cov, r);
+  copylowertoupper(r, model->cov, r);
   FREE(Sig);
   return model;
 alloc_fail:
@@ -54,6 +59,52 @@ fail:
   FREE(Sig);
   varmapack_slepian_free(model);
   return 0;
+}
+
+bool varmapack_slepian_acvf(varmapack_slepian_model *model, double lags[], int n,
+                            double Gamma[]) {
+  clear_error();
+  if (!model) return fail_error("invalid Slepian model");
+  int r = model->r, rr;
+  if (!intProduct(r, r, &rr)) return fail_error("problem size too large");
+  if (!acvfLags(lags, n, rr, Gamma)) return false;
+  double *work = 0, *lag_one = 0;
+  bool ok = false;
+  // Lag one is Theta*Sig; use the same innovation factor as simulation.
+  for (int k=0; k<n; k++) {
+    double h = fabs(lags[k]);
+    if (h == 0 || h >= 2) continue;
+    if (!ALLOC(work, rr) || !ALLOC(lag_one, rr)) {
+      fail_error("allocation failed");
+      goto done;
+    }
+    gemm("N", "N", r, r, r, 1, model->theta, r, model->factor, r, 0, work, r);
+    gemm("N", "T", r, r, r, 1, work, r, model->factor, r, 0, lag_one, r);
+    break;
+  }
+  for (int k=0; k<n; k++) {
+    double h = fabs(lags[k]);
+    double *G = Gamma+(size_t)k*rr;
+    if (h == 0) copy(rr, model->cov, 1, G, 1);
+    else if (h >= 2) setzero(rr, G);
+    else {
+      double a = fmax(1-h, 0), b = fmin(h, 2-h);
+      for (int j=0; j<r; j++) {
+        for (int i=0; i<r; i++) {
+          int u = i+j*r, v = lags[k] < 0 ? j+i*r : u;
+          G[u] = a*model->cov[u]+b*lag_one[v];
+          if (!isfinite(G[u])) {
+            fail_error("Slepian lag covariance is not representable");
+            goto done;
+          }
+        }
+      }
+    }
+  }
+  ok = true;
+done:
+  FREE(lag_one); FREE(work);
+  return ok;
 }
 
 typedef struct {
