@@ -261,12 +261,14 @@ All benchmark programs accept `-h` for workload and timing options.
 
 ## Releases
 
-The release steps below are repository-specific. Before any release, work from a
-clean tree, choose a new version `X.Y.Z`, and regenerate synchronized and
-generated files:
+### 1. Prepare the candidate
+
+Work from the repository root. Set `version` to the intended release, verify
+the required Randompack versions are published on PyPI and CRAN, and update
+`CHANGELOG.md`, `r-package/NEWS.md`, and the Python lockfile as needed.
 
 ```sh
-scripts/set_version.sh X.Y.Z
+scripts/set_version.sh "$version"   # only if a bump is needed
 scripts/syncpy.sh
 scripts/syncR.sh
 scripts/generate-readme.sh
@@ -275,77 +277,84 @@ Rscript -e 'devtools::build_readme("r-package")'
 git diff --check
 ```
 
-Run the C, Python, and R checks above. Commit the resulting files, push the
-commit, and tag that exact commit as `vX.Y.Z` before publishing artifacts.
+Commit the candidate and test from a clean checkout against published dependencies:
+C, Python, R, the MATLAB bindings, and the documentation examples affected by
+the release. Push the tested commit. Keep release-specific SHAs, run links,
+tarball checksums, and outstanding results in the local `codex-plans/PUBLISH.md`.
 
-### PyPI
+### 2. Verify and publish on GitHub
 
-PyPI releases should contain an sdist and wheels for every supported Python,
-operating-system, and architecture combination. Do not publish a source-only
-release: building the extension requires a BLAS/LAPACK implementation and a
-Fortran compiler.
+Dispatch a trial build on the candidate branch, for example
+`gh workflow run python-wheels.yml --ref main -f build='cp313-*'`.
+Choose a supported selector from the current [wheel workflow](.github/workflows/python-wheels.yml);
+that file defines the platforms, runners, and any per-job overrides.
+Use `gh run view "$trial_run" --json headSha,conclusion,jobs` to verify the SHA
+and that every expected job passed. If a fix is needed, push it and repeat.
 
-Publish the required Randompack Python version first. Then update
-`python/uv.lock` and build the Varmapack artifacts against that release.
-
-The `Python wheels` GitHub Actions workflow builds the supported wheel matrix.
-macOS wheels use Accelerate. Linux and Windows wheels use the SciPy OpenBLAS
-runtime and repair the resulting wheel so that its native libraries are
-included. Linux ARM wheels for CPython 3.10 through 3.13 use `manylinux2014`;
-CPython 3.14 uses `manylinux_2_28` because that is the oldest platform tag
-available for its NumPy build dependency.
-
-For a trial run, select one Python version when manually dispatching the
-workflow:
+Tag the **tested SHA**, not whatever `main` points to later:
 
 ```sh
-gh workflow run python-wheels.yml -f build='cp313-*'
+git tag -a "v$version" "$sha" -m "Varmapack $version"
+git push origin "refs/tags/v$version"
+gh release create "v$version" --verify-tag --title "Varmapack $version" --notes-file "$notes"
 ```
 
-A published GitHub release runs the complete matrix. Start with a clean
-`python/dist/`, build the source distribution, then collect the wheels produced
-by the same commit:
+Use the version's changelog entry for `$notes`. Publishing the GitHub release,
+not pushing the tag alone, starts the full wheel matrix. This does not upload to PyPI.
+
+### 3. Publish to PyPI
+
+Wait for the full **release** run to pass and verify its SHA against the tag.
+From a clean checkout of that tag, using a Python environment with `build` and
+`twine` installed, collect the artifacts in a fresh directory:
 
 ```sh
-python3 -m venv /tmp/varmapack-release-tools
-/tmp/varmapack-release-tools/bin/python -m pip install -U build twine
-rm -rf python/dist
-/tmp/varmapack-release-tools/bin/python -m build --sdist python
-# Download or copy the CI-built wheels to python/dist/.
-/tmp/varmapack-release-tools/bin/python -m twine check python/dist/*
+work=$(mktemp -d)
+mkdir "$work/dist"
+python -m build --sdist --outdir "$work/dist" python/
+gh run download "$release_run" --pattern 'wheels-*' --dir "$work/wheels"
+find "$work/wheels" -name '*.whl' -exec cp {} "$work/dist/" \;
+python -m twine check "$work"/dist/*
 ```
 
-First upload and test the exact artifacts on TestPyPI, using a fresh virtual
-environment. Then upload the unchanged artifacts to PyPI:
+Verify the directory contains one sdist and a wheel for every supported target;
+`twine check` does not check matrix completeness. Upload to TestPyPI, then
+smoke-test in a fresh environment. Install runtime dependencies from regular
+PyPI (see [pyproject.toml](python/pyproject.toml)) and only Varmapack from TestPyPI:
 
 ```sh
-/tmp/varmapack-release-tools/bin/python -m twine upload --repository testpypi \
-  python/dist/*
-# Install and smoke-test varmapack from TestPyPI in a fresh environment.
-/tmp/varmapack-release-tools/bin/python -m twine upload python/dist/*
+python -m twine upload --repository testpypi "$work"/dist/*
+python -m venv "$work/smoke"
+"$work/smoke/bin/python" -m pip install numpy randompack
+"$work/smoke/bin/python" -m pip install --index-url https://test.pypi.org/simple/ \
+    --no-deps --only-binary=:all: "varmapack==$version"
+"$work/smoke/bin/python" -m pip check
+"$work/smoke/bin/python" -I -c 'import numpy as np, varmapack as vp; np.testing.assert_allclose(vp.cov2corr(np.eye(2)), np.eye(2))'
 ```
 
-TestPyPI and PyPI have separate accounts and cannot replace an already uploaded
-version. See the [PyPA packaging guide][pypa-packaging] for credentials and
-TestPyPI installation details.
+Only after the smoke test passes, upload the **unchanged** files with
+`python -m twine upload "$work"/dist/*`. See the [PyPA publishing guide](https://packaging.python.org/en/latest/tutorials/packaging-projects/) for current authentication instructions.
 
-### CRAN
+### 4. Submit to CRAN
 
-CRAN submission requires the Randompack R package to be available on CRAN,
-because Varmapack lists it in `Imports` and `LinkingTo`. Build the exact source
-tarball and check it before submission:
+This can proceed independently of the Python wheels. Check the current
+[CRAN submission policy](https://cran.r-project.org/web/packages/policies.html#Submission)
+before building. Use current R-release or R-patched for the build, and current
+R-devel for the check; set the two variables below to the respective executables.
 
 ```sh
-R CMD build r-package
-R CMD check --as-cran varmapack_X.Y.Z.tar.gz
+"$R_RELEASE" CMD build r-package
+"$R_DEVEL" CMD check --as-cran "varmapack_${version}.tar.gz"
 ```
 
-Resolve all warnings and significant notes. For a new submission, also obtain a
-Windows R-devel check through Win-Builder. Submit the unchanged tarball through
-the [CRAN submission form][cran-submit] and confirm the email sent by CRAN. The
-[CRAN submission checklist][cran-checklist] and repository policy cover the
-current requirements.
+Keep that tarball and its SHA-256. For native-code changes, check the same
+archive on Windows R-devel even for a package update. A [Win-Builder](https://win-builder.r-project.org/)
+upload is **pending**, not a pass: retrieve `00check.log` from the link emailed
+to the package maintainer. A delayed report holds up CRAN, not GitHub or PyPI;
+a defect in shared code warrants reassessing all affected builds.
 
-[pypa-packaging]: https://packaging.python.org/en/latest/tutorials/packaging-projects/
-[cran-submit]: https://CRAN.R-project.org/submit.html
-[cran-checklist]: https://cran.r-project.org/web/packages/submission_checklist.html
+Record results, any explained notes, and reverse-dependency checks in
+`r-package/cran-comments.md`. Resolve errors, warnings, and significant notes.
+If the tarball is rebuilt, recheck the new file. Submit the exact checked
+archive through the [CRAN form](https://cran.r-project.org/submit.html) and
+confirm the maintainer email.
